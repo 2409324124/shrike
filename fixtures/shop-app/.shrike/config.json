@@ -1,0 +1,12 @@
+{
+  "appUrl": "http://localhost:5180",
+  "processes": [
+    { "name": "web", "command": "npm run dev:web", "url": "http://localhost:5180" },
+    { "name": "api", "command": "npm run dev:api", "url": "http://localhost:4100/health" },
+    { "name": "auth", "command": "npm run dev:auth", "url": "http://localhost:4101/health" },
+    { "name": "payments", "command": "npm run dev:payments", "url": "http://localhost:4199/health" }
+  ],
+  "places": {
+    "localhost:4199": { "kind": "outside", "name": "Stripe (test double)" }
+  }
+}

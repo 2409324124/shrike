@@ -1,0 +1,13 @@
+{
+  "name": "api-only",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.ts",
+    "nightly": "node src/nightly.ts"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0"
+  }
+}
