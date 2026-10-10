@@ -1,0 +1,22 @@
+{
+  "name": "todo-app",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --strictPort & node --watch server/index.ts & wait"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "vite": "^6.3.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@types/express": "^5.0.0",
+    "typescript": "^5.9.0"
+  }
+}
