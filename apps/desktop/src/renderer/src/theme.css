@@ -1,0 +1,417 @@
+@import "tailwindcss";
+
+/* Every colour comes from @shrike/design (cssVariables(theme) injects --c-* and --code-*; themes/store.ts swaps them). */
+:root {
+  --void: var(--c-void);
+  --abyss: var(--c-abyss);
+  --navy: var(--c-navy);
+  --glass: var(--c-glass);
+  --glass-edge: var(--c-glass-edge);
+  --hair: var(--c-hair);
+  --hair-strong: var(--c-glass-edge);
+  --ink: var(--c-ink);
+  --ink-dim: var(--c-ink-dim);
+  --ink-faint: var(--c-ink-faint);
+  --signal: var(--c-cyan);
+  --violet: var(--c-violet);
+  --ok: var(--c-ok);
+  --slow: var(--c-slow);
+  --fail: var(--c-fail);
+  --fail-ink: color-mix(in srgb, var(--c-fail) 22%, var(--c-ink));
+  --plate: color-mix(in srgb, var(--c-abyss) 92%, transparent);
+  --mono: var(--f-mono);
+  --display: var(--f-display);
+  --shade: var(--c-shade);
+  --lift: 0 12px 32px -16px var(--c-shade); /* the one elevation for cards, toasts and System windows */
+  --stage-min: 480px; /* what the Thread's column asks for: the rail folds, then the panes shrink, before it gives way (Shell.tsx) */
+}
+
+/* High contrast (Z6): solid edges carry focus, so the soft glows go (inset rules that mark rows stay). */
+:root[data-glow="off"] *,
+:root[data-glow="off"] *::before,
+:root[data-glow="off"] *::after {
+  text-shadow: none !important;
+}
+:root[data-glow="off"] :is(.pill, .agentcard, .btn, .glass, .stage, .composer) {
+  box-shadow: none !important;
+}
+
+@theme inline {
+  --color-black: var(--c-well);
+  --color-white: var(--c-lift);
+  --color-void: var(--void);
+  --color-abyss: var(--abyss);
+  --color-plate: var(--plate);
+  --color-glass: var(--glass);
+  --color-hair: var(--hair);
+  --color-hair-strong: var(--hair-strong);
+  --color-ink: var(--ink);
+  --color-dim: var(--ink-dim);
+  --color-faint: var(--ink-faint);
+  --color-signal: var(--signal);
+  --color-violet: var(--violet);
+  --color-ok: var(--ok);
+  --color-slow: var(--slow);
+  --color-fail: var(--fail);
+  --font-sans: var(--f-display);
+  --font-mono: var(--f-mono);
+  --font-display: var(--f-display);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  background: var(--void);
+  color: var(--ink);
+  font-family: var(--f-display);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+@layer base {
+  input,
+  textarea,
+  select,
+  button {
+    font: inherit;
+    color: inherit;
+  }
+  input,
+  textarea,
+  .selectable {
+    user-select: text;
+  }
+  :focus-visible {
+    outline: 2px solid var(--signal);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--signal) 22%, transparent);
+  }
+  select option {
+    background: var(--abyss);
+  }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--hair);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 8px;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.drag {
+  -webkit-app-region: drag;
+}
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* Component classes sit in a layer so Tailwind utilities on the same element win. */
+@layer components {
+/* Mono caps micro-label, the chrome's voice (F3). */
+.micro,
+.lbl {
+  font-family: var(--f-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.lbl {
+  color: var(--ink-dim);
+}
+
+/* The window: navy glow on void (E2). */
+.app-bg {
+  background: radial-gradient(ellipse 70% 60% at 55% 30%, color-mix(in srgb, var(--c-navy) 80%, var(--c-void)) 0%, var(--void) 70%);
+}
+
+.wordmark {
+  font: 700 12px var(--f-mono);
+  letter-spacing: 0.2em;
+  color: var(--ink);
+}
+
+/* The feed frame the Thread lives in. */
+.stage {
+  position: relative;
+  min-height: 0;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-pane);
+  overflow: hidden;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--abyss) 60%, transparent), color-mix(in srgb, var(--void) 90%, transparent));
+}
+
+.glass {
+  background: color-mix(in srgb, var(--abyss) 88%, transparent);
+  border: 1px solid var(--hair);
+  backdrop-filter: blur(14px) saturate(1.15);
+}
+/* Lists read over the busy Thread (quick open, the slash palette): the same glass, nearly opaque. */
+/* Anything floating on the stage is solid too, so lanes and labels never read through a card. */
+.glass.solid,
+section[aria-label="Shrike"] .glass {
+  background: color-mix(in srgb, var(--abyss) 97%, var(--navy));
+}
+
+/* Glass chip, sentence case (caps stay on section labels only). */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 500 12px var(--f-display);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: var(--ink);
+  background: var(--glass);
+  border: 1px solid var(--hair);
+  border-radius: var(--r-chip);
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: border-color 120ms, color 120ms;
+  -webkit-app-region: no-drag;
+}
+.btn:hover {
+  border-color: var(--glass-edge);
+}
+.btn.on,
+.btn[aria-pressed="true"] {
+  border-color: var(--signal);
+  color: var(--signal);
+}
+.btn.go {
+  border-color: var(--signal);
+  color: var(--signal);
+}
+.btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Thin control used inside sheets. */
+.hud-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: var(--r-chip);
+  color: var(--ink-dim);
+  font-family: var(--f-display);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  transition: color 120ms, border-color 120ms, background 120ms;
+  -webkit-app-region: no-drag;
+}
+.hud-btn:hover {
+  color: var(--ink);
+  border-color: var(--hair);
+}
+.hud-btn[aria-pressed="true"] {
+  color: var(--signal);
+}
+.hud-btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+.hud-btn.solid {
+  border-color: var(--hair-strong);
+  color: var(--ink);
+}
+.hud-btn.solid:hover {
+  border-color: var(--signal);
+  color: var(--signal);
+}
+
+/* The top bar's More menu: a native popover anchored under its button. */
+.topbar-menu {
+  position-anchor: --topbar-more;
+  inset: auto;
+  top: anchor(bottom);
+  right: anchor(right);
+  margin-top: 6px;
+  min-width: 170px;
+  padding: 4px;
+  border-radius: var(--r-card);
+  box-shadow: var(--lift);
+  color: var(--ink);
+}
+.topbar-menu .hud-btn { height: 28px; }
+
+.field {
+  height: 28px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-chip);
+  background: color-mix(in srgb, var(--void) 40%, transparent);
+  padding: 0 8px;
+  font-family: var(--f-mono);
+  font-size: 12px;
+  color: var(--ink);
+  outline: none;
+}
+.field:focus {
+  border-color: color-mix(in srgb, var(--signal) 50%, transparent);
+}
+.field::placeholder {
+  color: var(--ink-faint);
+}
+
+/* Agent surfaces (violet): the Ask pill and the cards (H1, T13). */
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: var(--r-pill);
+  border: 1px solid color-mix(in srgb, var(--violet) 60%, transparent);
+  background: color-mix(in srgb, var(--abyss) 80%, color-mix(in srgb, var(--violet) 18%, transparent));
+  box-shadow: var(--lift);
+  backdrop-filter: blur(12px);
+}
+.agentcard {
+  border-radius: var(--r-card);
+  border: 1px solid color-mix(in srgb, var(--violet) 50%, transparent);
+  background: color-mix(in srgb, var(--abyss) 88%, color-mix(in srgb, var(--violet) 14%, transparent));
+  backdrop-filter: blur(12px);
+  padding: 14px;
+  box-shadow: var(--lift);
+  animation: shrike-pop 0.35s var(--ease-out) both;
+}
+.agentcard.ok {
+  border-color: color-mix(in srgb, var(--ok) 50%, transparent);
+}
+.conf {
+  font: 600 11px var(--f-display);
+  letter-spacing: 0.02em;
+  border: 1px solid;
+  border-radius: var(--r-chip);
+  padding: 1px 6px;
+}
+.diff {
+  font: 400 12px/1.6 var(--f-mono);
+  border-radius: var(--r-chip);
+  overflow: hidden;
+  border: 1px solid var(--hair);
+}
+.agentcard .diff { border: 0; } /* the card is the box */
+/* Long lines wrap (the change is never off the edge); the -/+ marker keeps its own gutter. */
+.diff .d, .diff .a, .diff .c {
+  padding: 2px 10px 2px 24px;
+  text-indent: -14px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.diff .m {
+  display: inline-block;
+  width: 14px;
+  text-indent: 0;
+  opacity: 0.8;
+}
+.diff mark {
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 1px;
+}
+.diff .d mark { background: color-mix(in srgb, var(--fail) 35%, transparent); }
+.diff .a mark { background: color-mix(in srgb, var(--ok) 32%, transparent); }
+.diff-note {
+  padding: 4px 10px 6px 24px;
+}
+.diff-sent {
+  white-space: normal;
+  box-shadow: inset 2px 0 0 var(--violet);
+  background: color-mix(in srgb, var(--violet) 12%, transparent);
+}
+.diff .d {
+  background: color-mix(in srgb, var(--fail) 12%, transparent);
+  color: color-mix(in srgb, var(--fail) 30%, var(--ink));
+}
+.diff .a {
+  background: color-mix(in srgb, var(--ok) 10%, transparent);
+  color: color-mix(in srgb, var(--ok) 25%, var(--ink));
+}
+.diff .c {
+  color: var(--ink-faint);
+}
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes shrike-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.spin {
+  animation: shrike-spin 1.6s linear infinite;
+}
+@keyframes shrike-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.rise {
+  animation: shrike-rise 260ms var(--ease-out);
+}
+@keyframes shrike-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+}
+@keyframes shrike-sheet {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}
+.sheet-in {
+  animation: shrike-sheet 280ms var(--ease-out);
+}
+@keyframes shrike-fade {
+  from {
+    opacity: 0;
+  }
+}
+.fade-in {
+  animation: shrike-fade 200ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
