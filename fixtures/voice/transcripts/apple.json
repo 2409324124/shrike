@@ -1,0 +1,298 @@
+{
+ "en01": {
+  "text": "Show the logs.",
+  "finalMs": 120
+ },
+ "en02": {
+  "text": "Next step.",
+  "finalMs": 35
+ },
+ "en03": {
+  "text": "Where did it break?",
+  "finalMs": 42
+ },
+ "en04": {
+  "text": "Run the app.",
+  "finalMs": 54
+ },
+ "en05": {
+  "text": "Stop that.",
+  "finalMs": 49
+ },
+ "en06": {
+  "text": "Look at all the open pool requests.",
+  "finalMs": 50
+ },
+ "en07": {
+  "text": "Stage all files and push them.",
+  "finalMs": 54
+ },
+ "en08": {
+  "text": "Open the failing check.",
+  "finalMs": 47
+ },
+ "en09": {
+  "text": "Open the failing check on PR 42.",
+  "finalMs": 54
+ },
+ "en10": {
+  "text": "Ask Claude why the checkout total is wrong.",
+  "finalMs": 70
+ },
+ "en11": {
+  "text": "Open PR 57.",
+  "finalMs": 51
+ },
+ "en12": {
+  "text": "Switch to the admin workspace.",
+  "finalMs": 57
+ },
+ "en13": {
+  "text": "Open the API client.",
+  "finalMs": 53
+ },
+ "en14": {
+  "text": "Send a get request to Appitoto's.",
+  "finalMs": 58
+ },
+ "en15": {
+  "text": "Open car TS.",
+  "finalMs": 42
+ },
+ "en16": {
+  "text": "Fix the failing check.",
+  "finalMs": 49
+ },
+ "en17": {
+  "text": "Sho made the network requests.",
+  "finalMs": 50
+ },
+ "en18": {
+  "text": "Go back.",
+  "finalMs": 40
+ },
+ "en19": {
+  "text": "Replay this trip.",
+  "finalMs": 37
+ },
+ "en20": {
+  "text": "Commit my changes.",
+  "finalMs": 41
+ },
+ "en21": {
+  "text": "Pull the latest changes.",
+  "finalMs": 46
+ },
+ "en22": {
+  "text": "Approved will request 61.",
+  "finalMs": 43
+ },
+ "en23": {
+  "text": "Run the tests, then open the terminal.",
+  "finalMs": 57
+ },
+ "en24": {
+  "text": "Stop the agent.",
+  "finalMs": 29
+ },
+ "en25": {
+  "text": "Create a new workspace called billing.",
+  "finalMs": 45
+ },
+ "en26": {
+  "text": "What does this step do?",
+  "finalMs": 47
+ },
+ "en27": {
+  "text": "Stage everything, commit, and push.",
+  "finalMs": 60
+ },
+ "en28": {
+  "text": "Open the Totos controller.",
+  "finalMs": 59
+ },
+ "en04n": {
+  "text": "Run the app.",
+  "finalMs": 34
+ },
+ "en07n": {
+  "text": "Stage all files and push them.",
+  "finalMs": 55
+ },
+ "en09n": {
+  "text": "Open the failing check on PR 42.",
+  "finalMs": 47
+ },
+ "en11n": {
+  "text": "Open PR 57.",
+  "finalMs": 52
+ },
+ "hx01": {
+  "text": "लाख दिखाओ",
+  "finalMs": 43
+ },
+ "hx02": {
+  "text": "सारी लाइंस स्टेज करो और पुश कर",
+  "finalMs": 34
+ },
+ "hx03": {
+  "text": "और 42 खोलो",
+  "finalMs": 25
+ },
+ "hx04": {
+  "text": "चलो",
+  "finalMs": 26
+ },
+ "hx05": {
+  "text": "चलो",
+  "finalMs": 17
+ },
+ "hx06": {
+  "text": "बंद करो",
+  "finalMs": 25
+ },
+ "hx07": {
+  "text": "लोन से पों की चेक आउट क्यों होता",
+  "finalMs": 41
+ },
+ "hx08": {
+  "text": "सारे भी दिखा",
+  "finalMs": 17
+ },
+ "hx09": {
+  "text": "एडमिंस पे",
+  "finalMs": 20
+ },
+ "hx10": {
+  "text": "अगला",
+  "finalMs": 20
+ },
+ "hx11": {
+  "text": "नेटवर्क रिक्वेस्ट दिखा",
+  "finalMs": 27
+ },
+ "hx12": {
+  "text": "टेस्ट चलाओ फिर टर्मिनल खो",
+  "finalMs": 35
+ },
+ "hx13": {
+  "text": "चेंज करो",
+  "finalMs": 18
+ },
+ "hx14": {
+  "text": "इस फेल खोलो",
+  "finalMs": 32
+ },
+ "hx15": {
+  "text": "एक लाइन खोलो",
+  "finalMs": 29
+ },
+ "hx16": {
+  "text": "लेटेस्ट चेंज पुल कर लो",
+  "finalMs": 24
+ },
+ "hx17": {
+  "text": "फीलिंग चेक कर",
+  "finalMs": 27
+ },
+ "hr01": {
+  "text": "लांच दिखाओ",
+  "finalMs": 25
+ },
+ "hr02": {
+  "text": "इस स्टेज करो और पुश कर",
+  "finalMs": 24
+ },
+ "hr03": {
+  "text": "इफ यू अरे 42 खोलो",
+  "finalMs": 24
+ },
+ "hr04": {
+  "text": "चलिए",
+  "finalMs": 24
+ },
+ "hi01": {
+  "text": "लोग दिया",
+  "finalMs": 26
+ },
+ "hi02": {
+  "text": "चलो",
+  "finalMs": 19
+ },
+ "hi03": {
+  "text": "अगला कदम",
+  "finalMs": 15
+ },
+ "hi04": {
+  "text": "पिछला कड़ा",
+  "finalMs": 15
+ },
+ "hi05": {
+  "text": "सभी पुल विकसित दिया",
+  "finalMs": 34
+ },
+ "hi06": {
+  "text": "सारी खायें स्टेज करो और पुष्कर",
+  "finalMs": 38
+ },
+ "hi07": {
+  "text": "इसे चलाओ",
+  "finalMs": 20
+ },
+ "hi08": {
+  "text": "जी को रो",
+  "finalMs": 29
+ },
+ "hi09": {
+  "text": "गलती कहाँ है",
+  "finalMs": 16
+ },
+ "hi10": {
+  "text": "टर्मिनल खो",
+  "finalMs": 16
+ },
+ "hi11": {
+  "text": "यह स्टेप समझा",
+  "finalMs": 20
+ },
+ "hx02n": {
+  "text": "सारी करो और कुछ कर दो",
+  "finalMs": 36
+ },
+ "hx03n": {
+  "text": "42 खोलो",
+  "finalMs": 17
+ },
+ "hi06n": {
+  "text": "सारी खायें स्टेज करो और पुश करो",
+  "finalMs": 30
+ },
+ "hr02n": {
+  "text": "सही करो और पुश कर दो",
+  "finalMs": 26
+ },
+ "es01": {
+  "text": "Muestra los registros",
+  "finalMs": 25
+ },
+ "es02": {
+  "text": "Ejecuta la aplicación",
+  "finalMs": 23
+ },
+ "es03": {
+  "text": "Abre el Pool Request 42.",
+  "finalMs": 23
+ },
+ "fr01": {
+  "text": "Affiche les lots",
+  "finalMs": 114
+ },
+ "fr02": {
+  "text": "lance l'application",
+  "finalMs": 22
+ },
+ "fr03": {
+  "text": "Ouvre le chèque en échec",
+  "finalMs": 38
+ }
+}

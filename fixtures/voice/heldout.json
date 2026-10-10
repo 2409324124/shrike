@@ -1,0 +1,456 @@
+[
+ {
+  "id": "ho01",
+  "lang": "en",
+  "text": "can you pull up the console output",
+  "plan": [
+   {
+    "action": "panel.show",
+    "slots": {
+     "panel": "logs"
+    }
+   }
+  ]
+ },
+ {
+  "id": "ho02",
+  "lang": "en",
+  "text": "boot up the dev server",
+  "plan": [
+   {
+    "action": "app.run",
+    "slots": {}
+   }
+  ]
+ },
+ {
+  "id": "ho03",
+  "lang": "en",
+  "text": "kill the server",
+  "plan": [
+   {
+    "action": "app.stop",
+    "slots": {}
+   }
+  ]
+ },
+ {
+  "id": "ho04",
+  "lang": "en",
+  "text": "which PRs are open right now",
+  "plan": [
+   {
+    "action": "pr.list",
+    "slots": {}
+   }
+  ]
+ },
+ {
+  "id": "ho05",
+  "lang": "en",
+  "text": "take me to pull request number 61",
+  "plan": [
+   {
+    "action": "pr.open",
+    "slots": {
+     "pr": 61
+    }
+   }
+  ]
+ },
+ {
+  "id": "ho06",
+  "lang": "en",
+  "text": "add everything, commit it and push to origin",
+  "plan": [
+   {
+    "action": "git.stage_all",
+    "slots": {}
+   },
+   {
+    "action": "git.commit",
+    "slots": {}
+   },
+   {
+    "action": "git.push",
+    "slots": {}
+   }
+  ]
+ },
+ {
+  "id": "ho07",
+  "lang": "en",
+  "text": "show me why CI is red",
+  "plan": [
+   {
+    "action": "ci.open_check",
+    "slots": {
+     "check": "e2e (chromium)"
+    }
+   }
+  ]
+ },
+ {
+  "id": "ho08",
+  "lang": "en",
+  "text": "get the latest from main",
+  "plan": [
+   {
+    "action": "git.pull",
+    "slots": {}
+   }
+  ]
+ },
+ {
+  "id": "ho09",
+  "lang": "en",
+  "text": "have Claude look into why the cart is empty",
+  "plan": [
+   {
+    "action": "agent.ask",
+    "slots": {
+     "text": "why the cart is empty"
+    }
+   }
+  ]
+ },
+ {
+  "id": "ho10",
+  "lang": "en",
+  "text": "jump over to the docs workspace",
+  "plan": [
+   {
+    "action": "workspace.switch",
+    "slots": {
+     "workspace": "docs"
+    }
+   }
+  ]
+ },
+ {
+  "id": "ho11",
+  "lang": "en",
+  "text": "open the checkout component",
+  "plan": [
+   {
+    "action": "file.open",
+    "slots": {
+     "path": "src/components/Checkout.tsx"
+    }
+   }
+  ]
+ },
+ {
+  "id": "ho12",
+  "lang": "en",
+  "text": "restart the app and then show the logs",
+  "plan": [
+   {
+    "action": "app.restart",
+    "slots": {}
+   },
+   {
+    "action": "panel.show",
+    "slots": {
+     "panel": "logs"
+    }
+   }
+  ]
+ },
+ {
+  "id": "ho13",
+  "lang": "en",
+  "text": "what went wrong here",
+  "plan": [
+   {
+    "action": "failure.next",
+    "slots": {}
+   }
+  ]
+ },
+ {
+  "id": "ho14",
+  "lang": "en",
+  "text": "go to the step before",
+  "plan": [
+   {
+    "action": "step.prev",
+    "slots": {}
+   }
+  ]
+ },
+ {
+  "id": "ho15",
+  "lang": "en",
+  "text": "have the agent fix the e2e check",
+  "plan": [
+   {
+    "action": "ci.fix_check",
+    "slots": {
+     "check": "e2e (chromium)"
+    }
+   }
+  ]
+ },
+ {
+  "id": "ho16",
+  "lang": "en",
+  "text": "throw away my local changes",
+  "plan": [
+   {
+    "action": "git.discard",
+    "slots": {}
+   }
+  ]
+ },
+ {
+  "id": "hh01",
+  "lang": "hinglish-roman",
+  "text": "zara console ka output dikhao",
+  "plan": [
+   {
+    "action": "panel.show",
+    "slots": {
+     "panel": "logs"
+    }
+   }
+  ]
+ },
+ {
+  "id": "hh02",
+  "lang": "hinglish-roman",
+  "text": "server start kar do",
+  "plan": [
+   {
+    "action": "app.run",
+    "slots": {}
+   }
+  ]
+ },
+ {
+  "id": "hh03",
+  "lang": "hinglish-roman",
+  "text": "kaunse PR khule hain",
+  "plan": [
+   {
+    "action": "pr.list",
+    "slots": {}
+   }
+  ]
+ },
+ {
+  "id": "hh04",
+  "lang": "hinglish-roman",
+  "text": "PR 57 dikhao",
+  "plan": [
+   {
+    "action": "pr.open",
+    "slots": {
+     "pr": 57
+    }
+   }
+  ]
+ },
+ {
+  "id": "hh05",
+  "lang": "hinglish-roman",
+  "text": "sab kuch add karke commit karo phir push karo",
+  "plan": [
+   {
+    "action": "git.stage_all",
+    "slots": {}
+   },
+   {
+    "action": "git.commit",
+    "slots": {}
+   },
+   {
+    "action": "git.push",
+    "slots": {}
+   }
+  ]
+ },
+ {
+  "id": "hh06",
+  "lang": "hinglish-roman",
+  "text": "CI kyun fail hua Claude se pucho",
+  "plan": [
+   {
+    "action": "agent.ask",
+    "slots": {
+     "text": "CI kyun fail hua"
+    }
+   }
+  ]
+ },
+ {
+  "id": "hh07",
+  "lang": "hinglish-roman",
+  "text": "docs wale workspace mein chalo",
+  "plan": [
+   {
+    "action": "workspace.switch",
+    "slots": {
+     "workspace": "docs"
+    }
+   }
+  ]
+ },
+ {
+  "id": "hh08",
+  "lang": "hinglish-roman",
+  "text": "ek step peeche jao",
+  "plan": [
+   {
+    "action": "step.prev",
+    "slots": {}
+   }
+  ]
+ },
+ {
+  "id": "hh09",
+  "lang": "hinglish-roman",
+  "text": "tests chala ke dikhao",
+  "plan": [
+   {
+    "action": "tests.run",
+    "slots": {}
+   }
+  ]
+ },
+ {
+  "id": "hh10",
+  "lang": "hinglish-roman",
+  "text": "agent ko band karo",
+  "plan": [
+   {
+    "action": "agent.stop",
+    "slots": {}
+   }
+  ]
+ },
+ {
+  "id": "hd01",
+  "lang": "hi",
+  "text": "कंसोल दिखाओ",
+  "plan": [
+   {
+    "action": "panel.show",
+    "slots": {
+     "panel": "logs"
+    }
+   }
+  ]
+ },
+ {
+  "id": "hd02",
+  "lang": "hi",
+  "text": "सर्वर बंद कर दो",
+  "plan": [
+   {
+    "action": "app.stop",
+    "slots": {}
+   }
+  ]
+ },
+ {
+  "id": "hd03",
+  "lang": "hi",
+  "text": "पीआर सत्तावन खोलो",
+  "plan": [
+   {
+    "action": "pr.open",
+    "slots": {
+     "pr": 57
+    }
+   }
+  ]
+ },
+ {
+  "id": "hd04",
+  "lang": "hi",
+  "text": "सब कुछ कमिट करके पुश कर दो",
+  "plan": [
+   {
+    "action": "git.commit",
+    "slots": {}
+   },
+   {
+    "action": "git.push",
+    "slots": {}
+   }
+  ]
+ },
+ {
+  "id": "hd05",
+  "lang": "hi",
+  "text": "डॉक्स वर्कस्पेस में जाओ",
+  "plan": [
+   {
+    "action": "workspace.switch",
+    "slots": {
+     "workspace": "docs"
+    }
+   }
+  ]
+ },
+ {
+  "id": "hd06",
+  "lang": "hi",
+  "text": "ये क्यों टूटा क्लॉड से पूछो",
+  "plan": [
+   {
+    "action": "agent.ask",
+    "slots": {
+     "text": "ये क्यों टूटा"
+    }
+   }
+  ]
+ },
+ {
+  "id": "xo01",
+  "lang": "es",
+  "text": "enséñame los pull requests abiertos",
+  "plan": [
+   {
+    "action": "pr.list",
+    "slots": {}
+   }
+  ]
+ },
+ {
+  "id": "xo02",
+  "lang": "fr",
+  "text": "arrête le serveur",
+  "plan": [
+   {
+    "action": "app.stop",
+    "slots": {}
+   }
+  ]
+ },
+ {
+  "id": "xo03",
+  "lang": "de",
+  "text": "zeig mir die Netzwerkanfragen",
+  "plan": [
+   {
+    "action": "panel.show",
+    "slots": {
+     "panel": "network"
+    }
+   }
+  ]
+ },
+ {
+  "id": "xo04",
+  "lang": "ja",
+  "text": "テストを走らせて",
+  "plan": [
+   {
+    "action": "tests.run",
+    "slots": {}
+   }
+  ]
+ }
+]

@@ -1,0 +1,184 @@
+[
+ {
+  "text": "कंसोल दिखाओ",
+  "planner": {
+   "plan": [
+    {
+     "a": "panel.show",
+     "panel": "logs"
+    },
+    {
+     "a": "app.run"
+    }
+   ]
+  },
+  "expect": [
+   {
+    "action": "panel.show",
+    "slots": {
+     "panel": "logs"
+    }
+   }
+  ]
+ },
+ {
+  "text": "zeig mir die Netzwerkanfragen",
+  "planner": {
+   "plan": [
+    {
+     "a": "panel.show",
+     "panel": "network"
+    },
+    {
+     "a": "api.new"
+    }
+   ]
+  },
+  "expect": [
+   {
+    "action": "panel.show",
+    "slots": {
+     "panel": "network"
+    }
+   }
+  ]
+ },
+ {
+  "text": "सारी करो और कुछ कर दो",
+  "planner": {
+   "plan": [
+    {
+     "a": "git.stage_all"
+    },
+    {
+     "a": "git.commit"
+    },
+    {
+     "a": "git.push"
+    },
+    {
+     "a": "app.run"
+    }
+   ]
+  },
+  "expect": [
+   {
+    "action": "git.stage_all",
+    "slots": {}
+   }
+  ]
+ },
+ {
+  "text": "open PR 42",
+  "planner": {
+   "plan": [
+    {
+     "a": "pr.open",
+     "pr": "#42"
+    }
+   ]
+  },
+  "expect": []
+ },
+ {
+  "text": "go to the billing workspace",
+  "planner": {
+   "plan": [
+    {
+     "a": "workspace.switch",
+     "workspace": "billing"
+    }
+   ]
+  },
+  "expect": []
+ },
+ {
+  "text": "force push it",
+  "planner": {
+   "plan": [
+    {
+     "a": "git.force_push"
+    }
+   ]
+  },
+  "expect": []
+ },
+ {
+  "text": "push it",
+  "planner": {
+   "plan": [
+    {
+     "a": "confirm.yes"
+    },
+    {
+     "a": "git.push"
+    }
+   ]
+  },
+  "expect": [
+   {
+    "action": "git.push",
+    "slots": {}
+   }
+  ]
+ },
+ {
+  "text": "show the logs",
+  "planner": {
+   "plan": [
+    {
+     "a": "panel.show",
+     "panel": "logs"
+    },
+    {
+     "a": "git.push"
+    }
+   ]
+  },
+  "expect": [
+   {
+    "action": "panel.show",
+    "slots": {
+     "panel": "logs"
+    }
+   }
+  ]
+ },
+ {
+  "text": "open the lint check",
+  "planner": {
+   "plan": [
+    {
+     "a": "ci.open_check",
+     "check": "lint",
+     "pr": 99
+    }
+   ]
+  },
+  "expect": []
+ },
+ {
+  "text": "banana",
+  "planner": {
+   "plan": [
+    {
+     "a": "agent.ask",
+     "text": "what the todos route returns"
+    }
+   ]
+  },
+  "expect": []
+ },
+ {
+  "text": "open PR 99",
+  "planner": {
+   "plan": [
+    {
+     "a": "pr.open",
+     "pr": 42
+    }
+   ]
+  },
+  "expect": []
+ }
+]

@@ -1,0 +1,91 @@
+{
+ "prs": [
+  {
+   "number": 42,
+   "title": "Fix checkout total"
+  },
+  {
+   "number": 57,
+   "title": "Add dark mode"
+  },
+  {
+   "number": 61,
+   "title": "Bump deps"
+  }
+ ],
+ "checks": [
+  {
+   "name": "lint",
+   "state": "pass"
+  },
+  {
+   "name": "typecheck",
+   "state": "pass"
+  },
+  {
+   "name": "unit tests",
+   "state": "pass"
+  },
+  {
+   "name": "e2e (chromium)",
+   "state": "fail"
+  }
+ ],
+ "branches": [
+  "main",
+  "fix-cart-total",
+  "dark-mode"
+ ],
+ "workspaces": [
+  {
+   "name": "shop"
+  },
+  {
+   "name": "admin"
+  },
+  {
+   "name": "docs"
+  }
+ ],
+ "worktrees": [],
+ "files": [
+  "server/todos.controller.ts",
+  "src/components/Checkout.tsx",
+  "src/lib/cart.ts",
+  "package.json",
+  "README.md"
+ ],
+ "routes": [
+  {
+   "method": "GET",
+   "path": "/api/todos"
+  },
+  {
+   "method": "POST",
+   "path": "/api/users"
+  },
+  {
+   "method": "GET",
+   "path": "/api/items"
+  }
+ ],
+ "chains": [
+  "polish-until-8"
+ ],
+ "skills": [
+  {
+   "id": "deploy",
+   "name": "deploy"
+  }
+ ],
+ "flows": [
+  {
+   "id": "f1",
+   "name": "checkout"
+  }
+ ],
+ "branch": "fix-cart-total",
+ "ahead": 1,
+ "dirty": 4,
+ "staged": 0
+}

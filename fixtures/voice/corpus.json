@@ -1,0 +1,1261 @@
+[
+ {
+  "id": "en01",
+  "lang": "en",
+  "voice": "Samantha",
+  "text": "show the logs",
+  "plan": [
+   {
+    "action": "panel.show",
+    "slots": {
+     "panel": "logs"
+    }
+   }
+  ],
+  "wav": "audio/en01.wav",
+  "dur": 1.092
+ },
+ {
+  "id": "en02",
+  "lang": "en",
+  "voice": "Daniel",
+  "text": "next step",
+  "plan": [
+   {
+    "action": "step.next",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/en02.wav",
+  "dur": 1.05
+ },
+ {
+  "id": "en03",
+  "lang": "en",
+  "voice": "Rishi",
+  "text": "where did it break",
+  "plan": [
+   {
+    "action": "failure.next",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/en03.wav",
+  "dur": 1.335
+ },
+ {
+  "id": "en04",
+  "lang": "en",
+  "voice": "Samantha",
+  "text": "run the app",
+  "plan": [
+   {
+    "action": "app.run",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/en04.wav",
+  "dur": 0.88
+ },
+ {
+  "id": "en05",
+  "lang": "en",
+  "voice": "Aman",
+  "text": "stop the app",
+  "plan": [
+   {
+    "action": "app.stop",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/en05.wav",
+  "dur": 0.957
+ },
+ {
+  "id": "en06",
+  "lang": "en",
+  "voice": "Samantha",
+  "text": "look at all the open pull requests",
+  "plan": [
+   {
+    "action": "pr.list",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/en06.wav",
+  "dur": 2.294
+ },
+ {
+  "id": "en07",
+  "lang": "en",
+  "voice": "Rishi",
+  "text": "stage all files and push them",
+  "plan": [
+   {
+    "action": "git.stage_all",
+    "slots": {}
+   },
+   {
+    "action": "git.push",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/en07.wav",
+  "dur": 2.1
+ },
+ {
+  "id": "en08",
+  "lang": "en",
+  "voice": "Daniel",
+  "text": "open the failing check",
+  "plan": [
+   {
+    "action": "ci.open_check",
+    "slots": {
+     "check": "e2e (chromium)"
+    }
+   }
+  ],
+  "wav": "audio/en08.wav",
+  "dur": 1.59
+ },
+ {
+  "id": "en09",
+  "lang": "en",
+  "voice": "Samantha",
+  "text": "open the failing check on PR 42",
+  "plan": [
+   {
+    "action": "ci.open_check",
+    "slots": {
+     "check": "e2e (chromium)",
+     "pr": 42
+    }
+   }
+  ],
+  "wav": "audio/en09.wav",
+  "dur": 2.539
+ },
+ {
+  "id": "en10",
+  "lang": "en",
+  "voice": "Tara",
+  "text": "ask Claude why the checkout total is wrong",
+  "plan": [
+   {
+    "action": "agent.ask",
+    "slots": {
+     "text": "why the checkout total is wrong"
+    }
+   }
+  ],
+  "wav": "audio/en10.wav",
+  "dur": 2.748
+ },
+ {
+  "id": "en11",
+  "lang": "en",
+  "voice": "Samantha",
+  "text": "open PR 57",
+  "plan": [
+   {
+    "action": "pr.open",
+    "slots": {
+     "pr": 57
+    }
+   }
+  ],
+  "wav": "audio/en11.wav",
+  "dur": 1.726
+ },
+ {
+  "id": "en12",
+  "lang": "en",
+  "voice": "Aman",
+  "text": "switch to the admin workspace",
+  "plan": [
+   {
+    "action": "workspace.switch",
+    "slots": {
+     "workspace": "admin"
+    }
+   }
+  ],
+  "wav": "audio/en12.wav",
+  "dur": 1.806
+ },
+ {
+  "id": "en13",
+  "lang": "en",
+  "voice": "Daniel",
+  "text": "open the API client",
+  "plan": [
+   {
+    "action": "panel.show",
+    "slots": {
+     "panel": "api"
+    }
+   }
+  ],
+  "wav": "audio/en13.wav",
+  "dur": 1.893
+ },
+ {
+  "id": "en14",
+  "lang": "en",
+  "voice": "Samantha",
+  "text": "send a GET request to /api/todos",
+  "plan": [
+   {
+    "action": "api.send",
+    "slots": {
+     "method": "GET",
+     "path": "/api/todos"
+    }
+   }
+  ],
+  "wav": "audio/en14.wav",
+  "dur": 2.339
+ },
+ {
+  "id": "en15",
+  "lang": "en",
+  "voice": "Rishi",
+  "text": "open cart.ts",
+  "plan": [
+   {
+    "action": "file.open",
+    "slots": {
+     "path": "src/lib/cart.ts"
+    }
+   }
+  ],
+  "wav": "audio/en15.wav",
+  "dur": 1.347
+ },
+ {
+  "id": "en16",
+  "lang": "en",
+  "voice": "Samantha",
+  "text": "fix the failing check",
+  "plan": [
+   {
+    "action": "ci.fix_check",
+    "slots": {
+     "check": "e2e (chromium)"
+    }
+   }
+  ],
+  "wav": "audio/en16.wav",
+  "dur": 1.479
+ },
+ {
+  "id": "en17",
+  "lang": "en",
+  "voice": "Tara",
+  "text": "show me the network requests",
+  "plan": [
+   {
+    "action": "panel.show",
+    "slots": {
+     "panel": "network"
+    }
+   }
+  ],
+  "wav": "audio/en17.wav",
+  "dur": 2.0
+ },
+ {
+  "id": "en18",
+  "lang": "en",
+  "voice": "Daniel",
+  "text": "go back",
+  "plan": [
+   {
+    "action": "escape",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/en18.wav",
+  "dur": 0.899
+ },
+ {
+  "id": "en19",
+  "lang": "en",
+  "voice": "Samantha",
+  "text": "replay this trip",
+  "plan": [
+   {
+    "action": "replay",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/en19.wav",
+  "dur": 1.194
+ },
+ {
+  "id": "en20",
+  "lang": "en",
+  "voice": "Aman",
+  "text": "commit my changes",
+  "plan": [
+   {
+    "action": "git.commit",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/en20.wav",
+  "dur": 1.202
+ },
+ {
+  "id": "en21",
+  "lang": "en",
+  "voice": "Samantha",
+  "text": "pull the latest changes",
+  "plan": [
+   {
+    "action": "git.pull",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/en21.wav",
+  "dur": 1.556
+ },
+ {
+  "id": "en22",
+  "lang": "en",
+  "voice": "Rishi",
+  "text": "approve pull request 61",
+  "plan": [
+   {
+    "action": "pr.approve",
+    "slots": {
+     "pr": 61
+    }
+   }
+  ],
+  "wav": "audio/en22.wav",
+  "dur": 2.091
+ },
+ {
+  "id": "en23",
+  "lang": "en",
+  "voice": "Samantha",
+  "text": "run the tests, then open the terminal",
+  "plan": [
+   {
+    "action": "tests.run",
+    "slots": {}
+   },
+   {
+    "action": "panel.show",
+    "slots": {
+     "panel": "terminal"
+    }
+   }
+  ],
+  "wav": "audio/en23.wav",
+  "dur": 2.506
+ },
+ {
+  "id": "en24",
+  "lang": "en",
+  "voice": "Daniel",
+  "text": "stop the agent",
+  "plan": [
+   {
+    "action": "agent.stop",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/en24.wav",
+  "dur": 1.28
+ },
+ {
+  "id": "en25",
+  "lang": "en",
+  "voice": "Tara",
+  "text": "create a new workspace called billing",
+  "plan": [
+   {
+    "action": "workspace.create",
+    "slots": {
+     "name": "billing"
+    }
+   }
+  ],
+  "wav": "audio/en25.wav",
+  "dur": 2.278
+ },
+ {
+  "id": "en26",
+  "lang": "en",
+  "voice": "Samantha",
+  "text": "what does this step do",
+  "plan": [
+   {
+    "action": "agent.explain",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/en26.wav",
+  "dur": 1.468
+ },
+ {
+  "id": "en27",
+  "lang": "en",
+  "voice": "Rishi",
+  "text": "stage everything, commit, and push",
+  "plan": [
+   {
+    "action": "git.stage_all",
+    "slots": {}
+   },
+   {
+    "action": "git.commit",
+    "slots": {}
+   },
+   {
+    "action": "git.push",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/en27.wav",
+  "dur": 2.68
+ },
+ {
+  "id": "en28",
+  "lang": "en",
+  "voice": "Samantha",
+  "text": "open the todos controller",
+  "plan": [
+   {
+    "action": "file.open",
+    "slots": {
+     "path": "server/todos.controller.ts"
+    }
+   }
+  ],
+  "wav": "audio/en28.wav",
+  "dur": 1.796
+ },
+ {
+  "id": "hx01",
+  "lang": "hinglish",
+  "voice": "Lekha",
+  "text": "logs दिखाओ",
+  "plan": [
+   {
+    "action": "panel.show",
+    "slots": {
+     "panel": "logs"
+    }
+   }
+  ],
+  "wav": "audio/hx01.wav",
+  "dur": 1.214
+ },
+ {
+  "id": "hx02",
+  "lang": "hinglish",
+  "voice": "Lekha",
+  "text": "सारी files stage करो और push कर दो",
+  "plan": [
+   {
+    "action": "git.stage_all",
+    "slots": {}
+   },
+   {
+    "action": "git.push",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/hx02.wav",
+  "dur": 2.67
+ },
+ {
+  "id": "hx03",
+  "lang": "hinglish",
+  "voice": "Lekha",
+  "text": "PR 42 खोलो",
+  "plan": [
+   {
+    "action": "pr.open",
+    "slots": {
+     "pr": 42
+    }
+   }
+  ],
+  "wav": "audio/hx03.wav",
+  "dur": 1.477
+ },
+ {
+  "id": "hx04",
+  "lang": "hinglish",
+  "voice": "Lekha",
+  "text": "failing check खोलो",
+  "plan": [
+   {
+    "action": "ci.open_check",
+    "slots": {
+     "check": "e2e (chromium)"
+    }
+   }
+  ],
+  "wav": "audio/hx04.wav",
+  "dur": 1.372
+ },
+ {
+  "id": "hx05",
+  "lang": "hinglish",
+  "voice": "Lekha",
+  "text": "app चलाओ",
+  "plan": [
+   {
+    "action": "app.run",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/hx05.wav",
+  "dur": 0.876
+ },
+ {
+  "id": "hx06",
+  "lang": "hinglish",
+  "voice": "Lekha",
+  "text": "app बंद करो",
+  "plan": [
+   {
+    "action": "app.stop",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/hx06.wav",
+  "dur": 1.004
+ },
+ {
+  "id": "hx07",
+  "lang": "hinglish",
+  "voice": "Lekha",
+  "text": "Claude से पूछो कि checkout क्यों टूटा",
+  "plan": [
+   {
+    "action": "agent.ask",
+    "slots": {
+     "text": "checkout क्यों टूटा"
+    }
+   }
+  ],
+  "wav": "audio/hx07.wav",
+  "dur": 2.415
+ },
+ {
+  "id": "hx08",
+  "lang": "hinglish",
+  "voice": "Lekha",
+  "text": "सारे open PRs दिखाओ",
+  "plan": [
+   {
+    "action": "pr.list",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/hx08.wav",
+  "dur": 1.996
+ },
+ {
+  "id": "hx09",
+  "lang": "hinglish",
+  "voice": "Lekha",
+  "text": "admin workspace पे जाओ",
+  "plan": [
+   {
+    "action": "workspace.switch",
+    "slots": {
+     "workspace": "admin"
+    }
+   }
+  ],
+  "wav": "audio/hx09.wav",
+  "dur": 1.747
+ },
+ {
+  "id": "hx10",
+  "lang": "hinglish",
+  "voice": "Lekha",
+  "text": "अगला step",
+  "plan": [
+   {
+    "action": "step.next",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/hx10.wav",
+  "dur": 1.015
+ },
+ {
+  "id": "hx11",
+  "lang": "hinglish",
+  "voice": "Lekha",
+  "text": "network requests दिखाओ",
+  "plan": [
+   {
+    "action": "panel.show",
+    "slots": {
+     "panel": "network"
+    }
+   }
+  ],
+  "wav": "audio/hx11.wav",
+  "dur": 1.913
+ },
+ {
+  "id": "hx12",
+  "lang": "hinglish",
+  "voice": "Lekha",
+  "text": "tests चलाओ फिर terminal खोलो",
+  "plan": [
+   {
+    "action": "tests.run",
+    "slots": {}
+   },
+   {
+    "action": "panel.show",
+    "slots": {
+     "panel": "terminal"
+    }
+   }
+  ],
+  "wav": "audio/hx12.wav",
+  "dur": 2.185
+ },
+ {
+  "id": "hx13",
+  "lang": "hinglish",
+  "voice": "Lekha",
+  "text": "changes commit करो",
+  "plan": [
+   {
+    "action": "git.commit",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/hx13.wav",
+  "dur": 1.331
+ },
+ {
+  "id": "hx14",
+  "lang": "hinglish",
+  "voice": "Lekha",
+  "text": "cart.ts file खोलो",
+  "plan": [
+   {
+    "action": "file.open",
+    "slots": {
+     "path": "src/lib/cart.ts"
+    }
+   }
+  ],
+  "wav": "audio/hx14.wav",
+  "dur": 1.643
+ },
+ {
+  "id": "hx15",
+  "lang": "hinglish",
+  "voice": "Lekha",
+  "text": "API client खोलो",
+  "plan": [
+   {
+    "action": "panel.show",
+    "slots": {
+     "panel": "api"
+    }
+   }
+  ],
+  "wav": "audio/hx15.wav",
+  "dur": 1.434
+ },
+ {
+  "id": "hx16",
+  "lang": "hinglish",
+  "voice": "Lekha",
+  "text": "latest changes pull कर लो",
+  "plan": [
+   {
+    "action": "git.pull",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/hx16.wav",
+  "dur": 1.818
+ },
+ {
+  "id": "hx17",
+  "lang": "hinglish",
+  "voice": "Lekha",
+  "text": "failing check fix कर दो",
+  "plan": [
+   {
+    "action": "ci.fix_check",
+    "slots": {
+     "check": "e2e (chromium)"
+    }
+   }
+  ],
+  "wav": "audio/hx17.wav",
+  "dur": 1.615
+ },
+ {
+  "id": "hr01",
+  "lang": "hinglish-roman",
+  "voice": "Rishi",
+  "text": "logs dikhao",
+  "plan": [
+   {
+    "action": "panel.show",
+    "slots": {
+     "panel": "logs"
+    }
+   }
+  ],
+  "wav": "audio/hr01.wav",
+  "dur": 1.164
+ },
+ {
+  "id": "hr02",
+  "lang": "hinglish-roman",
+  "voice": "Aman",
+  "text": "saari files stage karo aur push kar do",
+  "plan": [
+   {
+    "action": "git.stage_all",
+    "slots": {}
+   },
+   {
+    "action": "git.push",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/hr02.wav",
+  "dur": 2.61
+ },
+ {
+  "id": "hr03",
+  "lang": "hinglish-roman",
+  "voice": "Tara",
+  "text": "PR 42 kholo",
+  "plan": [
+   {
+    "action": "pr.open",
+    "slots": {
+     "pr": 42
+    }
+   }
+  ],
+  "wav": "audio/hr03.wav",
+  "dur": 1.603
+ },
+ {
+  "id": "hr04",
+  "lang": "hinglish-roman",
+  "voice": "Rishi",
+  "text": "app chalao",
+  "plan": [
+   {
+    "action": "app.run",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/hr04.wav",
+  "dur": 1.003
+ },
+ {
+  "id": "hi01",
+  "lang": "hi",
+  "voice": "Lekha",
+  "text": "लॉग्स दिखाओ",
+  "plan": [
+   {
+    "action": "panel.show",
+    "slots": {
+     "panel": "logs"
+    }
+   }
+  ],
+  "wav": "audio/hi01.wav",
+  "dur": 1.132
+ },
+ {
+  "id": "hi02",
+  "lang": "hi",
+  "voice": "Lekha",
+  "text": "ऐप चलाओ",
+  "plan": [
+   {
+    "action": "app.run",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/hi02.wav",
+  "dur": 0.871
+ },
+ {
+  "id": "hi03",
+  "lang": "hi",
+  "voice": "Lekha",
+  "text": "अगला कदम",
+  "plan": [
+   {
+    "action": "step.next",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/hi03.wav",
+  "dur": 0.922
+ },
+ {
+  "id": "hi04",
+  "lang": "hi",
+  "voice": "Lekha",
+  "text": "पिछला कदम",
+  "plan": [
+   {
+    "action": "step.prev",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/hi04.wav",
+  "dur": 0.943
+ },
+ {
+  "id": "hi05",
+  "lang": "hi",
+  "voice": "Lekha",
+  "text": "सभी पुल रिक्वेस्ट दिखाओ",
+  "plan": [
+   {
+    "action": "pr.list",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/hi05.wav",
+  "dur": 1.834
+ },
+ {
+  "id": "hi06",
+  "lang": "hi",
+  "voice": "Lekha",
+  "text": "सारी फाइलें स्टेज करो और पुश करो",
+  "plan": [
+   {
+    "action": "git.stage_all",
+    "slots": {}
+   },
+   {
+    "action": "git.push",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/hi06.wav",
+  "dur": 2.554
+ },
+ {
+  "id": "hi07",
+  "lang": "hi",
+  "voice": "Lekha",
+  "text": "टेस्ट चलाओ",
+  "plan": [
+   {
+    "action": "tests.run",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/hi07.wav",
+  "dur": 0.99
+ },
+ {
+  "id": "hi08",
+  "lang": "hi",
+  "voice": "Lekha",
+  "text": "एजेंट को रोको",
+  "plan": [
+   {
+    "action": "agent.stop",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/hi08.wav",
+  "dur": 1.194
+ },
+ {
+  "id": "hi09",
+  "lang": "hi",
+  "voice": "Lekha",
+  "text": "गलती कहाँ हुई",
+  "plan": [
+   {
+    "action": "failure.next",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/hi09.wav",
+  "dur": 1.184
+ },
+ {
+  "id": "hi10",
+  "lang": "hi",
+  "voice": "Lekha",
+  "text": "टर्मिनल खोलो",
+  "plan": [
+   {
+    "action": "panel.show",
+    "slots": {
+     "panel": "terminal"
+    }
+   }
+  ],
+  "wav": "audio/hi10.wav",
+  "dur": 1.117
+ },
+ {
+  "id": "hi11",
+  "lang": "hi",
+  "voice": "Lekha",
+  "text": "ये स्टेप समझाओ",
+  "plan": [
+   {
+    "action": "agent.explain",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/hi11.wav",
+  "dur": 1.401
+ },
+ {
+  "id": "es01",
+  "lang": "es",
+  "voice": "Paulina",
+  "text": "muestra los registros",
+  "plan": [
+   {
+    "action": "panel.show",
+    "slots": {
+     "panel": "logs"
+    }
+   }
+  ],
+  "wav": "audio/es01.wav",
+  "dur": 1.739
+ },
+ {
+  "id": "es02",
+  "lang": "es",
+  "voice": "Mónica",
+  "text": "ejecuta la aplicación",
+  "plan": [
+   {
+    "action": "app.run",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/es02.wav",
+  "dur": 1.566
+ },
+ {
+  "id": "es03",
+  "lang": "es",
+  "voice": "Paulina",
+  "text": "abre el pull request 42",
+  "plan": [
+   {
+    "action": "pr.open",
+    "slots": {
+     "pr": 42
+    }
+   }
+  ],
+  "wav": "audio/es03.wav",
+  "dur": 2.218
+ },
+ {
+  "id": "fr01",
+  "lang": "fr",
+  "voice": "Thomas",
+  "text": "affiche les logs",
+  "plan": [
+   {
+    "action": "panel.show",
+    "slots": {
+     "panel": "logs"
+    }
+   }
+  ],
+  "wav": "audio/fr01.wav",
+  "dur": 1.033
+ },
+ {
+  "id": "fr02",
+  "lang": "fr",
+  "voice": "Thomas",
+  "text": "lance l'application",
+  "plan": [
+   {
+    "action": "app.run",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/fr02.wav",
+  "dur": 1.451
+ },
+ {
+  "id": "fr03",
+  "lang": "fr",
+  "voice": "Thomas",
+  "text": "ouvre le check en échec",
+  "plan": [
+   {
+    "action": "ci.open_check",
+    "slots": {
+     "check": "e2e (chromium)"
+    }
+   }
+  ],
+  "wav": "audio/fr03.wav",
+  "dur": 1.626
+ },
+ {
+  "id": "de01",
+  "lang": "de",
+  "voice": "Anna",
+  "text": "zeig die Logs",
+  "plan": [
+   {
+    "action": "panel.show",
+    "slots": {
+     "panel": "logs"
+    }
+   }
+  ],
+  "wav": "audio/de01.wav",
+  "dur": 1.062
+ },
+ {
+  "id": "de02",
+  "lang": "de",
+  "voice": "Anna",
+  "text": "starte die App",
+  "plan": [
+   {
+    "action": "app.run",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/de02.wav",
+  "dur": 1.06
+ },
+ {
+  "id": "de03",
+  "lang": "de",
+  "voice": "Anna",
+  "text": "öffne Pull Request 42",
+  "plan": [
+   {
+    "action": "pr.open",
+    "slots": {
+     "pr": 42
+    }
+   }
+  ],
+  "wav": "audio/de03.wav",
+  "dur": 2.418
+ },
+ {
+  "id": "ja01",
+  "lang": "ja",
+  "voice": "Kyoko",
+  "text": "ログを表示して",
+  "plan": [
+   {
+    "action": "panel.show",
+    "slots": {
+     "panel": "logs"
+    }
+   }
+  ],
+  "wav": "audio/ja01.wav",
+  "dur": 1.434
+ },
+ {
+  "id": "ja02",
+  "lang": "ja",
+  "voice": "Kyoko",
+  "text": "アプリを起動して",
+  "plan": [
+   {
+    "action": "app.run",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/ja02.wav",
+  "dur": 1.559
+ },
+ {
+  "id": "ja03",
+  "lang": "ja",
+  "voice": "Kyoko",
+  "text": "プルリクエスト42を開いて",
+  "plan": [
+   {
+    "action": "pr.open",
+    "slots": {
+     "pr": 42
+    }
+   }
+  ],
+  "wav": "audio/ja03.wav",
+  "dur": 2.579
+ },
+ {
+  "id": "en04n",
+  "lang": "en",
+  "voice": "Samantha",
+  "text": "run the app",
+  "plan": [
+   {
+    "action": "app.run",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/en04_noisy.wav",
+  "dur": 0.88,
+  "noisy": true
+ },
+ {
+  "id": "en07n",
+  "lang": "en",
+  "voice": "Rishi",
+  "text": "stage all files and push them",
+  "plan": [
+   {
+    "action": "git.stage_all",
+    "slots": {}
+   },
+   {
+    "action": "git.push",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/en07_noisy.wav",
+  "dur": 2.1,
+  "noisy": true
+ },
+ {
+  "id": "en09n",
+  "lang": "en",
+  "voice": "Samantha",
+  "text": "open the failing check on PR 42",
+  "plan": [
+   {
+    "action": "ci.open_check",
+    "slots": {
+     "check": "e2e (chromium)",
+     "pr": 42
+    }
+   }
+  ],
+  "wav": "audio/en09_noisy.wav",
+  "dur": 2.539,
+  "noisy": true
+ },
+ {
+  "id": "en11n",
+  "lang": "en",
+  "voice": "Samantha",
+  "text": "open PR 57",
+  "plan": [
+   {
+    "action": "pr.open",
+    "slots": {
+     "pr": 57
+    }
+   }
+  ],
+  "wav": "audio/en11_noisy.wav",
+  "dur": 1.726,
+  "noisy": true
+ },
+ {
+  "id": "hx02n",
+  "lang": "hinglish",
+  "voice": "Lekha",
+  "text": "सारी files stage करो और push कर दो",
+  "plan": [
+   {
+    "action": "git.stage_all",
+    "slots": {}
+   },
+   {
+    "action": "git.push",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/hx02_noisy.wav",
+  "dur": 2.67,
+  "noisy": true
+ },
+ {
+  "id": "hx03n",
+  "lang": "hinglish",
+  "voice": "Lekha",
+  "text": "PR 42 खोलो",
+  "plan": [
+   {
+    "action": "pr.open",
+    "slots": {
+     "pr": 42
+    }
+   }
+  ],
+  "wav": "audio/hx03_noisy.wav",
+  "dur": 1.477,
+  "noisy": true
+ },
+ {
+  "id": "hi06n",
+  "lang": "hi",
+  "voice": "Lekha",
+  "text": "सारी फाइलें स्टेज करो और पुश करो",
+  "plan": [
+   {
+    "action": "git.stage_all",
+    "slots": {}
+   },
+   {
+    "action": "git.push",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/hi06_noisy.wav",
+  "dur": 2.554,
+  "noisy": true
+ },
+ {
+  "id": "hr02n",
+  "lang": "hinglish-roman",
+  "voice": "Aman",
+  "text": "saari files stage karo aur push kar do",
+  "plan": [
+   {
+    "action": "git.stage_all",
+    "slots": {}
+   },
+   {
+    "action": "git.push",
+    "slots": {}
+   }
+  ],
+  "wav": "audio/hr02_noisy.wav",
+  "dur": 2.61,
+  "noisy": true
+ }
+]

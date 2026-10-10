@@ -1,0 +1,322 @@
+{
+ "en01": {
+  "text": "Show the logs",
+  "finalMs": 153
+ },
+ "en02": {
+  "text": "Next",
+  "finalMs": 111
+ },
+ "en03": {
+  "text": "Where did it break",
+  "finalMs": 118
+ },
+ "en04": {
+  "text": "Run the app",
+  "finalMs": 108
+ },
+ "en05": {
+  "text": "Stop the app",
+  "finalMs": 156
+ },
+ "en06": {
+  "text": "Look at all the open pool requests",
+  "finalMs": 114
+ },
+ "en07": {
+  "text": "Stage all files and push them",
+  "finalMs": 137
+ },
+ "en08": {
+  "text": "Open the failing sha",
+  "finalMs": 152
+ },
+ "en09": {
+  "text": "Open the failing check on PR forty two",
+  "finalMs": 156
+ },
+ "en10": {
+  "text": "Ask Cord why the checkout total is wrong",
+  "finalMs": 131
+ },
+ "en11": {
+  "text": "Open PR fifty seven",
+  "finalMs": 155
+ },
+ "en12": {
+  "text": "Switch other admin workspace",
+  "finalMs": 121
+ },
+ "en13": {
+  "text": "Open the API cloud",
+  "finalMs": 153
+ },
+ "en14": {
+  "text": "Send a get request to Apitotos",
+  "finalMs": 151
+ },
+ "en15": {
+  "text": "Open ca T",
+  "finalMs": 113
+ },
+ "en16": {
+  "text": "Fix the failing check",
+  "finalMs": 117
+ },
+ "en17": {
+  "text": "Show made the network requests",
+  "finalMs": 118
+ },
+ "en18": {
+  "text": "Go back",
+  "finalMs": 147
+ },
+ "en19": {
+  "text": "Replay this trip",
+  "finalMs": 119
+ },
+ "en20": {
+  "text": "Commit my changes",
+  "finalMs": 118
+ },
+ "en21": {
+  "text": "Fall the latest changes",
+  "finalMs": 156
+ },
+ "en22": {
+  "text": "Approveful request sixty one",
+  "finalMs": 139
+ },
+ "en23": {
+  "text": "Run the tests, then open the terminal",
+  "finalMs": 150
+ },
+ "en24": {
+  "text": "Stop the agent",
+  "finalMs": 156
+ },
+ "en25": {
+  "text": "Create a new workspace called billing",
+  "finalMs": 115
+ },
+ "en26": {
+  "text": "What does this step do",
+  "finalMs": 127
+ },
+ "en27": {
+  "text": "State everything, commit and push",
+  "finalMs": 151
+ },
+ "en28": {
+  "text": "Open the Todos controller",
+  "finalMs": 118
+ },
+ "hx01": {
+  "text": "लग्स दिखा",
+  "finalMs": 117
+ },
+ "hx02": {
+  "text": "सारी फाइल्स स्टेज करो और पुश कर दो",
+  "finalMs": 151
+ },
+ "hx03": {
+  "text": "आर बयालीस खोलो",
+  "finalMs": 130
+ },
+ "hx04": {
+  "text": "फीलिंग चेक खोल",
+  "finalMs": 115
+ },
+ "hx05": {
+  "text": "चला",
+  "finalMs": 121
+ },
+ "hx06": {
+  "text": "बंद करो",
+  "finalMs": 113
+ },
+ "hx07": {
+  "text": "क्लोड से पूछो कि चेकआउट क्यों टूटा",
+  "finalMs": 139
+ },
+ "hx08": {
+  "text": "सारे ओपन पीआर्स दिखाओ",
+  "finalMs": 119
+ },
+ "hx09": {
+  "text": "एडमिन वर्कस्पेस पे जाओ",
+  "finalMs": 158
+ },
+ "hx10": {
+  "text": "अगला",
+  "finalMs": 109
+ },
+ "hx11": {
+  "text": "नेटवर्क रिक्वेस्ट्स दिखाओ",
+  "finalMs": 156
+ },
+ "hx12": {
+  "text": "टेस्ट चलाओ फिर टर्मिनल खोलो",
+  "finalMs": 156
+ },
+ "hx13": {
+  "text": "चेंजेस कमिट करो",
+  "finalMs": 121
+ },
+ "hx14": {
+  "text": "टीएस फाइल खोलो",
+  "finalMs": 125
+ },
+ "hx15": {
+  "text": "एप्पी क्लाइंट खोलो",
+  "finalMs": 168
+ },
+ "hx16": {
+  "text": "लेटेस्ट चेंजेस पुल कर लो",
+  "finalMs": 122
+ },
+ "hx17": {
+  "text": "फीलिंग चेक फिक्स कर दो",
+  "finalMs": 141
+ },
+ "hr01": {
+  "text": "लॉर्ड्स दिखे",
+  "finalMs": 121
+ },
+ "hr02": {
+  "text": "साड़ी फाइल स्टेज करो और पुश कर दो",
+  "finalMs": 114
+ },
+ "hr03": {
+  "text": "पी आर फोर्टी टू को",
+  "finalMs": 164
+ },
+ "hr04": {
+  "text": "एप चाल",
+  "finalMs": 109
+ },
+ "hi01": {
+  "text": "लॉग्स दिखा",
+  "finalMs": 137
+ },
+ "hi02": {
+  "text": "चलाओ",
+  "finalMs": 107
+ },
+ "hi03": {
+  "text": "अगला क",
+  "finalMs": 150
+ },
+ "hi04": {
+  "text": "पिछला कदम",
+  "finalMs": 154
+ },
+ "hi05": {
+  "text": "सभी पुलिस दिखाओ",
+  "finalMs": 123
+ },
+ "hi06": {
+  "text": "सारी खायले स्टेज करो और पुश करो",
+  "finalMs": 160
+ },
+ "hi07": {
+  "text": "चलाओ",
+  "finalMs": 115
+ },
+ "hi08": {
+  "text": "एजेंट को रोक",
+  "finalMs": 118
+ },
+ "hi09": {
+  "text": "गलती कहां हुई",
+  "finalMs": 115
+ },
+ "hi10": {
+  "text": "टर्मिनल खोलो",
+  "finalMs": 160
+ },
+ "hi11": {
+  "text": "ये स्टेप समझाओ",
+  "finalMs": 156
+ },
+ "es01": {
+  "text": "Muestra los registros",
+  "finalMs": 157
+ },
+ "es02": {
+  "text": "Ejecuta la aplicación",
+  "finalMs": 154
+ },
+ "es03": {
+  "text": "Abre el pool request cuarenta y dos",
+  "finalMs": 165
+ },
+ "fr01": {
+  "text": "Affiche les",
+  "finalMs": 123
+ },
+ "fr02": {
+  "text": "Lance l'application",
+  "finalMs": 140
+ },
+ "fr03": {
+  "text": "Ouvre le chèque en échec",
+  "finalMs": 129
+ },
+ "de01": {
+  "text": "zeigt die Loks",
+  "finalMs": 152
+ },
+ "de02": {
+  "text": "starte die I",
+  "finalMs": 150
+ },
+ "de03": {
+  "text": "öffne Pullrequest zwei und vierzig",
+  "finalMs": 144
+ },
+ "ja01": {
+  "text": "ログを表示して",
+  "finalMs": 168
+ },
+ "ja02": {
+  "text": "アプリを起動して",
+  "finalMs": 159
+ },
+ "ja03": {
+  "text": "プルリクエスト四十二を開いて",
+  "finalMs": 136
+ },
+ "en04n": {
+  "text": "Run the app",
+  "finalMs": 122
+ },
+ "en07n": {
+  "text": "Stage all files and push them",
+  "finalMs": 149
+ },
+ "en09n": {
+  "text": "Open the failing check on PR forty two",
+  "finalMs": 158
+ },
+ "en11n": {
+  "text": "Open PR fifty seven",
+  "finalMs": 161
+ },
+ "hx02n": {
+  "text": "सारी फाइल्स स्टेज करो और पुश कर दो",
+  "finalMs": 164
+ },
+ "hx03n": {
+  "text": "आठ बयालीस खोलो",
+  "finalMs": 133
+ },
+ "hi06n": {
+  "text": "सारी खायलें स्टेज करो और पुश करो",
+  "finalMs": 159
+ },
+ "hr02n": {
+  "text": "साड़ी फाइल स्टेज करो और पुश कर दो",
+  "finalMs": 122
+ }
+}

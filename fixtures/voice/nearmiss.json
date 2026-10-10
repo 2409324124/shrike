@@ -1,0 +1,22 @@
+[
+ {"id": "nm01", "lang": "en", "text": "push", "plan": [{"action": "git.push", "slots": {}}]},
+ {"id": "nm02", "lang": "en", "text": "pull", "plan": [{"action": "git.pull", "slots": {}}]},
+ {"id": "nm03", "lang": "en", "text": "close the logs", "plan": [{"action": "panel.hide", "slots": {"panel": "logs"}}]},
+ {"id": "nm04", "lang": "en", "text": "show the PRs", "plan": [{"action": "pr.list", "slots": {}}]},
+ {"id": "nm05", "lang": "en", "text": "open PR 42", "plan": [{"action": "pr.open", "slots": {"pr": 42}}]},
+ {"id": "nm06", "lang": "en", "text": "kill the server", "plan": [{"action": "app.stop", "slots": {}}]},
+ {"id": "nm07", "lang": "en", "text": "stop the agent", "plan": [{"action": "agent.stop", "slots": {}}]},
+ {"id": "nm08", "lang": "en", "text": "next trip", "plan": [{"action": "trip.next", "slots": {}}]},
+ {"id": "nm09", "lang": "en", "text": "next", "plan": [{"action": "step.next", "slots": {}}]},
+ {"id": "nm10", "lang": "en", "text": "open the failing check", "plan": [{"action": "ci.open_check", "slots": {"check": "e2e (chromium)"}}]},
+ {"id": "nm11", "lang": "en", "text": "fix it", "plan": [{"action": "agent.fix", "slots": {}}]},
+ {"id": "nm12", "lang": "en", "text": "fix the failing check", "plan": [{"action": "ci.fix_check", "slots": {"check": "e2e (chromium)"}}]},
+ {"id": "nm13", "lang": "en", "text": "merge PR 57", "plan": [{"action": "pr.merge", "slots": {"pr": 57}}]},
+ {"id": "nm14", "lang": "en", "text": "commit", "plan": [{"action": "git.commit", "slots": {}}]},
+ {"id": "nm15", "lang": "hinglish-roman", "text": "push mat karo", "plan": [{"action": "confirm.no", "slots": {}}]},
+ {"id": "nm16", "lang": "hinglish-roman", "text": "wapas jao", "plan": [{"action": "escape", "slots": {}}]},
+ {"id": "nm17", "lang": "hinglish-roman", "text": "wapas karo", "plan": [{"action": "plan.undo", "slots": {}}]},
+ {"id": "nm18", "lang": "en", "text": "open PR 99", "plan": []},
+ {"id": "nm19", "lang": "en", "text": "banana", "plan": []},
+ {"id": "nm20", "lang": "en", "text": "discard my changes", "plan": [{"action": "git.discard", "slots": {}}]}
+]
