@@ -1,0 +1,334 @@
+/* XP: results screen, metals, medals, cards. Built on the System's glass (system.css). Calm (.calm, reduced motion): still end state. */
+
+:root {
+  /* ponytail: metals aren't design tokens yet (no other surface uses them); they live here until one does */
+  --m-gold: linear-gradient(170deg, #fffbe6 0%, #ffe28a 18%, #e9b23c 42%, #8f5a0b 58%, #f6cf6a 74%, #fff2c4 88%, #b07a1c 100%);
+  --m-silver: linear-gradient(170deg, #ffffff 0%, #e6edf7 20%, #a9b6c8 44%, #5d6a7e 58%, #cdd6e3 76%, #ffffff 90%, #8c97a8 100%);
+  --m-bronze: linear-gradient(170deg, #ffe8d2 0%, #f0b27a 20%, #c27a3a 44%, #6b3a14 58%, #d99a5e 76%, #ffd9b5 90%, #8a4f22 100%);
+  --m-steel: linear-gradient(170deg, #e9eef6 0%, #9aa6b8 30%, #4a5568 56%, #8a96aa 78%, #c9d1dd 100%);
+  --m-gold-glow: rgba(255, 196, 70, 0.55);
+  --m-silver-glow: rgba(200, 220, 255, 0.45);
+  --m-bronze-glow: rgba(230, 140, 70, 0.45);
+  --m-steel-glow: rgba(150, 170, 200, 0.3);
+}
+
+/* ---- results screen ---- */
+.xr-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: start center;
+  padding: 4vh 16px 24px;
+  overflow-y: auto;
+  background: radial-gradient(90% 70% at 50% 40%, color-mix(in srgb, var(--c-navy) 70%, transparent), color-mix(in srgb, var(--c-void) 88%, transparent));
+  backdrop-filter: blur(6px) saturate(1.1);
+  animation: xr-fade 220ms var(--ease-out);
+  cursor: pointer;
+}
+.xr-stage {
+  position: relative;
+  width: min(880px, 100%);
+  padding: 18px 28px 14px;
+  container-type: inline-size; /* the stage, not the window, decides the layout: docks narrow it */
+}
+.xr-stage.shake { animation: xr-shake 260ms linear; }
+.xr-quest {
+  font: 600 22px/1.2 var(--f-display);
+  color: var(--c-core);
+  text-shadow: 0 0 16px color-mix(in srgb, var(--c-cyan) 40%, transparent);
+  max-width: 640px;
+}
+.xr-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 250px;
+  gap: 28px;
+  align-items: center;
+  margin-top: 18px;
+}
+.xr-lines { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.xr-line {
+  display: grid;
+  grid-template-columns: auto 1fr 96px 64px;
+  align-items: baseline;
+  gap: 10px;
+  padding: 5px 12px;
+  border-left: 2px solid color-mix(in srgb, var(--c-cyan) 50%, transparent);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--c-blue) 16%, transparent), transparent 85%);
+  font: 500 14px/1.3 var(--f-display);
+  opacity: 0;
+  transform: translateX(-18px);
+}
+.xr-line.in { opacity: 1; transform: none; transition: opacity 180ms var(--ease-out), transform 260ms var(--ease-out); }
+.xr-line .lb { color: var(--ink); letter-spacing: 0.02em; white-space: nowrap; }
+.xr-line .dots { border-bottom: 1px dotted color-mix(in srgb, var(--c-cyan) 22%, transparent); transform: translateY(-4px); }
+.xr-line .vl { text-align: right; font: 600 14px/1 var(--f-mono); color: var(--c-core); font-variant-numeric: tabular-nums; }
+.xr-line .xp { text-align: right; font: 600 12px/1 var(--f-mono); color: var(--c-cyan); font-variant-numeric: tabular-nums; }
+.xr-line.zero .xp { color: var(--ink-faint); }
+.xr-line.total { margin-top: 6px; border-left-color: var(--c-core); background: linear-gradient(90deg, color-mix(in srgb, var(--c-cyan) 18%, transparent), transparent 90%); }
+.xr-line.total .lb { font-weight: 700; font-size: 13px; color: var(--c-cyan); }
+.xr-line.total .xp { font-size: 15px; color: var(--c-core); text-shadow: 0 0 10px var(--c-cyan); }
+.xr-line.total { grid-template-columns: auto 1fr 96px 110px; }
+
+.xr-rank { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.xr-letter-wrap { position: relative; height: 190px; width: 230px; display: grid; place-items: center; }
+.xr-letter-ghost {
+  width: 120px;
+  height: 150px;
+  border: 1px dashed color-mix(in srgb, var(--c-cyan) 22%, transparent);
+  border-radius: 6px;
+}
+
+/* a narrow stage: the rank goes under the score as one row, smaller, and the cards come in their small size */
+@container (max-width: 600px) {
+  .xr-body { grid-template-columns: minmax(0, 1fr); gap: var(--s-3); }
+  .xr-rank { flex-direction: row; justify-content: center; gap: var(--s-4); }
+  .xr-letter-wrap { width: 120px; height: 110px; }
+  .xr-letter-wrap .xp-letter { font-size: 108px; }
+  .xr-letter-ghost { width: 72px; height: 92px; }
+}
+@container (max-width: 660px) {
+  .xr-rewards .xp-card { width: 92px; height: 128px; }
+  .xr-rewards .xp-card .emb { font-size: 26px; margin-top: 2px; }
+  .xr-rewards .xp-card .ds { display: none; }
+}
+
+/* the metal letter: gradient fill, dark bevel edge, one shine sweep */
+.xp-letter {
+  --metal: var(--m-steel);
+  --mglow: var(--m-steel-glow);
+  position: relative;
+  display: inline-block;
+  font: 700 176px/0.9 var(--f-display);
+  letter-spacing: -0.04em;
+  background: linear-gradient(105deg, transparent 0 40%, rgba(255, 255, 255, 0.95) 48%, transparent 56% 100%) 200% 0 / 260% 100% no-repeat, var(--metal);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-stroke: 1.5px rgba(20, 12, 0, 0.55);
+  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.55)) drop-shadow(0 0 22px var(--mglow));
+  user-select: none;
+}
+.xp-letter.m-gold { --metal: var(--m-gold); --mglow: var(--m-gold-glow); }
+.xp-letter.m-silver { --metal: var(--m-silver); --mglow: var(--m-silver-glow); }
+.xp-letter.m-bronze { --metal: var(--m-bronze); --mglow: var(--m-bronze-glow); }
+.xp-letter.slam { animation: xr-slam 420ms cubic-bezier(0.2, 1.4, 0.4, 1) both, xr-shine 900ms ease-out 360ms both; }
+.xr-letter-wrap:has(.slam)::after {
+  content: "";
+  position: absolute;
+  inset: 20% 10%;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--c-core) 70%, transparent);
+  animation: xr-ring 520ms var(--ease-out) 120ms both;
+  pointer-events: none;
+}
+
+.xr-xp { margin-top: 18px; }
+.xr-title { font: 600 15px/1 var(--f-display); color: var(--c-core); letter-spacing: 0.04em; }
+.xr-bar {
+  position: relative;
+  height: 6px;
+  margin-top: 7px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--c-cyan) 10%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--c-cyan) 22%, transparent) inset;
+  overflow: hidden;
+}
+.xr-bar > i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--c-blue), var(--c-cyan) 70%, var(--c-core));
+  box-shadow: 0 0 10px var(--c-cyan);
+}
+
+.xr-rewards { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 14px; min-height: 150px; margin-top: 16px; }
+.xr-drop { opacity: 0; transform: translateY(-26px); }
+.xr-drop.in { opacity: 1; transform: none; transition: opacity 200ms var(--ease-out) var(--d), transform 380ms cubic-bezier(0.2, 1.5, 0.4, 1) var(--d); }
+.xr-skill {
+  width: 170px;
+  padding: 9px 11px 10px;
+  border: 1px solid color-mix(in srgb, var(--c-cyan) 45%, transparent);
+  border-radius: 3px;
+  background: linear-gradient(180deg, color-mix(in srgb, color-mix(in srgb, var(--c-navy) 92%, var(--c-blue)) 80%, transparent), color-mix(in srgb, var(--c-abyss) 85%, transparent));
+  box-shadow: 0 0 16px color-mix(in srgb, var(--c-cyan) 22%, transparent);
+}
+.xr-hint { margin: 14px 0 0; text-align: center; font: 500 12px/1 var(--f-display); color: var(--ink-faint); }
+
+/* ---- medal disc ---- */
+.xp-medal {
+  --metal: var(--m-bronze);
+  --mglow: var(--m-bronze-glow);
+  position: relative;
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, transparent 56%, rgba(0, 0, 0, 0.35) 58%, transparent 62%), var(--metal);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35), 0 4px 10px rgba(0, 0, 0, 0.5), 0 0 18px var(--mglow);
+  overflow: hidden;
+}
+.xp-medal.m-gold { --metal: var(--m-gold); --mglow: var(--m-gold-glow); }
+.xp-medal.m-silver { --metal: var(--m-silver); --mglow: var(--m-silver-glow); }
+.xp-medal > i { font-style: normal; line-height: 1; color: rgba(40, 22, 0, 0.55); text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6); }
+.xp-medal > b {
+  position: absolute;
+  bottom: 14%;
+  font: 700 8px/1 var(--f-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(30, 18, 0, 0.7);
+}
+.xp-medal.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  background: linear-gradient(115deg, transparent 40%, rgba(255, 255, 255, 0.85) 50%, transparent 60%);
+  animation: xr-sweep 2.4s ease-in-out 400ms infinite;
+}
+
+/* ---- collectible card ---- */
+.xp-card {
+  --metal: var(--m-bronze);
+  --mglow: var(--m-bronze-glow);
+  width: 112px;
+  height: 156px;
+  perspective: 700px;
+  flex: none;
+}
+.xp-card.sm { width: 92px; height: 128px; }
+.xp-card.r-silver { --metal: var(--m-silver); --mglow: var(--m-silver-glow); }
+.xp-card.r-gold,
+.xp-card.r-golden { --metal: var(--m-gold); --mglow: var(--m-gold-glow); }
+.xp-card-in { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; }
+.xp-card.flip .xp-card-in { animation: xr-flip 900ms cubic-bezier(0.3, 1.3, 0.5, 1) both; }
+.xp-card-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border-radius: 8px;
+  padding: 3px;
+  background: var(--metal);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.55), 0 0 16px var(--mglow);
+  overflow: hidden;
+}
+.xp-card-face.front {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 9px 8px 8px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, color-mix(in srgb, var(--c-navy) 92%, var(--c-blue)) 92%, transparent), color-mix(in srgb, var(--c-abyss) 96%, transparent)) padding-box,
+    var(--metal) border-box;
+  border: 3px solid transparent;
+}
+.xp-card-face.back { transform: rotateY(180deg); display: grid; place-items: center; background: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.06) 0 4px, transparent 4px 9px), var(--metal); }
+.xp-card .bk { font: 700 40px/1 var(--f-display); color: rgba(20, 12, 0, 0.45); }
+.xp-card .rar { font: 600 8px/1 var(--f-mono); letter-spacing: 0.22em; text-transform: uppercase; color: color-mix(in srgb, var(--c-ink) 70%, transparent); }
+.xp-card .emb {
+  margin-top: 6px;
+  font: 700 34px/1 var(--f-display);
+  background: var(--metal);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 8px var(--mglow));
+}
+.xp-card.sm .emb { font-size: 26px; margin-top: 2px; }
+.xp-card .nm { margin-top: auto; font: 600 12px/1.15 var(--f-display); text-align: center; color: var(--c-core); }
+.xp-card .ds { font-size: 9.5px; line-height: 1.25; text-align: center; color: var(--ink-dim); }
+.xp-card.sm .ds { display: none; }
+/* golden: holographic foil over the face */
+.xp-card .foil {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(125deg, rgba(255, 0, 132, 0.35), rgba(255, 210, 0, 0.3) 25%, rgba(0, 255, 170, 0.3) 45%, rgba(0, 170, 255, 0.35) 65%, rgba(190, 0, 255, 0.3) 85%),
+    repeating-linear-gradient(60deg, rgba(255, 255, 255, 0.12) 0 2px, transparent 2px 6px);
+  background-size: 260% 260%, auto;
+  mix-blend-mode: color-dodge;
+  opacity: 0.75;
+  animation: xr-holo 4s ease-in-out infinite alternate;
+}
+.xp-card.locked { --metal: linear-gradient(170deg, #2a3348, #151b2a); --mglow: transparent; }
+.xp-card.locked .xp-card-face { box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5); }
+.xp-card.locked .xp-card-face.front { background: linear-gradient(180deg, rgba(10, 16, 30, 0.95), rgba(4, 7, 15, 0.98)) padding-box, var(--metal) border-box; }
+.xp-card.locked .emb { background: none; color: var(--ink-faint); filter: none; }
+.xp-card.locked .nm { color: var(--ink-faint); letter-spacing: 0.2em; }
+.xp-card.locked .rar { color: var(--ink-faint); }
+
+/* ---- top bar XP ---- */
+.xp-chip {
+  -webkit-app-region: no-drag;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 3px 7px 4px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+  color: inherit;
+}
+.xp-chip:hover,
+.xp-chip[aria-expanded="true"] { border-color: var(--hair); background: var(--glass); }
+.xp-chip .t { font: 500 12px/1 var(--f-display); color: var(--ink-dim); white-space: nowrap; }
+.xp-chip .t span { display: none; } /* XP lives in the tooltip and the profile */
+.xp-chip .b { display: none; position: relative; height: 2px; width: 100%; min-width: 96px; background: color-mix(in srgb, var(--c-cyan) 14%, transparent); border-radius: 1px; overflow: hidden; }
+.xp-chip .b > i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, var(--c-blue), var(--c-cyan)); box-shadow: 0 0 6px var(--c-cyan); transition: width 700ms var(--ease-out); }
+
+/* XP9 held quest result: a compact glowing chip beside the XP chip */
+.xr-chip {
+  -webkit-app-region: no-drag;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 24px;
+  padding: 0 9px;
+  border: 1px solid color-mix(in srgb, var(--c-cyan) 60%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--c-cyan) 10%, var(--glass));
+  color: var(--c-core);
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--c-cyan) 45%, transparent);
+  animation: xr-chip-in 260ms var(--ease-out);
+}
+.xr-chip:hover { background: color-mix(in srgb, var(--c-cyan) 18%, var(--glass)); }
+.xr-chip .lb { font: 600 12px/1 var(--f-display); }
+.xr-chip .xp { font: 500 10.5px/1 var(--f-mono); color: var(--ink-dim); }
+.xr-chip .xp-letter { font-size: 16px; -webkit-text-stroke: 0.5px rgba(20, 12, 0, 0.55); filter: drop-shadow(0 0 5px var(--mglow)); }
+
+/* ---- motion ---- */
+@keyframes xr-fade { from { opacity: 0; } }
+@keyframes xr-chip-in { from { opacity: 0; transform: scale(0.85); } }
+@keyframes xr-shake {
+  20% { transform: translate(-5px, 2px); }
+  40% { transform: translate(4px, -3px); }
+  60% { transform: translate(-3px, 1px); }
+  80% { transform: translate(2px, -1px); }
+}
+@keyframes xr-slam {
+  from { transform: scale(2.6); opacity: 0; filter: blur(8px) drop-shadow(0 0 40px var(--mglow)); }
+  60% { opacity: 1; }
+}
+@keyframes xr-shine { from { background-position: 200% 0, 0 0; } to { background-position: -60% 0, 0 0; } }
+@keyframes xr-ring { from { transform: scale(0.4); opacity: 0.9; } to { transform: scale(1.5); opacity: 0; } }
+@keyframes xr-sweep { from { transform: translateX(-60%); } 55%, to { transform: translateX(60%); } }
+@keyframes xr-flip { from { transform: rotateY(180deg) translateY(-8px); } to { transform: rotateY(0); } }
+@keyframes xr-holo { from { background-position: 0% 50%, 0 0; } to { background-position: 100% 50%, 0 0; } }
+
+.calm .xr-line,
+.calm .xr-drop { opacity: 1; transform: none; transition: none; }
+.xr-scrim.calm { animation: none; }
+.xr-chip.calm { animation: none; box-shadow: 0 0 10px color-mix(in srgb, var(--c-cyan) 45%, transparent); }
+.calm .xp-letter,
+.calm .xp-card-in,
+.calm .foil,
+.calm .shimmer::after { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .xr-scrim, .xr-chip, .xr-stage.shake, .xp-letter.slam, .xp-card.flip .xp-card-in, .xp-card .foil, .xp-medal.shimmer::after, .xr-letter-wrap::after { animation: none !important; }
+  .xr-line, .xr-drop { transition: none !important; }
+}
