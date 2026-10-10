@@ -1,0 +1,280 @@
+/* The Thread. Visual spec: design-system/prototype-thread.html. Colour vars come from @shrike/design (set on .th-root). */
+.th-root, .fv {
+  --mix-cyan: color-mix(in srgb, var(--cyan) 30%, transparent);
+  --mix-fail: color-mix(in srgb, var(--fail) 45%, transparent);
+  --fail-ink: color-mix(in srgb, var(--fail) 22%, var(--core));
+  --cyan-ink: color-mix(in srgb, var(--cyan) 30%, var(--core));
+}
+.th-root {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  grid-template-rows: 28px minmax(0, 1fr);
+  gap: 8px 12px;
+  color: var(--ink);
+  font: 400 14px/1.5 var(--display);
+  -webkit-font-smoothing: antialiased;
+}
+.th-lbl { font: 500 10.5px var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--ink-dim); }
+.th-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* FV16: the view toggle at the top of the stage. The Thread is the default; V switches. */
+.th-bar { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; min-width: 0; }
+.th-seg { display: inline-flex; border: 1px solid var(--hair); border-radius: 8px; overflow: hidden; background: var(--glass); }
+.th-seg button { all: unset; cursor: pointer; font: 500 10.5px var(--mono); letter-spacing: .16em; padding: 5px 12px; color: var(--ink-dim); transition: color .2s, background .2s; }
+.th-seg button:hover { color: var(--ink); }
+.th-seg button[aria-pressed="true"] { color: var(--cyan); background: color-mix(in srgb, var(--cyan) 10%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cyan) 35%, transparent); }
+.th-seg button:focus-visible { outline: 2px solid var(--cyan); outline-offset: -2px; }
+.th-barhint { font: 500 10px var(--mono); letter-spacing: .1em; color: var(--ink-faint); white-space: nowrap; }
+.th-barhint kbd { font: inherit; color: var(--ink-dim); border: 1px solid var(--hair); border-radius: 4px; padding: 0 4px; margin-right: 4px; }
+.th-stage, .fm { grid-column: 1; grid-row: 2; }
+.th-mini { grid-column: 2; grid-row: 2; }
+.th-stage[hidden] { display: none; }
+
+.th-stage {
+  position: relative; min-height: 0; border: 1px solid var(--hair); border-radius: 16px; overflow: hidden;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--abyss) 60%, transparent), color-mix(in srgb, var(--void) 90%, transparent));
+}
+.th-lanes { position: absolute; inset: 0; pointer-events: none; transition: opacity .4s var(--ease); }
+.th-lane {
+  position: absolute; top: 0; bottom: 0; width: 1px; transition: opacity .4s var(--ease);
+  background: linear-gradient(180deg, transparent, var(--hair) 12%, var(--hair) 88%, transparent);
+}
+.th-lane::after { content: ""; position: absolute; left: -14px; width: 29px; top: 0; bottom: 0; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--cyan) 3.5%, transparent), transparent); }
+.th-lane.dim { opacity: .4; }
+.th-lanehead {
+  position: absolute; top: 0; left: 0; right: 0; height: 46px; z-index: 5; pointer-events: none;
+  background: linear-gradient(180deg, var(--void) 0 40px, transparent); /* solid under the sub-labels: what scrolls under is hidden, not ghosted */
+}
+.th-lanehead span { position: absolute; top: 11px; transform: translateX(-50%); font: 600 10px var(--mono); letter-spacing: .24em; color: var(--ink-faint); transition: color .3s; }
+.th-lanehead span.hot { color: var(--ink); }
+
+.th-feed { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; outline: none; }
+.th-feed::-webkit-scrollbar { display: none; }
+.th-end { height: 40vh; }
+
+.th-trip { scroll-margin-top: 46px; } /* a trip brought into view keeps its title clear of the lane header */
+.th-trip { position: relative; transition: opacity .4s var(--ease), filter .4s var(--ease); } /* height snaps so the scroll target is right at once */
+.th-trip.recede { opacity: .32; filter: blur(.6px) saturate(.6); }
+.th-trip.focus { z-index: 2; }
+.th-stage.dived .th-trip:not(.focus) { opacity: .15; }
+.th-stage.dived .th-lanes { opacity: .35; }
+.th-trip svg { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+.th-trip path { transition: d .5s var(--ease); }
+.th-trip.pending .th-st, .th-trip.pending .th-lab, .th-trip.pending .th-coil, .th-trip.pending path, .th-trip.pending .th-after { opacity: 0; }
+
+.th-head { position: absolute; top: 14px; left: 16px; right: 16px; display: flex; align-items: baseline; gap: 10px; }
+.th-head .t { font: 500 15px var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.th-verdict { font: 500 10px var(--mono); letter-spacing: .14em; padding: 2px 7px; border-radius: 5px; border: 1px solid; flex: none; }
+.th-verdict.ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
+.th-verdict.slow { color: var(--slow); border-color: color-mix(in srgb, var(--slow) 45%, transparent); }
+.th-verdict.error { color: var(--fail); border-color: color-mix(in srgb, var(--fail) 50%, transparent); box-shadow: 0 0 14px color-mix(in srgb, var(--fail) 25%, transparent); }
+
+.th-st {
+  all: unset; box-sizing: border-box; position: absolute; transform: translate(-50%, -50%); width: 14px; height: 14px; border-radius: 50%;
+  background: var(--abyss); border: 2px solid var(--cyan); cursor: pointer; z-index: 3;
+  transition: transform .25s var(--out), box-shadow .25s, opacity .25s, scale .25s var(--out), top .5s var(--ease), left .5s var(--ease);
+}
+.th-st.error { border-color: var(--fail); background: var(--fail-deep); }
+.th-st.slow { border-color: var(--slow); }
+.th-st.focus { transform: translate(-50%, -50%) scale(1.35); box-shadow: 0 0 0 4px color-mix(in srgb, var(--cyan) 15%, transparent), 0 0 22px var(--cyan); }
+.th-st.error.focus { box-shadow: 0 0 0 4px color-mix(in srgb, var(--fail) 18%, transparent), 0 0 26px var(--fail); }
+.th-st.slow.focus { box-shadow: 0 0 0 4px color-mix(in srgb, var(--slow) 15%, transparent), 0 0 22px var(--slow); }
+.th-st.express { width: 26px; height: 12px; border-radius: 6px; border-style: dashed; border-width: 1.5px; border-color: var(--ink-dim); }
+.th-st.express.focus { border-color: var(--cyan); }
+.th-st:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+
+.th-lab { position: absolute; transform: translateY(-50%); font: 500 12.5px var(--mono); white-space: nowrap; pointer-events: none; z-index: 3; text-shadow: 0 0 3px var(--void), 0 0 8px var(--void); transition: opacity .3s, top .5s var(--ease); }
+.th-lab small { display: block; color: var(--ink-dim); font-size: 10.5px; letter-spacing: .06em; }
+.th-lab .n, .th-lab small { overflow: hidden; text-overflow: ellipsis; }
+.th-lab .n { display: block; }
+.th-lab.left { transform: translate(-100%, -19px); text-align: right; }
+.th-lab.left small { margin-top: 3px; }
+.th-lab.below { transform: translateY(5px); } /* the thread arrives from the right along y: keep the text under it */
+.th-lab.left .n, .th-lab.left small { max-width: var(--mw); margin-left: auto; } /* text stops short of the SERVER thread; the chip may run under it */
+.th-lab .th-chip { max-width: var(--edge, 100%); box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; vertical-align: top; } /* one line, inside the stage: a wrapped chip runs into the next row */
+.th-lab.hot .th-chip { white-space: pre-wrap; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; } /* narrow window: the value where it broke wraps (three lines, all of it in the tooltip) */
+.th-lab.hot:not(.left):not(.below) { transform: translateY(-19px); } /* its name sits level with the station like a left label, so a wrapped chip grows down into its own row, not up into the step before */
+.th-lab .x { color: var(--slow); }
+.th-st.post:not(.focus), .th-lab.post { opacity: .45; } /* the thread broke before these: error handling, not the path */
+.th-trip.time .th-chip { display: none; } /* rows get as close as 34px in time view */
+.th-lab.express { color: var(--ink-dim); overflow: hidden; text-overflow: ellipsis; }
+.th-chip {
+  display: inline-block; margin-top: 3px; padding: 2px 7px; border-radius: 5px; font: 500 11px var(--mono); white-space: pre;
+  background: color-mix(in srgb, var(--cyan) 8%, transparent); border: 1px solid var(--mix-cyan); color: var(--cyan-ink);
+}
+.th-chip.error { background: color-mix(in srgb, var(--fail) 12%, transparent); border-color: var(--mix-fail); color: var(--fail-ink); box-shadow: 0 0 16px color-mix(in srgb, var(--fail) 25%, transparent); }
+.th-ln .th-chip { border-color: transparent; box-shadow: none; background: color-mix(in srgb, var(--cyan) 12%, transparent); } /* in the code: a tinted value, not a button */
+.th-ln .th-chip.error { background: color-mix(in srgb, var(--fail) 16%, transparent); }
+.th-coil { position: absolute; transform: translate(-50%, -50%); pointer-events: none; z-index: 2; transition: top .5s var(--ease); }
+
+.th-ruler { position: absolute; left: 8px; width: 1px; background: var(--hair); transition: top .5s var(--ease), height .5s var(--ease); }
+.th-tick { position: absolute; left: 6px; transform: translateY(-50%); font: 500 9.5px var(--mono); color: var(--ink-faint); padding-left: 8px; border-left: 5px solid var(--ink-faint); line-height: 1px; transition: top .5s var(--ease); }
+
+.th-shot {
+  position: absolute; transform: translate(-50%, -50%); width: 120px; border-radius: 9px; overflow: visible; z-index: 3;
+  --shot-bg: light-dark(var(--abyss), var(--core)); --shot-ink: light-dark(var(--ink), var(--abyss)); /* T10: a light card in every theme */
+  border: 1px solid var(--glass-edge); background: var(--shot-bg); color: var(--shot-ink); font: 500 9px system-ui; box-shadow: 0 10px 30px -10px var(--shade);
+  transition: top .5s var(--ease);
+}
+.th-shot .tag { position: absolute; top: -16px; left: 0; font: 500 9px var(--mono); letter-spacing: .14em; color: var(--ink-dim); }
+.th-shot .crop { position: relative; overflow: hidden; border-radius: 8px; }
+.th-shot .crop img { display: block; width: 100%; position: absolute; left: 0; }
+.th-shot .txt { padding: 7px; overflow-wrap: anywhere; } /* a long redirect path breaks inside the card */
+.th-shot b { display: block; font: 700 10px system-ui; margin-bottom: 3px; }
+.th-shot .ok { color: color-mix(in srgb, var(--ok) 55%, var(--shot-ink)); }
+.th-shot .e { color: color-mix(in srgb, var(--fail) 85%, var(--shot-ink)); }
+.th-shot .v { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; color: color-mix(in srgb, var(--shot-ink) 65%, var(--shot-bg)); margin-top: 2px; }
+.th-ret-mark { position: absolute; border: 1.5px solid var(--cyan); border-radius: 4px; box-shadow: 0 0 10px var(--cyan); pointer-events: none; }
+.th-retlab { position: absolute; transform: translateY(-50%); font: 500 12.5px var(--mono); white-space: nowrap; z-index: 3; transition: top .5s var(--ease); }
+
+.th-spark { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: var(--fail-ink); box-shadow: 0 0 8px var(--fail); z-index: 4; pointer-events: none; }
+.th-probe { position: absolute; width: 16px; height: 16px; border-radius: 50%; transform: translate(-50%, -50%); background: radial-gradient(circle, var(--core), var(--violet) 55%, transparent 70%); box-shadow: 0 0 24px var(--violet); z-index: 6; transition: left .38s var(--ease), top .38s var(--ease); pointer-events: none; }
+.th-ptick { position: absolute; transform: translate(calc(-100% - 14px), -50%); font: 600 11px var(--mono); color: var(--violet); z-index: 4; pointer-events: none; }
+.th-ptick.flip { transform: translate(14px, -50%); } /* beside its station, on the side away from the label (above, it sat on the step before's file line) */
+.th-found { position: absolute; transform: translate(-50%, -50%); width: 30px; height: 30px; z-index: 5; pointer-events: none; } /* inside the label's 18px offset */
+.th-found i { position: absolute; width: 9px; height: 9px; border: 1.5px solid var(--fail); }
+.th-found i:nth-child(1) { left: 0; top: 0; border-right: 0; border-bottom: 0; }
+.th-found i:nth-child(2) { right: 0; top: 0; border-left: 0; border-bottom: 0; }
+.th-found i:nth-child(3) { left: 0; bottom: 0; border-right: 0; border-top: 0; }
+.th-found i:nth-child(4) { right: 0; bottom: 0; border-left: 0; border-top: 0; }
+
+.th-dive {
+  position: absolute; z-index: 8; border-radius: 16px; border: 1px solid var(--glass-edge);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--navy) 85%, var(--blue) 6%), color-mix(in srgb, var(--abyss) 94%, transparent));
+  backdrop-filter: blur(14px);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--cyan) 8%, transparent), 0 40px 80px -30px var(--void), 0 0 60px -20px color-mix(in srgb, var(--cyan) 35%, transparent);
+  transform-origin: var(--ox, 0) var(--oy, 0); animation: th-divein .42s var(--out) both;
+  display: flex; flex-direction: column; /* max-height (DiveCard) keeps it above the caption: the code scrolls */
+}
+.th-dive > :not(pre) { flex: none; }
+@keyframes th-divein { from { opacity: 0; transform: scale(.12); } to { opacity: 1; transform: none; } }
+.th-dive .head { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--hair); }
+.th-dive .head .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-faint); }
+.th-dive .head .f { margin-left: 6px; font: 500 12px var(--mono); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.th-dive .head .k { all: unset; margin-left: auto; cursor: pointer; font: 500 12px var(--display); color: var(--ink-dim); white-space: nowrap; }
+.th-dive .head .k:hover { color: var(--ink); }
+.th-dive pre { margin: 0; padding: 10px 0 12px; font: 400 13px/1.62 var(--mono); overflow: auto; min-height: 0; user-select: text; }
+.th-ln { display: grid; grid-template-columns: 46px 1fr; padding-right: 16px; white-space: pre; }
+.fv-note { color: var(--violet); border-color: color-mix(in srgb, var(--violet) 55%, transparent); }
+.fv-note::before { content: "\25C6  "; font-size: 8px; vertical-align: 1px; }
+.th-ln > i { font-style: normal; color: var(--ink-faint); text-align: right; padding-right: 14px; }
+.th-ln.live { background: linear-gradient(90deg, color-mix(in srgb, var(--cyan) 18%, transparent), color-mix(in srgb, var(--cyan) 3%, transparent)); box-shadow: inset 2px 0 0 var(--cyan); }
+.th-ln.live.error { background: linear-gradient(90deg, color-mix(in srgb, var(--fail) 25%, transparent), color-mix(in srgb, var(--fail) 4%, transparent)); box-shadow: inset 2px 0 0 var(--fail); }
+.th-ln .inl { grid-column: 2; margin: 2px 0 4px; display: flex; gap: 6px; flex-wrap: wrap; }
+.th-dive .why { padding: 10px 14px; border-top: 1px solid var(--hair); color: var(--ink-dim); font-size: 13px; }
+.th-dive .none { padding: 12px 14px; color: var(--ink-faint); font: 500 12px var(--mono); }
+
+.th-caption {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 7; padding: 18px 18px 14px; display: flex; align-items: flex-end; gap: 12px; pointer-events: none;
+  background: linear-gradient(0deg, color-mix(in srgb, var(--void) 96%, transparent), transparent);
+}
+.th-caption .c { font: 500 18px/1.35 var(--display); max-width: 64ch; text-wrap: balance; }
+.th-caption .c.error { color: var(--fail-ink); }
+.th-caption .k { margin-left: auto; white-space: nowrap; }
+.th-hint { position: absolute; right: 16px; bottom: 44px; z-index: 8; display: grid; gap: 3px; justify-items: end; pointer-events: none; }
+.th-hint span { font: 500 10px var(--mono); letter-spacing: .1em; color: var(--ink-faint); }
+.th-hint b { color: var(--ink-dim); font-weight: 500; }
+.th-empty { position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; pointer-events: none; color: var(--ink-dim); font: 500 16px var(--display); text-align: center; padding: 0 24px; }
+.th-empty p { margin: 0; max-width: 36ch; }
+
+.th-mini { display: flex; flex-direction: column; gap: 6px; padding-top: 6px; overflow-y: auto; scrollbar-width: none; min-height: 0; }
+.th-mini::-webkit-scrollbar { display: none; }
+.th-mini button { all: unset; flex: none; cursor: pointer; display: block; border-radius: 6px; padding: 3px; border: 1px solid transparent; }
+.th-mini button.on { border-color: var(--glass-edge); background: var(--glass); }
+.th-mini button:focus-visible { outline: 2px solid var(--cyan); }
+
+@media (prefers-reduced-motion: reduce) {
+  .th-root *, .th-root *::before, .th-root *::after { animation: none !important; transition: none !important; }
+}
+
+/* In-app file view (hud/FileView.tsx): the whole file, inside Shrike. */
+.th-dive .head .k + .k { margin-left: 14px; }
+.th-dive .head, .fv-head { flex-wrap: wrap; row-gap: 6px; justify-content: flex-end; } /* narrow: keys drop to a second row on the right, the file name stays */
+.th-dive .head .dot, .fv-head .dot { flex: none; }
+.th-dive .head .f, .fv-head .f { flex: 0 1 auto; min-width: 0; } /* whole name, or a row of its own (ellipsis + title past that) */
+.th-dive .head kbd, .fv kbd { font: 500 9.5px var(--mono); padding: 1px 4px; margin-left: 4px; border: 1px solid var(--hair); border-radius: 4px; color: var(--ink-dim); }
+.fv {
+  position: absolute; inset: 0; z-index: 30; /* the whole stage: no Thread peeking round the edges */ display: flex; flex-direction: column; border-radius: 16px;
+  border: 1px solid var(--glass-edge); background: var(--c-abyss); background: color-mix(in srgb, var(--c-abyss) 94%, var(--c-navy));
+  box-shadow: 0 40px 90px -30px var(--void), 0 0 70px -24px color-mix(in srgb, var(--cyan) 40%, transparent);
+  animation: th-divein .32s var(--out) both; transform-origin: 50% 30%;
+}
+.fv-head { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--hair); }
+.fv-head .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-faint); }
+.fv-head .f { margin-left: 6px; font: 600 11px var(--mono); letter-spacing: .12em; color: var(--ink); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fv-dirty { color: var(--slow); }
+.fv-btn { font: 500 10.5px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink); background: var(--glass); border: 1px solid var(--hair); border-radius: 8px; padding: 5px 9px; cursor: pointer; white-space: nowrap; }
+.fv-btn:hover:not(:disabled) { border-color: var(--glass-edge); }
+.fv-btn.on { border-color: var(--cyan); color: var(--cyan); }
+.fv-btn:disabled { opacity: .45; cursor: default; }
+.fv-link { all: unset; cursor: pointer; font: 500 10.5px var(--mono); letter-spacing: .1em; color: var(--ink-faint); white-space: nowrap; }
+.fv-link:hover { color: var(--ink-dim); }
+.fv-btn:focus-visible, .fv-link:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.fv-confirm { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--hair); background: color-mix(in srgb, var(--slow) 10%, transparent); font-size: 13px; }
+.fv-confirm span { margin-right: auto; }
+.fv-body { flex: 1; min-height: 0; overflow: auto; }
+.fv-body pre { margin: 0; padding: 12px 0 40vh; font: 400 13px/1.62 var(--mono); user-select: text; }
+.fv-edit { flex: 1; min-height: 0; resize: none; border: 0; outline: none; padding: 12px 16px 40vh 60px; background: transparent; color: var(--ink); font: 400 13px/1.62 var(--mono); tab-size: 2; white-space: pre; caret-color: var(--cyan); }
+.fv-none { padding: 16px; color: var(--ink-dim); font: 500 12px var(--mono); }
+
+/* Discovered lanes (docs/12-feature-map.md D9-D11): glyph + name, slivers with vertical labels, ghosts, groups. */
+.th-lanehead span, .th-lanehead button { pointer-events: auto; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.th-lanehead span b { font: inherit; display: inline-flex; align-items: center; gap: 6px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+/* A full lane's name is a block so a long one ends in an ellipsis (the span's title has it whole); flex text can't. */
+.th-lanehead span:not(.sliver) .th-lanebtn { max-width: 100%; }
+.th-lanehead span:not(.sliver) b { display: block; white-space: nowrap; }
+.th-lanehead span:not(.sliver) b .th-glyph { display: inline-block; vertical-align: -1px; margin-right: 6px; }
+.th-lanehead span:not(.sliver) { flex-direction: column; gap: 2px; }
+.th-lanehead span small { font: 500 10px var(--mono); letter-spacing: .04em; color: var(--ink-dim); max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.th-lanehead .th-glyph { flex: none; opacity: .8; }
+.th-lanehead span.sliver { top: 10px; writing-mode: vertical-rl; transform: translateX(-50%) rotate(180deg); font-size: 9px; letter-spacing: .16em; }
+.th-lanehead span.sliver b { flex-direction: row-reverse; gap: 5px; }
+.th-lanehead span.sliver .th-glyph { transform: rotate(90deg); }
+.th-lanehead span.ghost { color: var(--ink-dim); }
+.th-lanehead button.group { all: unset; position: absolute; top: 8px; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font: 600 10px var(--mono); letter-spacing: .2em; color: var(--ink); padding: 3px 8px; border: 1px dashed var(--glass-edge); border-radius: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.th-lanehead button.group:hover, .th-lanehead button.group:focus-visible { border-color: var(--cyan); }
+.th-lanehead span i { font-style: normal; cursor: pointer; color: var(--ink-dim); }
+.th-lane.ghost { background: repeating-linear-gradient(180deg, var(--hair) 0 5px, transparent 5px 11px); opacity: .55; }
+.th-lane.ghost::after { display: none; }
+
+/* T15/T16 cache marks, T17 fork, T20 terminal card. */
+.th-st.hit { width: 11px; height: 11px; background: var(--ok); border-color: var(--ok); box-shadow: 0 0 10px color-mix(in srgb, var(--ok) 60%, transparent); }
+.th-st.miss { border-color: var(--slow); background: transparent; border-width: 1.6px; }
+.th-st.set { width: 9px; height: 9px; border-width: 1.5px; }
+.th-st.hit.focus { box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 15%, transparent), 0 0 22px var(--ok); }
+.th-lab.hit .n { color: var(--ok); }
+.th-lab.miss .n { color: var(--slow); }
+.th-lab.set .n { color: var(--ink-dim); }
+.th-forklab { position: absolute; transform: translateY(-50%); font: 500 10px var(--mono); letter-spacing: .12em; color: var(--ink-dim); white-space: nowrap; z-index: 3; text-shadow: 0 0 3px var(--void), 0 0 8px var(--void); transition: top .5s var(--ease), left .5s var(--ease); }
+.th-trip.pending .th-forklab, .th-trip.pending .th-fork { opacity: 0; }
+.th-forklab.flip { transform: translate(calc(-100% - 20px), -50%); } /* left of the fork: the first branch's label sits right of it */
+.th-trip .under, .th-trip .under-card { opacity: 0; transition: opacity .2s; } /* DiveCard recede(): text a floating card covers */
+.th-term { background: color-mix(in srgb, var(--abyss) 92%, var(--navy)); color: var(--ink); border-color: var(--glass-edge); }
+.th-term .txt { padding: 0; margin: 7px; font: 500 9.5px/1.45 var(--mono); color: var(--cyan-ink); white-space: pre-line; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.th-lane { transition: opacity .4s var(--ease), left .5s var(--ease); }
+.th-lanehead span, .th-lanehead button.group { transition: color .3s, left .5s var(--ease), opacity .2s; }
+.th-lab, .th-coil { transition: opacity .3s, top .5s var(--ease), left .5s var(--ease); }
+.th-shot { transition: top .5s var(--ease), left .5s var(--ease); }
+.th-lanehead.many span { letter-spacing: .14em; }
+/* Sliver labels run below the 46px band, so with slivers the band is solid down to TITLE_SLIM (Thread.tsx) and a label (10px down, at most 78 tall) ends inside it. */
+.th-lanehead.slim { height: 96px; background: linear-gradient(180deg, var(--void) 0 88px, transparent); }
+.th-lanehead span.sliver { max-height: 78px; overflow: visible clip; color: color-mix(in srgb, var(--ink-faint) 80%, var(--ink-dim)); background: color-mix(in srgb, var(--void) 85%, transparent); padding: 2px 0; border-radius: 4px; }
+.th-lanehead span.sliver:hover { color: var(--ink); }
+
+/* AP-resend: Edit and resend, Compare and Save as test on a trip's title row; the compare list under it */
+.th-acts { margin-left: auto; display: flex; gap: 14px; flex: none; }
+.th-trip:not(.focus) .th-acts { visibility: hidden; }
+.th-act { all: unset; cursor: pointer; font: 500 10.5px var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--ink-dim); white-space: nowrap; }
+.th-act:hover, .th-act:focus-visible { color: var(--cyan); }
+.th-act:focus-visible { outline: 1px solid var(--cyan); outline-offset: 3px; border-radius: 3px; }
+.th-act[aria-pressed="true"] { color: var(--cyan); }
+.th-diff {
+  position: absolute; top: 26px; right: 0; z-index: 6; margin: 0; padding: 8px 12px; list-style: none; max-width: min(380px, 60%);
+  font: 400 11.5px/1.6 var(--mono); color: var(--ink); border: 1px solid var(--glass-edge); border-radius: 10px;
+  background: color-mix(in srgb, var(--abyss) 94%, var(--cyan));
+}
+.th-diff li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* A toast takes the header band for its few seconds (Toasts.tsx): the labels step aside instead of showing half under it. */
+.th-lanehead.quiet > span, .th-lanehead.quiet > button { opacity: 0; pointer-events: none; }
