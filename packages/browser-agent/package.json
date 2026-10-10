@@ -1,0 +1,16 @@
+{
+  "name": "@shrike/browser-agent",
+  "version": "0.0.0",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --format=iife --target=chrome120 --outfile=dist/browser-agent.js"
+  },
+  "exports": {
+    "./bundle": "./dist/browser-agent.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}
