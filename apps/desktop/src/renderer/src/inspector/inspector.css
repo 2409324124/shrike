@@ -1,0 +1,78 @@
+/* I1-I7 place inspector (design-system/README.md "Place inspector"). Colours from @shrike/design via theme.css. */
+
+/* I1: lane headers are buttons; the open lane's label is the one bright thing in the header. */
+.th-lanehead span > button.th-lanebtn { all: unset; display: inherit; flex-direction: inherit; align-items: inherit; gap: inherit; max-width: 100%; cursor: pointer; border-radius: 5px; padding: 1px 4px; margin: -1px -4px; }
+.th-lanehead span > button.th-lanebtn:hover { color: var(--ink); }
+.th-lanehead span > button.th-lanebtn:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+.th-lanehead span.on { color: var(--c-core); }
+.th-lanehead span.on > button.th-lanebtn { box-shadow: inset 0 -1.5px 0 var(--signal); }
+.th-lanehead span.on .th-glyph { color: var(--signal); opacity: 1; filter: drop-shadow(0 0 4px color-mix(in srgb, var(--signal) 60%, transparent)); }
+
+.insp { font-size: 12px; }
+.insp-bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 8px 10px; border-bottom: 1px solid var(--hair); }
+.insp-how { padding: 0 10px 6px; font: 500 9.5px var(--mono); letter-spacing: 0.08em; color: var(--ink-faint); }
+
+/* I2: table chips with row counts */
+.insp-chip { all: unset; cursor: pointer; display: inline-flex; align-items: baseline; gap: 6px; padding: 3px 8px; border: 1px solid var(--hair); border-radius: 6px; font: 500 11px var(--mono); color: var(--ink-dim); }
+.insp-chip b { font-weight: 500; color: var(--ink-faint); }
+.insp-chip:hover { border-color: var(--glass-edge); color: var(--ink); }
+.insp-chip[aria-pressed="true"] { border-color: var(--signal); color: var(--ink); }
+.insp-chip.touched::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--signal); align-self: center; box-shadow: 0 0 6px var(--signal); }
+
+.insp-search { all: unset; flex: 1; min-width: 90px; height: 24px; padding: 0 8px; border: 1px solid var(--hair); border-radius: 6px; font: 400 11.5px var(--mono); color: var(--ink); }
+.insp-search:focus-visible { border-color: var(--signal); outline: none; }
+.insp-search::placeholder { color: var(--ink-faint); }
+
+/* I2: the rows grid. Sticky header, mono, one highlighted band for what the focused trip touched. */
+.insp-grid { width: max-content; min-width: 100%; border-collapse: separate; border-spacing: 0; font: 400 11px/1.45 var(--mono); }
+.insp-grid th { position: sticky; top: 0; z-index: 1; background: var(--abyss); text-align: left; font: 600 9.5px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-dim); border-bottom: 1px solid var(--hair); padding: 0; white-space: nowrap; }
+.insp-grid th button { all: unset; cursor: pointer; display: block; padding: 6px 10px; }
+.insp-grid th button:hover, .insp-grid th[aria-sort] button { color: var(--ink); }
+.insp-grid th button:focus-visible { outline: 2px solid var(--signal); outline-offset: -2px; }
+.insp-grid td { padding: 4px 10px; border-bottom: 1px solid color-mix(in srgb, var(--hair) 50%, transparent); color: var(--ink-dim); white-space: nowrap; max-width: 260px; overflow: hidden; text-overflow: ellipsis; user-select: text; }
+.insp-grid td.null { color: var(--ink-faint); font-style: italic; }
+.insp-grid tr.hit td { color: var(--ink); background: color-mix(in srgb, var(--signal) 9%, transparent); }
+.insp-grid tr.hit td:first-child { box-shadow: inset 2px 0 0 var(--signal); }
+.insp-grid tr.added td { color: var(--ink); background: color-mix(in srgb, var(--ok) 9%, transparent); }
+.insp-grid tr.added td:first-child { box-shadow: inset 2px 0 0 var(--ok); }
+.insp-grid tr.changed td { color: var(--ink); background: color-mix(in srgb, var(--slow) 9%, transparent); }
+.insp-grid tr.changed td:first-child { box-shadow: inset 2px 0 0 var(--slow); }
+
+/* I3: what this click changed */
+.insp-change { border: 1px solid var(--hair); border-radius: 8px; overflow: hidden; }
+.insp-change > header { display: flex; align-items: baseline; gap: 8px; padding: 7px 10px; border-bottom: 1px solid var(--hair); font: 500 11px var(--mono); color: var(--ink); }
+.insp-change > header small { font: 500 10px var(--mono); color: var(--ink-dim); }
+.insp-crow { display: grid; grid-template-columns: 62px 1fr; gap: 8px; padding: 6px 10px; border-bottom: 1px solid color-mix(in srgb, var(--hair) 50%, transparent); font: 400 11px/1.5 var(--mono); }
+.insp-crow:last-child { border-bottom: 0; }
+.insp-crow > span { font: 600 9.5px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; padding-top: 1px; }
+.insp-crow.added { box-shadow: inset 2px 0 0 var(--ok); } .insp-crow.added > span { color: var(--ok); }
+.insp-crow.changed { box-shadow: inset 2px 0 0 var(--slow); } .insp-crow.changed > span { color: var(--slow); }
+.insp-crow.removed { box-shadow: inset 2px 0 0 var(--fail); } .insp-crow.removed > span { color: var(--fail); }
+.insp-crow.removed code { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--fail) 60%, transparent); }
+.insp-crow code { color: var(--ink-dim); word-break: break-all; user-select: text; }
+.insp-crow code i { font-style: normal; color: var(--ink); }
+.insp-crow code s { color: var(--ink-faint); }
+
+/* I4: cache entries; this trip's hits and misses carry the Thread's own marks (T15/T16). */
+.insp-mark { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.insp-mark.hit { background: var(--ok); box-shadow: 0 0 8px color-mix(in srgb, var(--ok) 60%, transparent); }
+.insp-mark.miss { border: 1.5px solid var(--slow); }
+.insp-mark.set { background: var(--signal); }
+.insp-mark.delete { border: 1.5px solid var(--fail); }
+
+/* I5: process output with the focused trip's lines lit */
+.insp-out { font: 400 11px/1.55 var(--mono); color: var(--ink-dim); white-space: pre-wrap; word-break: break-all; user-select: text; }
+.insp-out div.hit { color: var(--ink); background: color-mix(in srgb, var(--signal) 10%, transparent); box-shadow: inset 2px 0 0 var(--signal); }
+.insp-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--ink-faint); }
+.insp-dot.running { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+.insp-dot.starting { background: var(--slow); }
+.insp-dot.error { background: var(--fail); }
+
+/* I6: calls to an outside host */
+.insp-call { border-bottom: 1px solid var(--hair); }
+.insp-call > button { all: unset; cursor: pointer; display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box; padding: 7px 10px; font: 400 11px var(--mono); color: var(--ink-dim); }
+.insp-call > button:hover { color: var(--ink); }
+.insp-call > button:focus-visible { outline: 2px solid var(--signal); outline-offset: -2px; }
+.insp-call.focus > button { color: var(--ink); box-shadow: inset 2px 0 0 var(--signal); background: color-mix(in srgb, var(--signal) 7%, transparent); }
+.insp-call .bad { color: var(--fail); }
+.insp-call .good { color: var(--ok); }
