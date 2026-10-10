@@ -1,0 +1,31 @@
+info:
+  name: List users
+  type: http
+  seq: 1
+
+http:
+  method: get
+  url: "{{baseUrl}}/api/users?page=1"
+  params:
+    - name: page
+      value: "1"
+      type: query
+  headers:
+    - name: Accept
+      value: application/json
+    - name: X-Debug
+      value: "1"
+      disabled: true
+  auth: inherit
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+
+settings:
+  encodeUrl: false
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

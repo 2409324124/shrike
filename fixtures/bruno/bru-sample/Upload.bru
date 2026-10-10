@@ -1,0 +1,22 @@
+meta {
+  name: Upload
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/upload
+  body: multipartForm
+  auth: apikey
+}
+
+auth:apikey {
+  key: x-api-key
+  value: {{apiKey}}
+  placement: header
+}
+
+body:multipart-form {
+  title: Avatar
+  file: @file(avatar.png)
+}

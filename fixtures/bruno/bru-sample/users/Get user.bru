@@ -1,0 +1,55 @@
+meta {
+  name: Get user
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/{{apiVersion}}/users/:id?expand=teams
+  body: none
+  auth: inherit
+}
+
+params:query {
+  expand: teams
+  ~verbose: 1
+}
+
+params:path {
+  id: 42
+}
+
+headers {
+  accept: application/json
+  ~x-debug: 1
+}
+
+vars:post-response {
+  userId: res.body.id
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: isNumber
+  ~res.body.name: isString
+}
+
+script:pre-request {
+  bru.setVar("requestedAt", Date.now());
+}
+
+tests {
+  test("has an id", function () {
+    expect(res.getBody().id).to.be.a("number");
+  });
+}
+
+docs {
+  Reads one user.
+  
+  Uses the folder headers.
+}
+
+settings {
+  encodeUrl: true
+}

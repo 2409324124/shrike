@@ -1,0 +1,25 @@
+meta {
+  name: Login
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/login
+  body: formUrlEncoded
+  auth: basic
+}
+
+auth:basic {
+  username: ada
+  password: {{password}}
+}
+
+body:form-urlencoded {
+  remember: true
+  ~otp: 123456
+}
+
+vars:post-response {
+  token: res.body.token
+}

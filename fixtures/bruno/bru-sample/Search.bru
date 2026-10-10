@@ -1,0 +1,23 @@
+meta {
+  name: Search
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/graphql
+  body: graphql
+  auth: inherit
+}
+
+body:graphql {
+  query Search($q: String!) {
+    search(q: $q) { id }
+  }
+}
+
+body:graphql:vars {
+  {
+    "q": "ada"
+  }
+}

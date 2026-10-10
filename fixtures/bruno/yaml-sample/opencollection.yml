@@ -1,0 +1,22 @@
+opencollection: 1.0.0
+
+info:
+  name: Sample YAML
+request:
+  auth:
+    type: bearer
+    token: "{{token}}"
+config:
+  environments:
+    - name: Local
+      variables:
+        - name: baseUrl
+          value: http://localhost:3000
+        - name: token
+          secret: true
+bundled: false
+extensions:
+  bruno:
+    ignore:
+      - node_modules
+      - .git

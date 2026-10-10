@@ -1,0 +1,23 @@
+meta {
+  name: Create user
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/users
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Ada",
+    "teams": ["core"]
+  }
+}
+
+auth:oauth2 {
+  grant_type: client_credentials
+  access_token_url: https://auth.example.com/token
+}

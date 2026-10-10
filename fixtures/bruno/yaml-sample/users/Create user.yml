@@ -1,0 +1,39 @@
+info:
+  name: Create user
+  type: http
+  seq: 2
+
+http:
+  method: post
+  url: "{{baseUrl}}/api/users"
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Ada"
+      }
+  auth:
+    type: oauth2
+    flow: client_credentials
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        bru.setVar("created", res.getBody().id);
+  actions:
+    - type: set-variable
+      phase: after-response
+      selector:
+        expression: res.body.id
+        method: jsonq
+      variable: userId
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
