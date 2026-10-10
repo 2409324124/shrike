@@ -1,0 +1,34 @@
+# macOS arm64 .dmg. Run through scripts/release.sh, which builds a staging folder (out/, production node_modules,
+# extra/ mirroring the repo layout that src/main/paths.ts reads under Resources) and points electron-builder at it.
+appId: dev.shrike.app
+productName: Shrike
+copyright: Copyright (c) 2026 Sumant Tirkey
+files:
+  - out/**
+  - resources/icon.png
+  - package.json
+  - node_modules/**
+asarUnpack:
+  - node_modules/node-llama-cpp/**
+  - node_modules/@node-llama-cpp/**
+extraResources:
+  - from: extra
+    to: .
+    filter: ["**/*"]
+npmRebuild: false
+mac:
+  target: [{ target: dmg, arch: [arm64] }]
+  category: public.app-category.developer-tools
+  icon: resources/icon.png
+  identity: "Sumant Tirkey (ZK8UX8XUW9)"
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: resources/entitlements.mac.plist
+  entitlementsInherit: resources/entitlements.mac.plist
+  notarize: false
+  # Signed by scripts/release.sh with its own entitlements (microphone only); re-signing here would drop them.
+  signIgnore: ["ShrikeVoice\\.app"]
+  extendInfo:
+    NSMicrophoneUsageDescription: Shrike listens while you hold Option Space or turn on hands-free, so you can drive it by voice. Audio stays on this Mac.
+dmg:
+  artifactName: Shrike-${version}-arm64.${ext}
