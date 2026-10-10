@@ -1,0 +1,23 @@
+node_modules/
+dist/
+out/
+.turbo/
+*.log
+.env*
+!.env.example
+.DS_Store
+*.shriketrace
+fixtures/**/*.db
+/release/
+*.dmg
+apps/desktop/src/renderer/vite-cache/
+fixtures/*/.shrike/issues/
+fixtures/*/.data/
+fixtures/voice/recordings/*
+fixtures/voice/recordings/.transcripts.json
+*.gguf
+models/
+packages/node-agent/test/drivers/prisma/generated/
+packages/node-agent/test/drivers/prisma/*.db
+# web-sourced photo (Google Images thumbnail per its download metadata): kept local until its licence is confirmed
+design-system/brand/shrike.jpeg
