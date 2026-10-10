@@ -1,0 +1,18 @@
+/* Q1 composer bar: H1 pill language (violet agent surface) as a docked input. Tokens only. */
+.composer-bar {
+  border-color: color-mix(in srgb, var(--violet) 38%, var(--hair));
+  background: color-mix(in srgb, var(--abyss) 90%, color-mix(in srgb, var(--violet) 10%, transparent));
+  backdrop-filter: blur(12px);
+}
+.composer-bar.is-on {
+  border-color: color-mix(in srgb, var(--violet) 70%, transparent);
+  box-shadow: var(--lift);
+}
+.composer-input { field-sizing: content; min-height: 28px; max-height: min(40vh, 320px); overflow-y: auto; }
+/* Chromium ellipsizes a textarea placeholder only with both rules. */
+.composer-input:placeholder-shown, .composer-input::placeholder { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.conv-md p { margin: 0 0 6px; }
+.conv-md p:last-child { margin-bottom: 0; }
+.conv-md article { margin: 0; padding: 0; max-width: none; font-size: 13px; line-height: 1.55; }
+/* The open composer's tray rises over the caption: the caption steps aside instead of showing half a line above it. */
+section[aria-label="Shrike"]:has(form.composer[role="dialog"]) [data-caption] { opacity: 0; }
