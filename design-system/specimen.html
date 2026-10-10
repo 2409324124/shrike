@@ -1,0 +1,528 @@
+<title>Shrike Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@300;400;500;700&display=swap">
+<style>
+:root{
+  color-scheme: dark;
+  --void:#02040A; --abyss:#060B18; --navy:#0A1633;
+  --glass:rgba(120,170,255,.07); --glass-strong:rgba(150,195,255,.12); --glass-edge:rgba(180,215,255,.28); --hair:rgba(160,205,255,.14);
+  --ink:#EAF2FF; --ink-dim:#7D8CA8; --ink-faint:#3A4763; --core:#F6FBFF;
+  --cyan:#3FE7FF; --blue:#2F7BFF; --violet:#8B5CF6; --magenta:#C06BFF; --teal:#2DD4BF; --amber:#FF9A3C;
+  --ok:#38F2A0; --slow:#FFC15C; --fail:#FF3B4E; --fail-deep:#3A0710;
+  --spectrum:linear-gradient(90deg,var(--violet),var(--blue) 50%,var(--cyan));
+  --display:"Space Grotesk","Inter",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  --ease:cubic-bezier(.65,0,.35,1);
+}
+*{box-sizing:border-box}
+html,body{background:var(--void);color:var(--ink)}
+body{font:400 14px/1.55 var(--display);padding-inline:clamp(16px,4vw,56px);padding-block:0 80px;
+  background:radial-gradient(ellipse 80% 50% at 50% 0%,var(--navy),var(--void) 70%) no-repeat,var(--void)}
+a{color:var(--cyan)}
+.label{font:500 11px/1.4 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--ink-dim)}
+.sub{font:500 12px/1.4 var(--display);letter-spacing:.32em;text-transform:uppercase}
+h1,h2,h3{margin:0;text-wrap:balance}
+header.top{display:flex;justify-content:space-between;align-items:center;gap:16px;padding-block:22px;border-bottom:1px solid var(--hair);flex-wrap:wrap}
+.wordmark{font:600 13px var(--mono);letter-spacing:.5em}
+.wordmark b{color:var(--cyan);font-weight:600}
+.hero{padding-block:56px 40px;display:grid;gap:14px;max-width:900px}
+.hero h1{font:700 clamp(40px,7vw,72px)/1 var(--display);letter-spacing:-.02em}
+.hero p{color:var(--ink-dim);max-width:62ch;margin:0;font-size:16px}
+.badge{display:inline-flex;align-self:start;width:max-content;font:700 12px var(--display);background:#000;color:#fff;padding:4px 10px;border-radius:7px;border:1px solid var(--hair)}
+section{padding-block:40px;border-top:1px solid var(--hair)}
+.sec-head{display:grid;gap:8px;margin-bottom:28px}
+.sec-head h2{font:300 28px/1.1 var(--display);letter-spacing:.04em;text-transform:uppercase}
+.sec-head .sub{color:var(--violet)}
+.sec-head .sub.teal{color:var(--teal)}
+.underline{width:28px;height:2px;background:var(--spectrum);border-radius:2px}
+.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
+.glass{background:var(--glass);border:1px solid var(--glass-edge);border-radius:14px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 20px 50px -20px rgba(0,0,0,.8)}
+.id{font:600 10px var(--mono);letter-spacing:.14em;color:var(--cyan);opacity:.85}
+.cap{display:grid;gap:4px;margin-top:12px}
+.cap p{margin:0;color:var(--ink-dim);font-size:13px}
+/* swatches */
+.sw{border-radius:12px;overflow:hidden;border:1px solid var(--hair)}
+.sw div:first-child{height:72px}
+.sw .meta{padding:10px 12px;display:grid;gap:2px;background:var(--abyss)}
+.sw .meta b{font:600 13px var(--display)}
+.sw .meta span{font:400 11px var(--mono);color:var(--ink-dim)}
+.grads{display:grid;gap:12px}
+.grad{height:44px;border-radius:10px;border:1px solid var(--hair);display:flex;align-items:center;padding-inline:14px}
+.grad span{font:500 11px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:#fff;text-shadow:0 1px 6px #000}
+/* type */
+.typerow{display:grid;grid-template-columns:minmax(120px,180px) 1fr;gap:20px;align-items:baseline;padding-block:14px;border-bottom:1px dashed var(--hair)}
+@media (max-width:620px){.typerow{grid-template-columns:1fr;gap:6px}}
+/* code pane */
+.stage{position:relative;border-radius:18px;overflow:hidden;border:1px solid var(--hair);background:var(--void);min-height:420px;perspective:1400px}
+.tunnel{position:absolute;inset:0;background:
+  linear-gradient(transparent 49.6%,rgba(160,205,255,.05) 50%,transparent 50.4%) 0 0/100% 40px,
+  linear-gradient(90deg,transparent 49.6%,rgba(160,205,255,.05) 50%,transparent 50.4%) 0 0/40px 100%;
+  mask-image:radial-gradient(ellipse at 50% 55%,#000 20%,transparent 75%)}
+.floor{position:absolute;left:-30%;right:-30%;bottom:-45%;height:90%;transform:rotateX(74deg);transform-origin:50% 100%;
+  background:linear-gradient(rgba(63,231,255,.18) 1px,transparent 1px) 0 0/48px 48px,linear-gradient(90deg,rgba(63,231,255,.18) 1px,transparent 1px) 0 0/48px 48px;
+  mask-image:linear-gradient(to top,#000,transparent 85%)}
+.panes{position:relative;display:flex;gap:28px;justify-content:center;align-items:center;padding:56px 24px;flex-wrap:wrap;transform-style:preserve-3d}
+.pane{width:min(540px,100%);border-radius:16px;background:linear-gradient(180deg,rgba(150,195,255,.10),rgba(120,170,255,.04));border:1px solid var(--glass-edge);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 -1px 0 rgba(63,231,255,.12),0 30px 80px -30px #000;backdrop-filter:blur(10px);transform:rotateY(-14deg) rotateX(4deg)}
+.pane.dim{opacity:.32;transform:rotateY(-14deg) rotateX(4deg) translateZ(-120px)}
+.pane .bar{display:flex;align-items:center;gap:7px;padding:10px 14px;border-bottom:1px solid var(--hair)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ink-faint)}
+.pane .bar .label{margin-left:8px;color:var(--ink)}
+.code{font:400 13px/1.55 var(--mono);padding:10px 0;margin:0;overflow-x:auto}
+.ln{display:grid;grid-template-columns:44px 1fr;padding-right:14px;white-space:pre}
+.ln i{font-style:normal;color:var(--ink-faint);text-align:right;padding-right:14px}
+.ln.live{background:linear-gradient(90deg,rgba(255,59,78,.28),rgba(255,59,78,.06));box-shadow:inset 2px 0 0 var(--fail)}
+.ln.live span{text-shadow:0 0 10px rgba(255,59,78,.55)}
+.k{color:#C792FF}.f{color:#7CC8FF}.s{color:#9EF0C0}.p{color:#EAF2FF}.c{color:var(--ink-faint)}
+.chip{display:inline-flex;gap:6px;align-items:center;margin:6px 14px 4px 58px;padding:4px 10px;border-radius:6px;font:500 12px var(--mono);
+  color:#FFD6DA;background:rgba(255,59,78,.14);border:1px solid rgba(255,59,78,.45);box-shadow:0 0 22px rgba(255,59,78,.35)}
+/* brackets + tag */
+.bracketed{position:relative;padding:14px 18px;display:inline-block}
+.bracketed::before,.bracketed::after,.bracketed i::before,.bracketed i::after{content:"";position:absolute;width:12px;height:12px;border:1px solid var(--core);opacity:.85}
+.bracketed::before{top:0;left:0;border-right:0;border-bottom:0}.bracketed::after{top:0;right:0;border-left:0;border-bottom:0}
+.bracketed i::before{bottom:0;left:0;border-right:0;border-top:0}.bracketed i::after{bottom:0;right:0;border-left:0;border-top:0}
+.tag{font:600 11px var(--mono);letter-spacing:.14em;color:var(--core)}
+/* orb, core */
+.orbwrap{display:grid;place-items:center;height:240px}
+.orb{width:150px;height:150px;border-radius:50%;display:grid;place-items:center;text-align:center;
+  background:radial-gradient(circle at 50% 45%,rgba(63,231,255,.15),rgba(10,22,51,.9) 62%);
+  box-shadow:0 0 0 1px rgba(160,205,255,.35),0 0 40px rgba(139,92,246,.55),0 0 90px rgba(63,231,255,.35),inset 0 0 40px rgba(139,92,246,.45),inset -8px -10px 30px rgba(63,231,255,.35)}
+.orb b{font:600 13px var(--display);letter-spacing:.06em}
+.orb span{display:block;font:500 9px var(--mono);letter-spacing:.2em;color:var(--ink-dim);margin-top:4px}
+canvas{display:block;width:100%;height:100%}
+.cv{height:240px;border-radius:14px;overflow:hidden;border:1px solid var(--hair);background:var(--void)}
+/* metric + list cards */
+.metric{display:grid;grid-template-columns:44px 1fr;gap:14px;align-items:center;padding:16px}
+.ring{width:44px;height:44px;border-radius:50%;border:1px solid var(--violet);display:grid;place-items:center;color:var(--violet);box-shadow:0 0 16px rgba(139,92,246,.35)}
+.num{font:300 34px/1 var(--display);color:var(--violet);font-variant-numeric:tabular-nums}
+.num.teal{color:var(--teal)}
+.delta{font:500 11px var(--display);color:var(--ok)}
+.listcard{position:relative;display:grid;grid-template-columns:40px 1fr auto;gap:12px;align-items:center;padding:14px 16px}
+.listcard .ring{width:40px;height:40px;border-color:var(--glass-edge);color:var(--ink)}
+.port{position:absolute;left:-5px;top:50%;width:10px;height:10px;margin-top:-5px;border-radius:50%;background:var(--cyan);box-shadow:0 0 12px var(--cyan)}
+/* pill */
+.pill{display:flex;align-items:center;gap:10px;padding:12px 18px;border-radius:999px;border:1px solid rgba(63,231,255,.5);background:rgba(120,170,255,.06);
+  box-shadow:0 0 0 4px rgba(63,231,255,.06),0 0 30px rgba(63,231,255,.25);max-width:520px}
+.pill span{color:var(--ink-dim)}
+/* journey arc */
+.arc svg{width:100%;height:auto;display:block}
+/* alert */
+.alert{position:relative;border-radius:16px;overflow:hidden;border:1px solid rgba(255,59,78,.35);background:radial-gradient(ellipse at 50% 40%,#4A0A14,var(--void) 75%);
+  padding:44px 20px;display:grid;place-items:center;gap:14px;text-align:center}
+.alert::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(transparent 0 2px,rgba(0,0,0,.25) 2px 3px);pointer-events:none}
+.alert .tri{width:0;height:0;border-left:26px solid transparent;border-right:26px solid transparent;border-bottom:44px solid var(--fail);filter:drop-shadow(0 0 14px rgba(255,59,78,.8));position:relative}
+.alert .tri::after{content:"!";position:absolute;left:-4px;top:12px;font:800 22px var(--display);color:var(--fail-deep)}
+.alert .att{font:600 10px var(--mono);letter-spacing:.3em;color:var(--fail)}
+.alert .bar2{background:var(--fail);color:#1A0004;font:700 13px var(--mono);letter-spacing:.22em;padding:7px 16px;box-shadow:0 0 30px rgba(255,59,78,.6)}
+.alert .standby{display:flex;gap:10px;align-items:center;border:1px solid rgba(255,59,78,.6);padding:6px 10px}
+.barcode{width:70px;height:22px;background:repeating-linear-gradient(90deg,var(--fail) 0 2px,transparent 2px 4px,var(--fail) 4px 5px,transparent 5px 8px)}
+.alert .standby span{font:600 11px var(--mono);letter-spacing:.4em;color:var(--fail)}
+/* looks */
+.looks{display:flex;gap:10px;flex-wrap:wrap}
+.look{width:84px;padding:12px 8px;border-radius:10px;border:1px solid var(--hair);display:grid;justify-items:center;gap:8px;background:var(--abyss)}
+.look.on{border-color:var(--cyan);box-shadow:0 0 16px rgba(63,231,255,.3)}
+.look i{width:26px;height:26px;border-radius:50%}
+.look span{font:500 9px var(--mono);letter-spacing:.16em}
+/* beam */
+.beam{position:relative;height:300px;border-radius:14px;overflow:hidden;border:1px solid var(--hair);background:var(--void)}
+.beam .col{position:absolute;left:50%;top:-10%;width:90px;height:80%;transform:translateX(-50%);
+  background:linear-gradient(90deg,transparent,rgba(47,123,255,.35) 25%,rgba(246,251,255,.95) 50%,rgba(47,123,255,.35) 75%,transparent);filter:blur(6px)}
+.beam .col::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 3px,rgba(255,255,255,.18) 3px 4px)}
+.beam .splash{position:absolute;left:50%;bottom:8%;width:120%;height:34%;transform:translateX(-50%);
+  background:radial-gradient(ellipse 30% 40% at 50% 30%,rgba(246,251,255,.9),rgba(47,123,255,.4) 40%,transparent 70%)}
+.beam .refl{position:absolute;left:0;right:0;bottom:0;height:30%;background:repeating-linear-gradient(90deg,rgba(63,231,255,.06) 0 1px,transparent 1px 22px),linear-gradient(transparent,rgba(47,123,255,.12))}
+.two{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))}
+footer{padding-block:40px 0;display:grid;justify-items:center;gap:10px}
+footer .label{letter-spacing:.32em}
+footer .underline{width:80px}
+/* discovered lanes, shapes, agent marks */
+.glyphs{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
+.glyphs .g{display:grid;gap:4px;justify-items:start;padding:12px;border-radius:12px;border:1px solid var(--hair);background:var(--abyss);color:var(--ink)}
+.glyphs .g b{font:600 11px var(--mono);letter-spacing:.14em;text-transform:uppercase}
+.glyphs .g span:last-child{font:400 11px var(--mono);color:var(--ink-dim)}
+.glyphs .g.ghost{opacity:.6;border-style:dashed}
+.kg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round}
+.skill{font:500 10.5px var(--mono);padding:3px 9px;border-radius:999px;border:1px solid rgba(139,92,246,.7);color:#E2D6FF;box-shadow:0 0 12px rgba(139,92,246,.45)}
+.fuelspec{font:500 11px var(--mono);letter-spacing:.12em;padding:5px 10px;border-radius:8px;border:1px solid var(--hair);box-shadow:0 0 0 3px var(--void),0 0 0 4.6px rgba(139,92,246,.25);position:relative}
+.fuelspec::after{content:"";position:absolute;inset:-4px;border-radius:11px;border:1.6px solid var(--violet);clip-path:inset(0 0 55% 0)}
+.term{width:220px;border-radius:9px;border:1px solid var(--hair);background:#0B0F17;color:#C9D6EA;font:500 10px/1.5 var(--mono);padding:8px;position:relative}
+.term .tg{position:absolute;top:-16px;left:0;font:500 9px var(--mono);letter-spacing:.14em;color:var(--ink-dim)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+/* docs/13: SDLC rail, CI dots, worktree tabs, skill card */
+.rl{display:flex;align-items:center;flex-wrap:wrap;gap:0}
+.rl .st{display:inline-flex;align-items:center;gap:6px;padding:4px 6px;font:500 10px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint)}
+.rl .st i{width:7px;height:7px;border-radius:50%;border:1.5px solid var(--ink-faint);box-sizing:border-box}
+.rl .st.done{color:var(--ink-dim)}.rl .st.done i{background:rgba(56,242,160,.55);border-color:transparent}
+.rl .st.active{color:var(--core)}.rl .st.active i{width:9px;height:9px;background:var(--cyan);border-color:var(--cyan);box-shadow:0 0 0 3px rgba(63,231,255,.16),0 0 12px var(--cyan)}
+.rl .st.failed{color:#FF7A85}.rl .st.failed i{border-color:var(--fail)}
+.rl .seg{width:28px;height:1px;background:var(--hair)}.rl .seg.done{background:rgba(56,242,160,.35)}
+.cid{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--ink-faint)}
+.cid.pass{background:var(--ok);box-shadow:0 0 6px rgba(56,242,160,.6)}.cid.fail{background:var(--fail);box-shadow:0 0 8px rgba(255,59,78,.6)}.cid.pending{background:var(--slow)}
+.wtt{display:inline-flex;gap:4px}
+.wtt span{white-space:nowrap;display:inline-flex;align-items:center;gap:6px;font:500 10.5px var(--mono);letter-spacing:.06em;color:var(--ink-faint);padding:4px 10px;border-radius:8px;border:1px solid transparent}
+.wtt span.cur{color:var(--ink);border-color:var(--hair);background:var(--glass)}
+.wtt i{width:6px;height:6px;border-radius:50%}
+.wtt span:last-child{font:500 10.5px var(--mono);color:var(--ink-faint)}
+.sk{width:220px;border:1px solid var(--hair);border-radius:10px;padding:9px 10px;display:grid;gap:4px;background:rgba(6,11,24,.6)}
+.sk b{font:600 12px var(--mono)}.sk small{color:var(--ink-dim);font-size:12px}
+.sk .meta{display:flex;gap:6px;align-items:center;font:500 9.5px var(--mono);color:var(--ink-faint)}
+.src{font:600 8.5px var(--mono);letter-spacing:.14em;border-radius:4px;padding:1px 5px;border:1px solid var(--hair)}
+.src.claude{border-color:rgba(255,154,60,.45);color:#FFD9B5}.src.project{border-color:rgba(63,231,255,.4);color:#BFF6FF}
+</style>
+
+<header class="top">
+  <div class="wordmark">SHRIKE <b>DESIGN</b></div>
+  <div class="label">design-system/tokens.ts · 12 references · v1</div>
+</header>
+
+<div class="hero">
+  <span class="badge">New</span>
+  <h1>Light is the material.</h1>
+  <p>The visual language for Shrike. Deep space lit only by information: glass catches light on its edges, fibers carry it, wireframes are drawn with it, and the one thing that matters glows white-hot. Every element below has an ID you can cite in a spec.</p>
+</div>
+
+<section>
+  <div class="sec-head"><span class="sub">Foundations · F1</span><h2>Colour</h2><div class="underline"></div></div>
+  <div class="grid">
+    <div class="sw"><div style="background:#02040A"></div><div class="meta"><b>void</b><span>#02040A · space</span></div></div>
+    <div class="sw"><div style="background:#060B18"></div><div class="meta"><b>abyss</b><span>#060B18 · behind glass</span></div></div>
+    <div class="sw"><div style="background:#0A1633"></div><div class="meta"><b>navy</b><span>#0A1633 · radial glow</span></div></div>
+    <div class="sw"><div style="background:#F6FBFF"></div><div class="meta"><b>core</b><span>#F6FBFF · white-hot centre</span></div></div>
+    <div class="sw"><div style="background:#3FE7FF"></div><div class="meta"><b>cyan</b><span>#3FE7FF · live line, comet</span></div></div>
+    <div class="sw"><div style="background:#2F7BFF"></div><div class="meta"><b>blue</b><span>#2F7BFF · data, wireframe</span></div></div>
+    <div class="sw"><div style="background:#8B5CF6"></div><div class="meta"><b>violet</b><span>#8B5CF6 · agent, AI</span></div></div>
+    <div class="sw"><div style="background:#C06BFF"></div><div class="meta"><b>magenta</b><span>#C06BFF · AI output</span></div></div>
+    <div class="sw"><div style="background:#FF9A3C"></div><div class="meta"><b>amber</b><span>#FF9A3C · active path</span></div></div>
+    <div class="sw"><div style="background:#2DD4BF"></div><div class="meta"><b>teal</b><span>#2DD4BF · inactive path</span></div></div>
+    <div class="sw"><div style="background:#38F2A0"></div><div class="meta"><b>ok</b><span>#38F2A0 · success only</span></div></div>
+    <div class="sw"><div style="background:#FF3B4E"></div><div class="meta"><b>fail</b><span>#FF3B4E · failure only</span></div></div>
+  </div>
+  <div class="grads" style="margin-top:20px">
+    <div class="grad" style="background:linear-gradient(90deg,#8B5CF6,#2F7BFF 50%,#3FE7FF)"><span>spectrum · fibers, arc, underlines</span></div>
+    <div class="grad" style="background:linear-gradient(90deg,#2F7BFF,#C06BFF)"><span>aiOut · through the processing core</span></div>
+    <div class="grad" style="background:radial-gradient(ellipse at 50% 50%,#4A0A14,#02040A 75%)"><span>alert · red ground, failures only</span></div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sub teal">Foundations · F3</span><h2>Type</h2><div class="underline"></div></div>
+  <div class="typerow"><span class="label">Hero · 700</span><span style="font:700 48px/1 var(--display);letter-spacing:-.02em">Why didn't it save?</span></div>
+  <div class="typerow"><span class="label">Heading · 300 caps</span><span style="font:300 28px var(--display);letter-spacing:.04em;text-transform:uppercase">What happened</span></div>
+  <div class="typerow"><span class="label">Subtitle · spaced</span><span class="sub" style="color:var(--violet)">Measured, not guessed</span></div>
+  <div class="typerow"><span class="label">Caption · 500</span><span style="font:500 18px var(--display)">insertTodo() failed: NOT NULL constraint failed: todos.user_id</span></div>
+  <div class="typerow"><span class="label">Numeral · 300</span><span class="num">15<span style="font-size:18px;color:var(--ink-dim)"> ms</span></span></div>
+  <div class="typerow"><span class="label">Micro-label</span><span class="label">Trace 9f2c // POST /api/todos // 5 files</span></div>
+  <div class="typerow"><span class="label">Code · mono</span><span style="font:400 13px var(--mono)">insertTodo({ title, userId: req.body.user });</span></div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sub">Surfaces · C1 · L1 · E1 · E3</span><h2>Code pane in the tunnel</h2><div class="underline"></div></div>
+  <div class="stage">
+    <div class="tunnel"></div><div class="floor"></div>
+    <div class="panes">
+      <div class="pane dim">
+        <div class="bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span class="label">src/api.ts</span></div>
+        <pre class="code"><div class="ln"><i>11</i><span><span class="k">export async function</span> <span class="f">createTodo</span><span class="p">(title) {</span></span></div><div class="ln"><i>12</i><span>  <span class="k">const</span> res <span class="p">=</span> <span class="k">await</span> <span class="f">fetch</span><span class="p">(</span><span class="s">"/api/todos"</span><span class="p">, {</span></span></div><div class="ln"><i>13</i><span>    method<span class="p">:</span> <span class="s">"POST"</span><span class="p">,</span></span></div></pre>
+      </div>
+      <div class="pane">
+        <div class="bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span class="label">server/todos.controller.ts</span></div>
+        <pre class="code"><div class="ln"><i>14</i><span><span class="k">export async function</span> <span class="f">createTodo</span><span class="p">(req, res) {</span></span></div><div class="ln"><i>15</i><span>  <span class="k">const</span> <span class="p">{ title } =</span> req.body<span class="p">;</span></span></div><div class="ln"><i>16</i><span>  console.<span class="f">log</span><span class="p">(</span><span class="s">"creating todo"</span><span class="p">, { title });</span></span></div><div class="ln"><i>17</i><span>  <span class="c">// …</span></span></div><div class="ln live"><i>18</i><span>  <span class="k">const</span> todo <span class="p">=</span> <span class="f">insertTodo</span><span class="p">({ title, userId:</span> req.body.user <span class="p">});</span></span></div><div class="ln"><i>19</i><span>  res.<span class="f">status</span><span class="p">(</span><span class="s">201</span><span class="p">).</span><span class="f">json</span><span class="p">(todo);</span></span></div></pre>
+        <div class="chip">✕ userId: undefined</div>
+      </div>
+    </div>
+  </div>
+  <div class="cap"><span class="id">C1 CODE PANE</span><p>Glass slab, lit edge, muted traffic lights, mono caps file label. One live line glows; its value chip sits at the end. Inactive panes drop to 25–32% and recede.</p></div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sub teal">Connectors · L1 · L3 · L4 · L6</span><h2>Flow is drawn with light</h2><div class="underline"></div></div>
+  <div class="two">
+    <div><div class="cv"><canvas id="fibers" aria-label="Fiber bundle converging into a glowing port, particles travelling along it"></canvas></div>
+      <div class="cap"><span class="id">L1 FIBER BUNDLE · P1 PARTICLE FLOW</span><p>Many thin strands converge at a port, coloured along the spectrum from source to target. Particles travel only on the active path.</p></div></div>
+    <div><div class="cv"><canvas id="traces" aria-label="Orthogonal traces: one amber active route with a pulse, teal inactive routes"></canvas></div>
+      <div class="cap"><span class="id">L2 TRACE · L3 ACTIVE (AMBER) · L4 INACTIVE (TEAL)</span><p>Manhattan routing with rounded corners and dot ports. The route already travelled is amber with a travelling pulse.</p></div></div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sub">Nodes · N4 · N6 · N8</span><h2>Glyphs for things that think</h2><div class="underline"></div></div>
+  <div class="two">
+    <div><div class="glass orbwrap"><div class="orb"><div><b>YOUR APP</b><span>SERVER</span></div></div></div>
+      <div class="cap"><span class="id">N4 ORB</span><p>Rim-lit sphere in the spectrum. The agent's mind while it thinks; the app at the start of a flight.</p></div></div>
+    <div><div class="cv"><canvas id="core" aria-label="Wireframe processing core filled with glowing dots"></canvas></div>
+      <div class="cap"><span class="id">N6 PROCESSING CORE</span><p>Wireframe prism filled with dot-matrix, white-hot centre. The realm gate where the browser hands over to the server; colour shifts from blue to violet as fibers pass through.</p></div></div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sub teal">HUD · C5 · C6 · H1 · H8 · H9</span><h2>Cards, inputs, targets</h2><div class="underline"></div></div>
+  <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(250px,1fr))">
+    <div class="glass metric"><div class="ring">ƒ</div><div><div class="label">Functions ran</div><div class="num">6</div><div class="delta">↑ 2 since last run</div></div></div>
+    <div class="glass metric"><div class="ring" style="border-color:var(--teal);color:var(--teal);box-shadow:0 0 16px rgba(45,212,191,.35)">⏱</div><div><div class="label">Total time</div><div class="num teal">15<span style="font-size:16px"> ms</span></div><div class="delta" style="color:var(--ink-dim)">fastest of 4 runs</div></div></div>
+    <div class="glass listcard"><i class="port"></i><div class="ring">✦</div><div><b>Claude Code</b><div class="label">Your subscription</div></div><span class="label" style="color:var(--ok)">Ready</span></div>
+  </div>
+  <div style="display:grid;gap:22px;margin-top:22px">
+    <div class="pill" role="search"><span aria-hidden="true">⌕</span><span>Ask Shrike what's wrong…</span><span class="label" style="margin-left:auto">⌘K</span></div>
+    <div class="bracketed"><i></i><span class="tag">FN insertTodo() · &lt;1MS · ✕</span></div>
+  </div>
+  <div class="cap"><span class="id">C5 METRIC · C6 LIST CARD WITH PORT · H1 PILL INPUT · H8 BRACKETS · H9 TRACKING TAG</span><p>Thin big numerals, circle-outline badges, a glowing port where a fiber lands. Corner brackets frame whatever the camera is tracking.</p></div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sub">HUD · H4 · H5</span><h2>Journey arc scrubber</h2><div class="underline"></div></div>
+  <div class="glass arc" style="padding:18px 16px 10px">
+    <svg viewBox="0 0 1000 170" role="img" aria-label="Journey arc with nine steps; step six failed">
+      <defs><linearGradient id="spec" x1="0" x2="1"><stop offset="0" stop-color="#8B5CF6"/><stop offset=".5" stop-color="#2F7BFF"/><stop offset="1" stop-color="#3FE7FF"/></linearGradient>
+        <filter id="gl"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+      <path d="M40 120 Q500 30 960 120" fill="none" stroke="url(#spec)" stroke-width="2" filter="url(#gl)"/>
+      <g font-family="JetBrains Mono, monospace" font-size="10" letter-spacing="1.6" fill="#7D8CA8" text-anchor="middle">
+        <g transform="translate(40 120)"><circle r="5" fill="#8B5CF6"/><text y="-14">CLICK</text></g>
+        <g transform="translate(155 96)"><circle r="5" fill="#7C66F6"/><text y="-14">FETCH</text></g>
+        <g transform="translate(270 80)"><circle r="5" fill="#6A70F8"/><text y="-14">SERVER</text></g>
+        <g transform="translate(385 70)"><circle r="5" fill="#557AFA"/><text y="-14">CREATETODO</text></g>
+        <g transform="translate(500 66)"><circle r="5" fill="#3F86FC"/><text y="-14">LOG</text></g>
+        <g transform="translate(615 70)"><circle r="9" fill="#FF3B4E" filter="url(#gl)"/><circle r="3.5" fill="#F6FBFF"/><text y="-18" fill="#FF7A85">INSERTTODO</text></g>
+        <g transform="translate(730 80)" opacity=".5"><circle r="5" fill="#2FB7FE"/><text y="-14">DB</text></g>
+        <g transform="translate(845 96)" opacity=".5"><circle r="5" fill="#38D0FF"/><text y="-14">ERROR</text></g>
+        <g transform="translate(960 120)" opacity=".5"><circle r="5" fill="#3FE7FF"/><text y="-14">500</text></g>
+      </g>
+      <g stroke-width="1.5">
+        <line x1="40" y1="152" x2="40" y2="140" stroke="#7D8CA8"/><line x1="155" y1="152" x2="155" y2="134" stroke="#7D8CA8"/><line x1="270" y1="152" x2="270" y2="130" stroke="#7D8CA8"/>
+        <line x1="385" y1="152" x2="385" y2="126" stroke="#7D8CA8"/><line x1="500" y1="152" x2="500" y2="146" stroke="#7D8CA8"/><line x1="615" y1="152" x2="615" y2="128" stroke="#FF3B4E"/>
+        <line x1="730" y1="152" x2="730" y2="132" stroke="#FF3B4E" opacity=".6"/><line x1="845" y1="152" x2="845" y2="146" stroke="#7D8CA8" opacity=".5"/><line x1="960" y1="152" x2="960" y2="140" stroke="#7D8CA8" opacity=".5"/>
+      </g>
+    </svg>
+  </div>
+  <div class="cap"><span class="id">H4 JOURNEY ARC · H5 SPIKE MARKERS</span><p>The flight as an arc in the spectrum. Steps are nodes; spike height is time spent; red marks failures. Steps after the playhead sit at half strength.</p></div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sub" style="color:var(--fail)">Alert mode · H12 · P6</span><h2>When something actually failed</h2><div class="underline"></div></div>
+  <div class="alert" role="alert">
+    <div class="tri"></div><span class="att">ATTENTION</span>
+    <div class="bar2">SERVER ERROR (500)</div>
+    <div class="standby"><i class="barcode"></i><span>INSERTTODO · DB.TS:36</span></div>
+  </div>
+  <div class="cap"><span class="id">H12 ALERT BANNER</span><p>Lands in 180ms on the first failure, holds 900ms, collapses into the caption. Red only ever means failure. Calm mode shows it as a static card.</p></div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sub teal">Looks · H11</span><h2>Sensor modes</h2><div class="underline"></div></div>
+  <div class="looks">
+    <div class="look on"><i style="background:radial-gradient(circle,#3FE7FF,#0A1633)"></i><span>NORMAL</span></div>
+    <div class="look"><i style="background:conic-gradient(#2F7BFF,#C06BFF,#FF6A00,#FFFFFF,#2F7BFF)"></i><span>THERMAL</span></div>
+    <div class="look"><i style="background:radial-gradient(circle,#7CFF8A,#010A04)"></i><span>NIGHT</span></div>
+    <div class="look"><i style="background:repeating-linear-gradient(0deg,#0A1633 0 4px,#9CC8FF 4px 5px)"></i><span>BLUEPRINT</span></div>
+    <div class="look"><i style="background:radial-gradient(circle,#FF3B4E,#3A0710)"></i><span>ALERT</span></div>
+  </div>
+  <div class="cap"><span class="id">H11 LOOKS BAR</span><p>Each look remaps the palette onto one mood. Thermal colours code by time spent. Alert is automatic, never chosen.</p></div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sub">Environments · E5 · L7</span><h2>Moments</h2><div class="underline"></div></div>
+  <div class="two">
+    <div><div class="cv"><canvas id="warp" aria-label="Data blocks streaming towards a bright vanishing point"></canvas></div>
+      <div class="cap"><span class="id">E5 WARP · P4</span><p>600ms of data blocks streaming into the vanishing point when a new flight loads, then cut to the first pane.</p></div></div>
+    <div><div class="beam" aria-label="Vertical light beam splashing onto a reflective floor"><div class="col"></div><div class="splash"></div><div class="refl"></div></div>
+      <div class="cap"><span class="id">L7 LIGHT BEAM · P5</span><p>Fixed and verified: a beam drops onto the re-run's first pane and the floor ripples once. Also the welcome hero.</p></div></div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sub teal">Thread · D1–D11</span><h2>Lanes are discovered</h2><div class="underline"></div></div>
+  <div class="glyphs">
+    <div class="g"><svg class="kg" viewBox="0 0 12 12"><path d="M3 2l6 4.2-2.6.6L8 10l-1.3.6L5.2 7.4 3 9z"/></svg><b>YOU</b><span>D1 caller · click</span></div>
+    <div class="g"><svg class="kg" viewBox="0 0 12 12"><path d="M2 3.5l3 2.5-3 2.5M6.5 9.5H10"/></svg><b>CURL</b><span>D1 caller · command</span></div>
+    <div class="g"><svg class="kg" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.2"/><path d="M6 3.6V6l1.8 1.2"/></svg><b>CRON</b><span>D1 caller · schedule</span></div>
+    <div class="g"><svg class="kg" viewBox="0 0 12 12"><rect x="1.5" y="2.5" width="9" height="7" rx="1.2"/><path d="M1.5 4.6h9"/></svg><b>WEB</b><span>D2 client</span></div>
+    <div class="g"><svg class="kg" viewBox="0 0 12 12"><path d="M6 1.5l3.9 2.25v4.5L6 10.5 2.1 8.25v-4.5z"/></svg><b>API</b><span>D3 service</span></div>
+    <div class="g"><svg class="kg" viewBox="0 0 12 12"><path d="M2 3.5h8M2 6h8M2 8.5h5"/></svg><b>JOBS</b><span>D4 queue · design</span></div>
+    <div class="g"><svg class="kg" viewBox="0 0 12 12"><path d="M6.8 1.5L3 6.6h3l-.8 3.9L9 5.4H6z"/></svg><b>LRU</b><span>D5 cache</span></div>
+    <div class="g"><svg class="kg" viewBox="0 0 12 12"><ellipse cx="6" cy="3" rx="3.8" ry="1.4"/><path d="M2.2 3v6c0 .8 1.7 1.4 3.8 1.4s3.8-.6 3.8-1.4V3M2.2 6c0 .8 1.7 1.4 3.8 1.4S9.8 6.8 9.8 6"/></svg><b>SQLITE</b><span>D6 data</span></div>
+    <div class="g"><svg class="kg" viewBox="0 0 12 12"><path d="M5 2.5H2.5v7h7V7M7 2h3v3M10 2L5.5 6.5"/></svg><b>STRIPE</b><span>D7 outside</span></div>
+    <div class="g ghost"><svg class="kg" viewBox="0 0 12 12"><path d="M6.8 1.5L3 6.6h3l-.8 3.9L9 5.4H6z"/></svg><b>REDIS</b><span>D11 expected, not seen</span></div>
+  </div>
+  <div class="glass" style="margin-top:18px;padding:10px">
+    <svg viewBox="0 0 900 120" role="img" aria-label="Accordion: four full lanes and three slivers, one dashed ghost lane" style="width:100%;height:auto;display:block">
+      <g font-family="JetBrains Mono, monospace" font-size="10" letter-spacing="2" fill="#EAF2FF" text-anchor="middle">
+        <line x1="90" y1="30" x2="90" y2="115" stroke="rgba(160,205,255,.25)"/><text x="90" y="20">YOU</text>
+        <line x1="290" y1="30" x2="290" y2="115" stroke="rgba(160,205,255,.25)"/><text x="290" y="20">API</text>
+        <line x1="400" y1="10" x2="400" y2="115" stroke="rgba(160,205,255,.12)"/><text x="404" y="30" font-size="8" fill="#3A4763" transform="rotate(90 404 30)" text-anchor="start">AUTH</text>
+        <line x1="426" y1="10" x2="426" y2="115" stroke="rgba(160,205,255,.25)" stroke-dasharray="4 6"/><text x="430" y="30" font-size="8" fill="#3A4763" transform="rotate(90 430 30)" text-anchor="start">REDIS</text>
+        <line x1="540" y1="30" x2="540" y2="115" stroke="rgba(160,205,255,.25)"/><text x="540" y="20">LRU</text>
+        <line x1="660" y1="10" x2="660" y2="115" stroke="rgba(160,205,255,.12)"/><text x="664" y="30" font-size="8" fill="#3A4763" transform="rotate(90 664 30)" text-anchor="start">POSTGRES</text>
+        <line x1="790" y1="30" x2="790" y2="115" stroke="rgba(160,205,255,.25)"/><text x="790" y="20">SQLITE</text>
+      </g>
+    </svg>
+  </div>
+  <div class="cap"><span class="id">D1–D7 PLACE GLYPHS · D10 ACCORDION · D11 GHOST LANE</span><p>One 11px stroked glyph per place kind, then the caps name and a dim target. Lanes the focused trip touches share the width; the rest fold to 26px slivers with a vertical label. Expected places the app hasn't touched yet show dashed.</p></div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sub">Thread · T15–T20</span><h2>Shapes of a trip</h2><div class="underline"></div></div>
+  <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">
+    <div class="glass" style="padding:12px"><svg viewBox="0 0 260 110" style="width:100%;display:block" role="img" aria-label="Bounce: the thread pokes into the cache and straight back">
+      <line x1="60" y1="0" x2="60" y2="110" stroke="rgba(160,205,255,.18)"/><line x1="190" y1="0" x2="190" y2="110" stroke="rgba(160,205,255,.18)"/>
+      <path d="M60 10 V51 H190 V59 H60 V100" fill="none" stroke="#2F7BFF" stroke-width="2.4" stroke-linejoin="round"/><circle cx="190" cy="55" r="5" fill="#38F2A0" style="filter:drop-shadow(0 0 5px #38F2A0)"/></svg>
+      <div class="cap"><span class="id">T15 BOUNCE · CACHE HIT</span><p>Out and back on one row, filled green dot.</p></div></div>
+    <div class="glass" style="padding:12px"><svg viewBox="0 0 260 110" style="width:100%;display:block" role="img" aria-label="Pass-through: hollow amber dot in the cache, on to the database, back through the cache">
+      <line x1="40" y1="0" x2="40" y2="110" stroke="rgba(160,205,255,.18)"/><line x1="130" y1="0" x2="130" y2="110" stroke="rgba(160,205,255,.18)"/><line x1="220" y1="0" x2="220" y2="110" stroke="rgba(160,205,255,.18)"/>
+      <path d="M40 8 V22 H130 V50 H220 V78 H130 V100 H40" fill="none" stroke="#2F7BFF" stroke-width="2.4" stroke-linejoin="round"/>
+      <circle cx="130" cy="22" r="6" fill="#060B18" stroke="#FF9A3C" stroke-width="2"/><circle cx="220" cy="50" r="6" fill="#060B18" stroke="#3FE7FF" stroke-width="2"/><circle cx="130" cy="78" r="5" fill="#3FE7FF"/></svg>
+      <div class="cap"><span class="id">T16 PASS-THROUGH · MISS THEN SET</span><p>Hollow amber miss, on to data, cyan set on the way back.</p></div></div>
+    <div class="glass" style="padding:12px"><svg viewBox="0 0 260 110" style="width:100%;display:block" role="img" aria-label="Fork: two branches at the same time">
+      <line x1="40" y1="0" x2="40" y2="110" stroke="rgba(160,205,255,.18)"/><line x1="160" y1="0" x2="160" y2="110" stroke="rgba(160,205,255,.18)"/><line x1="230" y1="0" x2="230" y2="110" stroke="rgba(160,205,255,.18)"/>
+      <path d="M40 8 V40 H230" fill="none" stroke="#2F7BFF" stroke-width="2.4" stroke-linejoin="round"/><path d="M40 40 V68 H160 V92 H40" fill="none" stroke="#2F7BFF" stroke-width="2.4" stroke-linejoin="round"/>
+      <circle cx="230" cy="40" r="6" fill="#2a0610" stroke="#FF3B4E" stroke-width="2"/><circle cx="160" cy="68" r="6" fill="#060B18" stroke="#3FE7FF" stroke-width="2"/>
+      <text x="50" y="57" font-family="JetBrains Mono, monospace" font-size="8" letter-spacing="1.4" fill="#7D8CA8">AT THE SAME TIME</text></svg>
+      <div class="cap"><span class="id">T17 FORK</span><p>Parallel lines 28px apart; the side branch rejoins.</p></div></div>
+    <div class="glass" style="padding:12px"><svg viewBox="0 0 260 110" style="width:100%;display:block" role="img" aria-label="Handoff: dashed segment into the queue">
+      <line x1="60" y1="0" x2="60" y2="110" stroke="rgba(160,205,255,.18)"/><line x1="190" y1="0" x2="190" y2="110" stroke="rgba(160,205,255,.18)"/>
+      <path d="M60 30 H190" fill="none" stroke="#B89CFF" stroke-width="1.6" stroke-dasharray="3 6" stroke-linecap="round"/><circle cx="190" cy="30" r="6" fill="#060B18" stroke="#3FE7FF" stroke-width="2"/>
+      <path d="M190 30 V70 H60 V96" fill="none" stroke="#2F7BFF" stroke-width="2.4" stroke-linejoin="round"/></svg>
+      <div class="cap"><span class="id">T18 HANDOFF · DESIGN</span><p>Dashed violet into the queue; the job is its own trip.</p></div></div>
+    <div class="glass" style="padding:12px"><svg viewBox="0 0 260 110" style="width:100%;display:block" role="img" aria-label="Crossing between two service lanes">
+      <line x1="60" y1="0" x2="60" y2="110" stroke="rgba(160,205,255,.18)"/><line x1="190" y1="0" x2="190" y2="110" stroke="rgba(160,205,255,.18)"/>
+      <g font-family="JetBrains Mono, monospace" font-size="9" letter-spacing="2" fill="#7D8CA8" text-anchor="middle"><text x="60" y="12">API</text><text x="190" y="12">AUTH</text></g>
+      <path d="M60 24 V50 H190 V80 H60 V104" fill="none" stroke="#2F7BFF" stroke-width="2.4" stroke-linejoin="round"/><circle cx="190" cy="50" r="6" fill="#060B18" stroke="#3FE7FF" stroke-width="2"/></svg>
+      <div class="cap"><span class="id">T19 CROSSING</span><p>A plain hop between service lanes.</p></div></div>
+    <div class="glass" style="padding:12px;display:grid;place-items:center;min-height:150px">
+      <div class="term"><span class="tg">COMMAND</span><span style="color:#3FE7FF">$</span> curl -X POST :4300/v1/users<br>&nbsp;&nbsp;-d '{"email":"Ana@shop.io"}'</div>
+      <div class="cap" style="justify-self:stretch"><span class="id">T20 TERMINAL CARD</span><p>Replaces the screen shot when the caller isn't a browser.</p></div></div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sub">Agent · A* · O*</span><h2>Marks the agent leaves</h2><div class="underline"></div></div>
+  <div class="glyphs">
+    <div class="g"><svg width="56" height="14" viewBox="0 0 56 14"><path d="M2 7 H54" stroke="#B89CFF" stroke-width="2" stroke-dasharray="1 7" stroke-linecap="round"/></svg><b>Planned route</b><span>A1</span></div>
+    <div class="g"><span class="skill lit">Bad value</span><b>Skill chip</b><span>A4, lit when used</span></div>
+    <div class="g"><svg class="kg" viewBox="0 0 12 12" style="color:#B89CFF;fill:rgba(139,92,246,.35);filter:drop-shadow(0 0 4px #8B5CF6)"><path d="M6 11V7.4M3.6 1.8h4.8l-.7 3 1.4 2.4H2.9l1.4-2.4z"/></svg><b>Memory pin</b><span>A5</span></div>
+    <div class="g"><i style="width:8px;height:8px;transform:rotate(45deg);background:#8B5CF6;box-shadow:0 0 8px #8B5CF6;display:block;margin:4px"></i><b>Checkpoint</b><span>A6, hollow once rewound</span></div>
+    <div class="g"><span class="fuelspec">✦ ASK</span><b>Fuel ring</b><span>A7, context used</span></div>
+    <div class="g"><svg class="kg" viewBox="0 0 12 12" style="color:#3FE7FF"><path d="M1 6s1.8-3.5 5-3.5S11 6 11 6s-1.8 3.5-5 3.5S1 6 1 6z"/><circle cx="6" cy="6" r="1.5"/></svg><b>Watched by Cursor</b><span>A11</span></div>
+    <div class="g"><span class="label">3 trips · <b style="color:#FF7A85">1</b> broke · agent idle</span><b>Telemetry strip</b><span>A17</span></div>
+    <div class="g"><svg width="18" height="20" viewBox="0 0 16 18"><path d="M1 1l13 8.5-5.6 1.2L11.8 17l-2.6 1-3.3-6.4L1 15z" fill="#8B5CF6" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/></svg><b>Ghost cursor</b><span>O2</span></div>
+    <div class="g"><i style="width:7px;height:7px;border-radius:50%;background:#3FE7FF;box-shadow:0 0 8px #3FE7FF;display:block;margin:4px"></i><b>Unread</b><span>O9</span></div>
+    <div class="g"><span style="font:700 8.5px var(--mono);letter-spacing:.2em;color:#04201C;background:var(--teal);border-radius:4px;padding:2px 6px">SANDBOX</span><b>Sandbox ribbon</b><span>A12 · design</span></div>
+  </div>
+  <div class="cap"><span class="id">A1 · A4 · A5 · A6 · A7 · A11 · A12 · A17 · O2 · O9</span><p>Agent marks are violet. Facts about the outside world (who is reading, what's new) are cyan. Nothing here glows unless it just happened.</p></div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sub teal">SDLC · L1–L7 · G4 · W1 · S1–S4</span><h2>Where a change is in its life</h2><div class="underline"></div></div>
+  <div class="glass" style="padding:14px;margin-bottom:16px">
+    <div class="rl" role="img" aria-label="SDLC rail: Spot, Understand and Fix done, Prove current, Review, Ship and Watch not yet">
+      <span class="st done"><i></i>Spot</span><span class="seg done"></span><span class="st done"><i></i>Understand</span><span class="seg done"></span><span class="st done"><i></i>Fix</span><span class="seg done"></span><span class="st active"><i></i>Prove</span><span class="seg"></span><span class="st"><i></i>Review</span><span class="seg"></span><span class="st"><i></i>Ship</span><span class="seg"></span><span class="st"><i></i>Watch</span>
+    </div>
+    <div class="cap"><span class="id">L1–L7 SDLC RAIL</span><p>One slim row across the top of the Thread, only while a change is in flight. Done stages are a muted green dot; the current stage is the only bright thing (cyan, glowing); later stages are hollow; a failed stage is a red ring. Each stage opens its detail on click.</p></div>
+  </div>
+  <div class="glyphs">
+    <div class="g"><span class="rl"><span class="st active"><i></i>Prove</span></span><b>Current stage</b><span>L* · one glows</span></div>
+    <div class="g"><span class="rl"><span class="st done"><i></i>Fix</span></span><b>Done stage</b><span>L* · muted green</span></div>
+    <div class="g"><span class="rl"><span class="st failed"><i></i>Ship</span></span><b>Failed stage</b><span>L* · red ring</span></div>
+    <div class="g"><span style="display:inline-flex;gap:6px" role="img" aria-label="Checks: pass, pass, pending, fail"><i class="cid pass"></i><i class="cid pass"></i><i class="cid pending"></i><i class="cid fail"></i></span><b>CI dots</b><span>G4 · pass, running, fail</span></div>
+    <div class="g" style="grid-column:span 2"><span class="wtt"><span class="cur"><i style="background:var(--ok)"></i>main</span><span><i style="background:var(--slow)"></i>fix-userid</span><span><i style="background:var(--fail)"></i>try-no-owner</span></span><b>Worktree tabs</b><span>W1 · status dot each</span></div>
+    <div class="g"><span style="display:inline-flex;align-items:center;gap:6px;font:600 10px var(--mono);letter-spacing:.14em;color:#FFD3D8"><i style="width:8px;height:8px;border-radius:50%;background:var(--fail);box-shadow:0 0 8px var(--fail);display:block"></i>REC 2</span><b>Recording</b><span>B1 · in the app dock bar</span></div>
+  </div>
+  <div class="grid" style="margin-top:16px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr))">
+    <div class="glass" style="padding:12px;display:grid;justify-items:start"><div class="sk"><b>start-todo-app</b><small>Bring todo-app up on a free port</small><span class="meta"><span class="src project">PROJECT</span><span style="color:#E2D6FF">v4</span><span>used 10×</span></span><small style="color:#C9B6FF">v4: checks the port first</small></div>
+      <div class="cap"><span class="id">S1 SKILL CARD · S4 EVOLVED</span><p>Name in mono, one "when" line, where it lives, version, uses. An accepted improvement bumps the version and leaves one violet history line.</p></div></div>
+    <div class="glass" style="padding:12px;display:grid;justify-items:start"><div class="sk"><b>navigate-xyne-spaces</b><small>Your Claude Code skill</small><span class="meta"><span class="src claude">CLAUDE CODE</span><span>read-only</span></span></div>
+      <div class="cap"><span class="id">S2 IMPORTED SKILL</span><p>Skills from ~/.claude/skills carry an amber CLAUDE CODE tag and read-only. Shrike never edits that folder; a copy can evolve.</p></div></div>
+  </div>
+</section>
+
+<footer>
+  <span class="label">Show me what my app actually did</span>
+  <div class="underline"></div>
+</footer>
+
+<script>
+(function(){
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function setup(id){
+    const c = document.getElementById(id); if(!c) return null;
+    const ctx = c.getContext('2d');
+    function size(){ const r = c.getBoundingClientRect(); const d = Math.min(devicePixelRatio||1,2); c.width = r.width*d; c.height = r.height*d; ctx.setTransform(d,0,0,d,0,0); }
+    size(); addEventListener('resize', ()=>{ size(); requestAnimationFrame(t=>redraw(t)); });
+    return { c, ctx, w:()=>c.getBoundingClientRect().width, h:()=>c.getBoundingClientRect().height };
+  }
+  const lerp=(a,b,t)=>a+(b-a)*t;
+  function mix(a,b,t){ return [lerp(a[0],b[0],t),lerp(a[1],b[1],t),lerp(a[2],b[2],t)]; }
+  const V=[139,92,246], B=[47,123,255], C=[63,231,255], A=[255,154,60], T=[45,212,191];
+  function spec(t){ return t<.5 ? mix(V,B,t*2) : mix(B,C,(t-.5)*2); }
+  const rgba=(c,a)=>`rgba(${c[0]|0},${c[1]|0},${c[2]|0},${a})`;
+
+  // L1 fiber bundle
+  const f = setup('fibers'); const strands = Array.from({length:28},(_,i)=>({ y0: (i+.5)/28, off: Math.sin(i*12.9898)*.5, ph: (i*0.37)%1 }));
+  function drawFibers(t){
+    const {ctx}=f, w=f.w(), h=f.h(); ctx.clearRect(0,0,w,h); ctx.globalCompositeOperation='lighter';
+    const px=w*.86, py=h*.5;
+    strands.forEach(s=>{
+      const sx=w*.06, sy=h*(.1+s.y0*.8);
+      const c1x=w*.45, c1y=sy+s.off*30, c2x=w*.62, c2y=py+(s.y0-.5)*20;
+      for(let k=0;k<24;k++){ const t0=k/24, t1=(k+1)/24;
+        const p=(t)=>{const u=1-t; return [u*u*u*sx+3*u*u*t*c1x+3*u*t*t*c2x+t*t*t*px, u*u*u*sy+3*u*u*t*c1y+3*u*t*t*c2y+t*t*t*py];};
+        const a=p(t0), b=p(t1); ctx.strokeStyle=rgba(spec(t0),.22+.5*t0); ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.stroke(); }
+      const tt=reduce?.6:((t*.00018+s.ph)%1); const u=1-tt;
+      const x=u*u*u*sx+3*u*u*tt*c1x+3*u*tt*tt*c2x+tt*tt*tt*px, y=u*u*u*sy+3*u*u*tt*c1y+3*u*tt*tt*c2y+tt*tt*tt*py;
+      ctx.fillStyle=rgba([246,251,255],.9); ctx.beginPath(); ctx.arc(x,y,1.6,0,7); ctx.fill();
+    });
+    const g=ctx.createRadialGradient(px,py,0,px,py,28); g.addColorStop(0,'rgba(246,251,255,1)'); g.addColorStop(.3,rgba(C,.8)); g.addColorStop(1,rgba(C,0));
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(px,py,28,0,7); ctx.fill(); ctx.globalCompositeOperation='source-over';
+  }
+
+  // L2/L3/L4 traces
+  const tr = setup('traces');
+  function route(ctx, pts, r){ ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]);
+    for(let i=1;i<pts.length-1;i++){ ctx.arcTo(pts[i][0],pts[i][1],pts[i+1][0],pts[i+1][1],r); } ctx.lineTo(pts[pts.length-1][0],pts[pts.length-1][1]); }
+  function drawTraces(t){
+    const {ctx}=tr, w=tr.w(), h=tr.h(); ctx.clearRect(0,0,w,h);
+    const inactive=[[[.08,.2],[.4,.2],[.4,.5],[.7,.5],[.7,.82],[.92,.82]],[[.08,.82],[.3,.82],[.3,.62],[.55,.62]],[[.55,.2],[.92,.2]]];
+    const active=[[.08,.5],[.25,.5],[.25,.35],[.6,.35],[.6,.62],[.92,.62]];
+    const S=p=>p.map(([x,y])=>[x*w,y*h]);
+    ctx.lineWidth=1.5; ctx.strokeStyle=rgba(T,.35); inactive.forEach(p=>{route(ctx,S(p),10); ctx.stroke();});
+    ctx.shadowColor=rgba(A,.8); ctx.shadowBlur=12; ctx.lineWidth=2.5; ctx.strokeStyle=rgba(A,1); route(ctx,S(active),10); ctx.stroke(); ctx.shadowBlur=0;
+    [...inactive.flat(), ...active].forEach(([x,y],i)=>{ ctx.fillStyle=i>=inactive.flat().length?rgba(A,1):rgba(T,.6); ctx.beginPath(); ctx.arc(x*w,y*h,2.6,0,7); ctx.fill(); });
+    const pts=S(active); let len=0; const segs=[]; for(let i=1;i<pts.length;i++){ const d=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]); segs.push(d); len+=d; }
+    let d=reduce?len*.7:((t*.00035)%1)*len, i=0; while(i<segs.length-1 && d>segs[i]){ d-=segs[i]; i++; }
+    const k=Math.min(1,d/segs[i]); const x=lerp(pts[i][0],pts[i+1][0],k), y=lerp(pts[i][1],pts[i+1][1],k);
+    const g=ctx.createRadialGradient(x,y,0,x,y,14); g.addColorStop(0,'rgba(255,245,230,1)'); g.addColorStop(1,rgba(A,0)); ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,14,0,7); ctx.fill();
+    [[.08,.5],[.92,.62]].forEach(([x,y])=>{ ctx.fillStyle='#0B1220'; ctx.strokeStyle=rgba(A,.9); ctx.lineWidth=1.5; ctx.beginPath(); ctx.roundRect(x*w-14,y*h-14,28,28,7); ctx.fill(); ctx.stroke(); });
+  }
+
+  // N6 processing core
+  const co = setup('core');
+  function drawCore(t){
+    const {ctx}=co, w=co.w(), h=co.h(); ctx.clearRect(0,0,w,h); const cx=w/2, cy=h/2, R=Math.min(w,h)*.32;
+    const ang=reduce?0.5:t*.00025; ctx.globalCompositeOperation='lighter';
+    const proj=(x,y,z)=>{ const c=Math.cos(ang), s=Math.sin(ang); const X=x*c-z*s, Z=x*s+z*c; const tilt=.45; const Y=y*Math.cos(tilt)-Z*Math.sin(tilt); return [cx+X*R, cy+Y*R]; };
+    for(let i=-3;i<=3;i++) for(let j=-3;j<=3;j++) for(let k=-3;k<=3;k++){ if(Math.abs(i)+Math.abs(j)+Math.abs(k)>6) continue;
+      const [x,y]=proj(i/3,j/3,k/3); const dist=Math.hypot(i,j,k)/5.2; ctx.fillStyle=rgba(mix(C,B,dist),.85-dist*.6); ctx.fillRect(x-1,y-1,2,2); }
+    const hex=[...Array(6)].map((_,i)=>[Math.cos(i*Math.PI/3),Math.sin(i*Math.PI/3)]);
+    ctx.strokeStyle='rgba(246,251,255,.55)'; ctx.lineWidth=1;
+    [-1,1].forEach(yy=>{ ctx.beginPath(); hex.forEach(([x,z],i)=>{ const p=proj(x*1.1,yy,z*1.1); i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]); }); ctx.closePath(); ctx.stroke(); });
+    hex.forEach(([x,z])=>{ const a=proj(x*1.1,-1,z*1.1), b=proj(x*1.1,1,z*1.1); ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.stroke(); ctx.fillStyle='#F6FBFF'; ctx.fillRect(a[0]-1.5,a[1]-1.5,3,3); ctx.fillRect(b[0]-1.5,b[1]-1.5,3,3); });
+    const g=ctx.createRadialGradient(cx,cy,0,cx,cy,R*.7); g.addColorStop(0,'rgba(246,251,255,.9)'); g.addColorStop(.25,rgba(C,.45)); g.addColorStop(1,rgba(V,0)); ctx.fillStyle=g; ctx.beginPath(); ctx.arc(cx,cy,R*.7,0,7); ctx.fill();
+    ctx.globalCompositeOperation='source-over';
+  }
+
+  // E5 warp
+  const wa = setup('warp'); const blocks = Array.from({length:90},(_,i)=>({ a:(i*2.39996)%(Math.PI*2), z:(i*0.137)%1, s:.4+((i*7)%10)/10 }));
+  function drawWarp(t){
+    const {ctx}=wa, w=wa.w(), h=wa.h(); ctx.fillStyle='rgba(2,4,10,1)'; ctx.fillRect(0,0,w,h); const cx=w/2, cy=h/2;
+    ctx.strokeStyle='rgba(160,205,255,.08)'; ctx.lineWidth=1;
+    for(let i=0;i<16;i++){ const a=i/16*Math.PI*2; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+Math.cos(a)*w, cy+Math.sin(a)*w); ctx.stroke(); }
+    ctx.globalCompositeOperation='lighter';
+    blocks.forEach(b=>{ const z=reduce?b.z:((b.z+t*.00012)%1); const d=Math.pow(z,2.2)*Math.max(w,h)*.75; const x=cx+Math.cos(b.a)*d, y=cy+Math.sin(b.a)*d*.62;
+      const sz=2+z*16*b.s; ctx.fillStyle=rgba(mix(B,[246,251,255],z),.15+z*.75); ctx.fillRect(x-sz,y-sz*.35,sz*2,sz*.7); });
+    const g=ctx.createRadialGradient(cx,cy,0,cx,cy,60); g.addColorStop(0,'rgba(246,251,255,.95)'); g.addColorStop(1,'rgba(47,123,255,0)'); ctx.fillStyle=g; ctx.beginPath(); ctx.arc(cx,cy,60,0,7); ctx.fill();
+    ctx.globalCompositeOperation='source-over';
+  }
+
+  function redraw(t){ if(f) drawFibers(t); if(tr) drawTraces(t); if(co) drawCore(t); if(wa) drawWarp(t); }
+  function frame(t){ redraw(t); if(!reduce) requestAnimationFrame(frame); }
+  requestAnimationFrame(frame);
+})();
+</script>
