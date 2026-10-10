@@ -1,0 +1,331 @@
+/* M-opt1..M-opt8 (design-system/README.md). Colours come from @shrike/design (--c-*). One thing glows: the focused card and its connector. */
+
+/* M-opt1 board: the stage dims, one question */
+.opt-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 35;
+  display: flex;
+  padding: 14px;
+  background: color-mix(in srgb, var(--c-void) 72%, transparent);
+  backdrop-filter: blur(6px); /* the Thread behind stays a glow, not text that reads through the gutter */
+}
+.opt-board {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px 12px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--c-violet) 45%, transparent);
+  border-radius: var(--r-pane);
+  background: color-mix(in srgb, var(--c-abyss) 96%, var(--c-navy));
+  box-shadow: 0 0 60px -20px color-mix(in srgb, var(--c-violet) 55%, transparent);
+}
+.opt-question {
+  margin: 0;
+  font: 500 18px/1.3 var(--f-display);
+  color: var(--c-ink);
+}
+.opt-body {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding: 2px 2px 8px;
+}
+
+/* M-opt6 trail */
+.opt-trail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+.opt-crumb {
+  padding: 3px 7px;
+  border: 1px solid transparent;
+  border-radius: var(--r-chip);
+  font: 500 10.5px var(--f-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--c-ink-dim);
+}
+.opt-crumb:hover {
+  border-color: var(--c-hair);
+  color: var(--c-ink);
+}
+.opt-crumb[aria-current="step"] {
+  color: var(--c-core);
+  border-color: color-mix(in srgb, var(--c-cyan) 45%, transparent);
+}
+.opt-sep {
+  color: var(--c-ink-faint);
+  font-size: 11px;
+}
+
+/* M-opt4 the tree: parents above, a glowing connector down to the row */
+.opt-tree {
+  position: relative;
+}
+.opt-links {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+.opt-links path {
+  fill: none;
+  stroke: var(--c-teal);
+  stroke-width: 1.5;
+  opacity: 0.35;
+}
+.opt-links path.lit {
+  stroke: url(#opt-spectrum);
+  stroke-width: 2;
+  opacity: 1;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--c-cyan) 70%, transparent));
+}
+.opt-parents {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 46px;
+}
+.opt-parent {
+  display: flex;
+  width: 168px;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--c-hair);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--c-void) 50%, transparent);
+  text-align: left;
+  opacity: 0.8;
+}
+.opt-parent:hover {
+  border-color: var(--c-glass-edge);
+  opacity: 1;
+}
+
+/* M-opt2 cards: a row that wraps on narrow widths */
+.opt-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 340px));
+  justify-content: center;
+  gap: 14px;
+}
+.opt-card {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--c-hair);
+  border-radius: var(--r-card);
+  background: color-mix(in srgb, var(--c-void) 35%, transparent);
+  outline: none;
+}
+.opt-card.focus {
+  border-color: color-mix(in srgb, var(--c-cyan) 70%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--c-cyan) 30%, transparent), 0 0 26px -6px color-mix(in srgb, var(--c-cyan) 45%, transparent);
+}
+.opt-card.picked {
+  border-color: color-mix(in srgb, var(--c-violet) 70%, transparent);
+}
+.opt-card.focus.picked {
+  border-color: color-mix(in srgb, var(--c-cyan) 70%, transparent);
+}
+.opt-name {
+  display: inline-flex;
+  min-width: 26px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  border: 1px solid var(--c-glass-edge);
+  border-radius: var(--r-chip);
+  font: 600 11px var(--f-mono);
+  color: var(--c-ink);
+}
+.opt-card.focus .opt-name {
+  border-color: var(--c-cyan);
+  color: var(--c-core);
+}
+.opt-label {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  font: 600 15px/1.25 var(--f-display);
+  color: var(--c-ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.opt-desc {
+  margin: 0;
+  overflow: hidden;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--c-ink-dim);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.opt-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.opt-acts .btn {
+  height: 30px;
+}
+.opt-act {
+  display: inline-flex;
+  height: 30px;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  border-radius: var(--r-chip);
+  font: 500 13px var(--f-ui);
+  color: var(--c-ink-dim);
+}
+.opt-act:hover {
+  color: var(--c-ink);
+  background: var(--c-glass);
+}
+.opt-act[aria-pressed="true"] {
+  color: var(--signal);
+}
+.opt-act:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* M-opt3 mockup frame: the sandboxed iframe, scaled into the card */
+.opt-shot {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  cursor: zoom-in;
+}
+.opt-frame {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--c-hair);
+  border-radius: 10px;
+  background: var(--c-void);
+}
+.opt-frame iframe {
+  position: absolute;
+  top: 0;
+  border: 0;
+  transform-origin: 0 0;
+  background: var(--c-core); /* a mockup with no background of its own reads like a browser page */
+}
+.opt-frame.phone iframe {
+  border-radius: 14px;
+}
+.opt-pre {
+  margin: 0;
+  max-height: 100%;
+  overflow: auto;
+  padding: 10px 12px;
+  font: 400 12px/1.55 var(--f-mono);
+  color: var(--c-ink);
+  white-space: pre-wrap;
+}
+.opt-seg {
+  display: inline-flex;
+  height: 22px;
+  overflow: hidden;
+  border: 1px solid var(--c-hair);
+  border-radius: var(--r-chip);
+}
+.opt-seg button {
+  padding: 0 7px;
+  font: 500 9.5px var(--f-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--c-ink-dim);
+}
+.opt-seg button[aria-checked="true"] {
+  background: var(--c-glass-strong);
+  color: var(--c-ink);
+}
+
+/* M-opt5 enlarged: one card fills the stage */
+.opt-big {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  border-radius: var(--r-pane);
+  background: color-mix(in srgb, var(--c-abyss) 98%, var(--c-navy));
+}
+
+/* working: the next row is on its way (the only thing that moves) */
+.opt-working {
+  display: flex;
+  min-height: 120px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 14px;
+  border: 1px dashed color-mix(in srgb, var(--c-violet) 45%, transparent);
+  border-radius: var(--r-card);
+  font-size: 13.5px;
+  color: var(--c-ink);
+}
+
+/* M-opt7 combine bar and pins */
+.opt-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--c-hair);
+}
+.opt-chip {
+  display: inline-flex;
+  height: 24px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--c-violet) 50%, transparent);
+  border-radius: var(--r-chip);
+  font: 600 11px var(--f-mono);
+  color: var(--c-ink);
+}
+.opt-chip.pin {
+  border-color: var(--c-hair);
+  color: var(--c-ink-dim);
+}
+.opt-chip.pin:hover {
+  color: var(--c-ink);
+}
+
+/* M-opt8 approved mockup beside the patch */
+.opt-approved {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.opt-approved .opt-shot {
+  max-width: 240px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .opt-links path.lit {
+    filter: none;
+  }
+}
