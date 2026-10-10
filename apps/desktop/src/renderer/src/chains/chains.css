@@ -1,0 +1,359 @@
+/* P-chain1..6 (design-system/README.md). Colours come from @shrike/design (--c-*). Amber is the branch taken, teal the ones not taken. */
+
+/* P-chain1 up next stack */
+.upn {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.upn-card {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 5px 7px 5px 8px;
+  border: 1px solid var(--hair);
+  border-left: 2px solid color-mix(in srgb, var(--c-violet) 70%, transparent);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--c-abyss) 82%, color-mix(in srgb, var(--c-violet) 10%, transparent));
+  outline: none;
+  animation: shrike-rise 260ms var(--ease-out);
+}
+.upn-card:focus-visible {
+  border-color: color-mix(in srgb, var(--c-violet) 70%, transparent);
+}
+.upn-card.over {
+  box-shadow: 0 -2px 0 0 var(--c-violet);
+}
+.upn-card.missed {
+  border-left-color: var(--c-slow);
+}
+/* lights up, then moves up into the run */
+.upn-card.go {
+  align-items: center;
+  border-color: color-mix(in srgb, var(--c-cyan) 60%, transparent);
+  border-left-color: var(--c-cyan);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--c-cyan) 30%, transparent);
+  animation: upn-go 1.6s var(--ease-out) forwards;
+}
+@keyframes upn-go {
+  0% { box-shadow: 0 0 0 color-mix(in srgb, var(--c-cyan) 0%, transparent); }
+  25% { box-shadow: 0 0 22px color-mix(in srgb, var(--c-cyan) 45%, transparent); }
+  70% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0.35; transform: translateY(-4px); }
+}
+.upn-grip {
+  cursor: grab;
+  color: var(--ink-faint);
+  font-size: 10px;
+  line-height: 18px;
+  letter-spacing: -2px;
+  user-select: none;
+}
+.upn-when {
+  appearance: none;
+  height: 20px;
+  max-width: 150px;
+  padding: 0 7px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-chip);
+  background: color-mix(in srgb, var(--c-void) 40%, transparent);
+  color: var(--ink-dim);
+  font: 500 9.5px var(--f-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  outline: none;
+}
+.upn-when:hover,
+.upn-when:focus-visible {
+  border-color: var(--glass-edge);
+  color: var(--ink);
+}
+.upn-when.sched {
+  border-color: color-mix(in srgb, var(--c-cyan) 45%, transparent);
+  color: var(--c-cyan);
+}
+.upn-clock {
+  height: 20px;
+  border: 1px solid color-mix(in srgb, var(--c-cyan) 45%, transparent);
+  border-radius: var(--r-chip);
+  background: transparent;
+  color: var(--ink);
+  font: 500 10px var(--f-mono);
+  padding: 0 4px;
+  color-scheme: dark;
+}
+.upn-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--r-chip);
+  color: var(--ink-faint);
+}
+.upn-icon:hover {
+  color: var(--ink);
+}
+.upn-icon.on {
+  color: var(--c-teal);
+}
+
+/* P5 a toast while the chain panel is open sits inside it, under the header */
+.ch-toast-in {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: var(--s-3) var(--s-1) var(--s-1);
+}
+
+/* P-chain3 the chain panel and its mini-Thread. One focal point: the stage dims behind it (as under the options board). */
+.ch-dim {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  background: color-mix(in srgb, var(--c-void) 72%, transparent);
+  pointer-events: none;
+}
+.ch-panel {
+  --ch-bg: color-mix(in srgb, var(--c-abyss) 94%, color-mix(in srgb, var(--c-violet) 12%, transparent));
+  position: absolute;
+  top: 56px;
+  left: 16px;
+  z-index: 30;
+  width: min(392px, calc(100% - 32px));
+  max-height: calc(100% - 72px);
+  overflow-y: auto;
+  padding: 12px 14px 14px;
+  border: 1px solid color-mix(in srgb, var(--c-violet) 45%, transparent);
+  border-radius: var(--r-card);
+  background: var(--ch-bg);
+  box-shadow: 0 0 40px -12px color-mix(in srgb, var(--c-violet) 55%, transparent), 0 30px 60px -30px var(--c-void);
+  backdrop-filter: blur(12px);
+}
+/* an agent question (z-20 card) shows over the panel */
+.ch-panel.yield {
+  z-index: 15;
+}
+/* the loop guard and Start / Run again stay in view while the thread scrolls */
+.ch-foot {
+  position: sticky;
+  bottom: -14px;
+  z-index: 1;
+  margin-bottom: -14px;
+  padding-bottom: 14px;
+  background: linear-gradient(var(--ch-bg), var(--ch-bg)), var(--c-abyss); /* opaque: the thread scrolls under it */
+}
+.ch-thread {
+  --spine: 13px;
+  position: relative;
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+}
+.ch-node {
+  position: relative;
+  padding: 7px 9px 8px;
+  border: 1px solid var(--hair);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--c-void) 45%, transparent);
+  transition: border-color 280ms, box-shadow 280ms, opacity 280ms;
+}
+.ch-node > button:enabled:hover {
+  color: var(--c-core);
+}
+.ch-node.active {
+  border-color: color-mix(in srgb, var(--c-cyan) 70%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--c-cyan) 20%, transparent), 0 0 22px color-mix(in srgb, var(--c-cyan) 28%, transparent);
+}
+.ch-node.critique {
+  border-color: color-mix(in srgb, var(--c-violet) 40%, transparent);
+}
+/* the spine: Ask to Critique, the spectrum (T2) */
+.ch-link {
+  width: 2px;
+  height: 14px;
+  margin-left: var(--spine);
+  background: var(--g-spectrum);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--c-cyan) 40%, transparent);
+}
+.ch-link.live {
+  box-shadow: 0 0 10px color-mix(in srgb, var(--c-cyan) 70%, transparent);
+}
+.ch-branches {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 0 0 30px;
+  list-style: none;
+}
+/* the trunk the branches leave from (L4 inactive teal) */
+.ch-branches::before {
+  content: "";
+  position: absolute;
+  left: var(--spine);
+  top: 0;
+  bottom: 22px;
+  width: 2px;
+  background: color-mix(in srgb, var(--c-teal) 38%, transparent);
+}
+.ch-branch {
+  position: relative;
+  transition: opacity 280ms;
+}
+.ch-branch::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--spine) - 30px);
+  top: 50%;
+  width: 17px;
+  height: 2px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--c-teal) 45%, transparent);
+}
+.ch-when {
+  display: block;
+  margin: 0 0 3px 2px;
+  font-size: 9px;
+  color: var(--c-teal);
+}
+.ch-branch.failed .ch-when {
+  color: color-mix(in srgb, var(--c-fail) 75%, var(--c-ink));
+}
+.ch-branch.pass .ch-node {
+  border-color: color-mix(in srgb, var(--c-ok) 22%, transparent);
+}
+.ch-branch.failed .ch-node {
+  border-color: color-mix(in srgb, var(--c-fail) 22%, transparent);
+}
+/* L3: the branch taken glows amber */
+.ch-branch.lit::before {
+  background: var(--c-amber);
+  box-shadow: 0 0 10px var(--c-amber);
+}
+.ch-branch.lit .ch-when {
+  color: var(--c-amber);
+}
+.ch-branch.lit .ch-node {
+  border-color: color-mix(in srgb, var(--c-amber) 70%, transparent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--c-amber) 28%, transparent);
+}
+.ch-branch.failed.lit::before {
+  background: var(--c-fail);
+  box-shadow: 0 0 10px var(--c-fail);
+}
+.ch-branch.failed.lit .ch-node {
+  border-color: color-mix(in srgb, var(--c-fail) 70%, transparent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--c-fail) 26%, transparent);
+}
+.ch-branch.dim {
+  opacity: 0.25; /* scene.dimOpacity */
+}
+.ch-loop {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  font-size: 8.5px;
+  color: var(--c-teal);
+}
+.ch-branch.lit .ch-loop {
+  color: var(--c-amber);
+}
+.ch-range {
+  accent-color: var(--c-cyan);
+  height: 14px;
+}
+.ch-stop {
+  border-color: color-mix(in srgb, var(--c-fail) 55%, transparent);
+  color: color-mix(in srgb, var(--c-fail) 70%, var(--c-ink));
+}
+.ch-stop:hover {
+  border-color: var(--c-fail);
+  color: var(--c-ink);
+}
+
+/* P-chain4 score dial */
+.ch-dial {
+  position: relative;
+  flex: none;
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+}
+.ch-dial svg {
+  position: absolute;
+  inset: 0;
+}
+.ch-dial .track {
+  fill: none;
+  stroke: var(--hair);
+  stroke-width: 4;
+}
+.ch-dial .arc {
+  fill: none;
+  stroke: var(--c-cyan);
+  stroke-width: 4;
+  stroke-linecap: round;
+  transition: stroke-dasharray 700ms var(--ease-out);
+}
+.ch-dial.below .arc {
+  stroke: var(--c-amber);
+  filter: drop-shadow(0 0 5px var(--c-amber));
+}
+.ch-dial.pass .arc {
+  stroke: var(--c-ok);
+  filter: drop-shadow(0 0 6px var(--c-ok));
+}
+.ch-dial .tick {
+  stroke: var(--c-core);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.ch-dial .num {
+  font: 300 26px/1 var(--f-display);
+  letter-spacing: -0.01em;
+  color: var(--c-core);
+}
+.ch-dial .of {
+  position: absolute;
+  bottom: 13px;
+  font: 500 8px var(--f-mono);
+  letter-spacing: 0.14em;
+  color: var(--ink-dim);
+}
+.ch-thread.calm .ch-node,
+.ch-thread.calm .ch-branch {
+  transition: none;
+}
+.ch-thread.calm .ch-link.live {
+  animation: none;
+}
+
+/* P-chain5 System toast text */
+.ch-toast-text {
+  margin-top: 8px;
+  text-align: center;
+  font: 600 15px/1.3 var(--f-display);
+  color: var(--c-ink);
+}
+.ch-toast-text.ok {
+  color: color-mix(in srgb, var(--c-ok) 70%, var(--c-ink));
+}
+.ch-toast-text.warn {
+  color: color-mix(in srgb, var(--c-slow) 75%, var(--c-ink));
+}
+.ch-toast-score {
+  font-weight: 300;
+  font-size: 22px;
+  color: var(--c-core);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .upn-card.go {
+    animation: none;
+  }
+}
