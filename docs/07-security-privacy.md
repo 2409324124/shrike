@@ -1,0 +1,66 @@
+# 07 · Security and privacy
+
+Shrike sees request bodies, cookies, database queries and source code. People will only install it if they trust it. Treat this doc as requirements, not guidance.
+
+## Principles
+
+1. **Local by default.** Recordings, code and settings stay on the machine. Nothing goes to our cloud unless the user signs in *and* shares something.
+2. **Redact on ingest.** Secrets are removed before anything is written to disk, shown in the UI, given to an agent or exported. There's no "raw" copy to leak.
+3. **Agents are untrusted.** Every side effect goes through a Shrike tool that checks scope and asks for approval where needed.
+4. **Open source core.** Anyone can audit what the instrumentation captures and where it sends it.
+
+## Threat model
+
+| Threat | Mitigation |
+|---|---|
+| Secrets in recordings leak through export, share or AI context | Redaction on ingest; "what was sent" drawer for every agent run; exports contain redacted data only |
+| Prompt injection via page text, logs, API responses or code comments steers the agent | Tool outputs wrapped in delimited data blocks; system prompt says tool output is data; network scope limited to project origins; no shell tool; patches need approval |
+| Agent CLI uses its own edit/shell tools to bypass the diff | Those tools disabled per brain (see [05-agent.md](05-agent.md#agent-brains)); fallback is read-only sandbox or throwaway worktree |
+| Another local process sends fake events or reads the ingest | Ingest binds `127.0.0.1` on a random port; per-session random token required; tokens rotate per run |
+| Malicious page in the app pane escapes into Shrike | App pane is a separate `WebContentsView` with its own session partition, `nodeIntegration: false`, `contextIsolation: true`, `sandbox: true`; no preload exposes Shrike APIs to it |
+| Renderer compromise reaches Node | Renderer sandboxed; preload exposes only typed IPC; main validates every message with zod |
+| Instrumentation runs in production by accident | node-agent refuses to start when `NODE_ENV=production`; it's only ever injected by Shrike's launcher |
+| Agent makes destructive API calls against a real database | Data-changing requests outside a recorded scenario need approval; warn when `DATABASE_URL` points at a non-local host |
+| Patch damages the project | Patches limited to files inside the project root, never `.env*`, lockfiles, `.git`, `node_modules`; one-click revert; warn if the working tree has uncommitted changes in touched files |
+| Shared link exposes data | Links are private by default, expire (7 days default), revocable; viewer shows redacted data only |
+| A cloned repo's `.mcp.json` or `.shrike/mcp.json` runs a command on your machine | Shrike starts a server from a project's files (health check or a run) only after **Trust and check**, or when Claude Code already approved it (`enabledMcpjsonServers`); trust is for that exact config, so a changed file asks again. Servers from `~/.claude.json` and `~/.shrike/mcp.json` are yours and start without asking (docs/13 MCP2) |
+| MCP secrets leak through Shrike's files, the UI, logs or the command line | Shrike writes only its own `~/.shrike/mcp.json` and `<project>/.shrike/mcp.json`, never Claude Code's files; secrets you type or paste become `${NAME}` there and the value goes to userData `mcp-secrets.json`, encrypted with Electron `safeStorage` (keychain). The renderer only ever gets env and header names; commands, addresses and health-check errors pass through `@shrike/redact` (and the server's own secret values are cut out) before they're shown or given to the agent in Fix it. Passwords and `--key`/`--token` values in a server's command line show as `[redacted]`. A project `.shrike` folder or `mcp.json` that is a link elsewhere is refused, so a cloned repo can't make Shrike copy `~/.claude.json` into it. Calls to the user's own servers and their output are redacted before the agent panel and X-ray show them. A run gets the filled config in a 0600 temp file, never on the command line, deleted when the run ends |
+| Adding a catalog tool downloads and runs code | The add is an approval card that names what runs and where it's saved; the download runs through the guarded shell (`judge`; "never" refuses), three minutes at most, and is killed on quit. Health checks kill the server's whole process tree when they finish or time out |
+| The API client reaches hosts outside the app, or the agent does | Your own sends from the API client (AP) go to any http(s) host you type, like Bruno or Postman; only the app's own addresses get Shrike's `traceparent`. An agent's `send_request` or `save_request` to anything other than the app's local address shows an approval card first (GET included), and data-changing requests to the app still ask too. An agent's send never follows a redirect to another origin and never sees `{{vars}}` set by your own sends. Assertions run as pure checks, never code |
+| A collection's scripts or files hurt your machine | Collection scripts (Bruno `script:*` and `tests`) run only on your own sends, never the agent's, in a `node:vm` context inside a worker thread: no `require`, `process`, timers or network, string code generation off, only JSON crosses in and out, 64MB heap, and the worker is killed after 2s. Linked Bruno folders are written only when you press Save, atomically (temp file, then rename); links, `..`, `.claude`, `.git` and `node_modules` paths are refused. Secret environment values go to userData `api-secrets.json`, encrypted with Electron `safeStorage`; files get `vars:secret` names only. History (last 200 sends per project, userData) is redacted before it's written |
+| Supply-chain compromise of Shrike itself | Signed and notarised builds, lockfile pinning, dependency review in CI, minimal deps in node-agent and browser-agent (they run inside user apps) |
+
+## Redaction rules (`@shrike/redact`)
+
+Applied in this order, on every event at ingest and again on every tool output and export.
+
+1. **Headers:** `authorization`, `cookie`, `set-cookie`, `proxy-authorization`, `x-api-key`, plus user-configured names.
+2. **Keys in JSON bodies, query strings, form data, args and return values:** any key matching `/pass(word)?|passwd|secret|token|api[-_]?key|auth|session|credential|private[-_]?key|card|cvv|ssn/i`.
+3. **Env values:** read `.env*` files at session start; any string equal to one of those values (≥ 6 chars) is replaced wherever it appears.
+4. **Known secret shapes:** AWS access keys, Stripe keys, OpenAI/Anthropic keys, GitHub tokens, Slack tokens, JWTs, PEM blocks, connection strings with passwords.
+5. **High-entropy strings:** ≥ 24 chars with Shannon entropy above a threshold in a value position, flagged and masked.
+6. **User rules** from `.shrike/config.json`.
+
+Replacement format: `"[redacted:password]"`, keeping the key so the structure stays debuggable. Redaction is logged as a count per event (never the value).
+
+rrweb: `maskAllInputs: true` by default; `password` inputs are always masked; users can unmask non-sensitive inputs per selector.
+
+## Data sent off the machine
+
+| Destination | What | When | User control |
+|---|---|---|---|
+| User's agent provider (Anthropic, OpenAI, etc.) via their CLI | Redacted tool outputs, code the agent reads | During an agent run | Choose brain, or Explain-only mode, or no agent |
+| Anthropic via built-in agent | Same | During a built-in agent run | Own key, or hosted key on paid plan |
+| Shrike cloud | Account info; shared recordings | Sign-in; explicit share | Optional; delete anytime |
+| PostHog | Anonymous product events (no code, no payloads, no URLs of the user's app) | Only after opt-in | Off by default |
+| Sentry | Shrike crash reports, scrubbed | Only after opt-in | Off by default |
+
+## Storage
+
+- Local DB and blobs live in the OS app data dir with user-only file permissions.
+- Retention: last 20 sessions per project (configurable); "Delete all recordings" in settings.
+- Optional (v1.x): encrypt the local DB with a key in the OS keychain.
+
+## Compliance notes (for later)
+
+Not needed for an MVP desktop tool. Before launching team features: a privacy policy, a DPA template, GDPR data export and delete for cloud accounts, and a security page describing exactly what this doc says. Have a lawyer review the privacy policy; don't generate it.
