@@ -1,0 +1,337 @@
+/* RL-ui1 to RL-ui6 (design-system README). Tokens only; glows stay off in High contrast (data-glow="off"). */
+
+.rl-select {
+  height: 24px;
+  border: 1px solid var(--hair);
+  border-radius: 6px;
+  background: transparent;
+  padding: 0 4px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-dim);
+}
+.rl-select:focus-visible {
+  border-color: var(--signal);
+}
+
+/* RL-ui1 burn-down */
+.rl-burn {
+  border: 1px solid var(--hair);
+  border-radius: var(--r-card, 14px);
+  padding: 10px 12px 8px;
+  background: var(--glass);
+}
+.rl-num {
+  font-family: var(--display);
+  font-size: 32px;
+  font-weight: 300;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  color: var(--c-core);
+}
+.rl-num.dim {
+  font-size: 22px;
+  color: var(--ink-dim);
+}
+.rl-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 34px;
+  margin-top: 8px;
+}
+.rl-bars i {
+  flex: 1;
+  min-width: 3px;
+  border-radius: 3px 3px 1px 1px;
+  background: color-mix(in srgb, var(--c-teal) 45%, transparent);
+}
+.rl-bars i.none {
+  height: 2px;
+  background: var(--hair);
+}
+.rl-bars i.now {
+  background: var(--signal);
+}
+
+/* RL-ui2 lesson card */
+.rl-card {
+  position: relative;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-card);
+  background: var(--glass);
+}
+.rl-card.open {
+  border-color: var(--hair-strong);
+  box-shadow: inset 2px 0 0 var(--signal);
+}
+.rl-card.done {
+  opacity: 0.78;
+}
+.rl-card-head {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 10px 8px;
+  text-align: left;
+}
+.rl-card-head:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: -2px;
+  border-radius: var(--r-card);
+}
+.rl-title {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.rl-meta {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--ink-dim);
+}
+.rl-count {
+  flex-shrink: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.rl-spark {
+  flex-shrink: 0;
+  overflow: visible;
+}
+.rl-spark path {
+  fill: none;
+  stroke: color-mix(in srgb, var(--c-teal) 60%, transparent);
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+}
+.rl-spark circle {
+  fill: var(--ink-faint);
+}
+.rl-spark circle.down {
+  fill: var(--ok);
+}
+.rl-spark circle.up {
+  fill: var(--slow);
+}
+.rl-mark {
+  display: inline-block;
+  margin: -2px 0 8px 40px;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.rl-mark.warn {
+  color: var(--slow);
+}
+.rl-mark.wait {
+  color: var(--violet);
+}
+.rl-mark.ok {
+  color: var(--ok);
+}
+.rl-card-body {
+  border-top: 1px solid var(--hair);
+  padding: 8px 10px 10px 40px;
+}
+.rl-example {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: baseline;
+  gap: 6px;
+  text-align: left;
+}
+.rl-example:hover:not(:disabled) span:last-child {
+  color: var(--ink);
+}
+
+/* RL-ui3 reviewer card */
+.rl-rev {
+  border: 1px solid var(--hair);
+  border-radius: var(--r-card);
+  padding: 9px 10px 10px;
+}
+.rl-avatar {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  place-items: center;
+  border: 1px solid var(--hair-strong);
+  border-radius: 999px;
+  background: var(--glass);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.rl-avatar.bot {
+  border-color: color-mix(in srgb, var(--violet) 50%, transparent);
+  background: color-mix(in srgb, var(--violet) 15%, transparent);
+  color: var(--violet);
+}
+.rl-split {
+  display: flex;
+  height: 4px;
+  margin-top: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--hair);
+}
+.rl-split i.blocking,
+.rl-legend .blocking::before {
+  background: color-mix(in srgb, var(--fail) 70%, transparent);
+}
+.rl-split i.question,
+.rl-legend .question::before {
+  background: var(--c-blue);
+}
+.rl-split i.nit,
+.rl-legend .nit::before {
+  background: var(--c-teal);
+}
+.rl-split i.note,
+.rl-legend .note::before {
+  background: var(--hair-strong);
+}
+.rl-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  margin-top: 4px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-faint);
+}
+.rl-legend span::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 4px;
+  border-radius: 2px;
+  vertical-align: 0;
+}
+.rl-legend span:not([class])::before {
+  display: none;
+}
+.rl-concerns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.rl-concern {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  border: 1px solid var(--hair);
+  border-radius: 999px;
+  padding: 1px 8px 1px 2px;
+  font-size: 11px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--ink);
+}
+.rl-concern b {
+  display: inline-grid;
+  min-width: 16px;
+  height: 16px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--hair);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.rl-concern.top {
+  border-color: var(--signal);
+}
+.rl-concern:hover {
+  border-color: var(--hair-strong);
+}
+.rl-style {
+  margin: 8px 0 0;
+  padding: 0 0 0 14px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--ink-dim);
+}
+.rl-style li::marker {
+  color: var(--ink-faint);
+}
+
+/* RL-ui4 lesson chip in a PR comment */
+.rl-chip {
+  display: inline-flex;
+  flex-shrink: 3;
+  min-width: 0;
+  max-width: 190px;
+  height: 18px;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid color-mix(in srgb, var(--slow) 35%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--slow) 8%, transparent);
+  padding: 0 7px;
+  font-size: 11px;
+  color: var(--ink);
+}
+.rl-chip-n {
+  flex-shrink: 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--slow);
+}
+.rl-chip.first {
+  border-color: var(--hair);
+  background: transparent;
+}
+.rl-chip.first .rl-chip-n {
+  color: var(--ink-dim);
+}
+
+/* RL-ui5 self-check card in Ship */
+.rl-check {
+  margin-bottom: 12px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-card);
+  padding: 9px 12px 10px;
+}
+
+/* RL-ui6 [Lesson Mastered] */
+.rl-m-title {
+  margin: 4px 0 0;
+  font-size: 15px;
+  color: var(--ink);
+}
+.rl-m-line {
+  margin: 1px 0 0;
+  font-size: 12.5px;
+  color: var(--ink-dim);
+}
+.rl-m-xp {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--signal);
+}

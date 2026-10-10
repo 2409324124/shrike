@@ -1,0 +1,110 @@
+/* CI1–CI8: pipeline thread, pre-flight panel, result card, local vs hosted, track record. Tokens only (design-system/README.md CI). */
+
+/* T3-style station ring */
+.ci-st {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1.75px solid var(--ink-faint);
+  background: var(--abyss);
+}
+.ci-st[data-tone="ok"], .ci-st[data-tone="pass"] { border-color: var(--ok); }
+.ci-st[data-tone="pass"] { background: color-mix(in srgb, var(--ok) 30%, var(--abyss)); }
+.ci-st[data-tone="fail"] { border-color: var(--fail); background: color-mix(in srgb, var(--fail) 30%, var(--abyss)); }
+.ci-st[data-tone="flaky"] { border-color: var(--slow); border-style: dashed; }
+.ci-st[data-tone="off"], .ci-st[data-tone="skipped"], .ci-st[data-tone="none"] { border-color: var(--ink-faint); border-style: dotted; background: transparent; }
+.ci-st[data-tone="running"] { border-color: var(--signal); box-shadow: 0 0 0 3px color-mix(in srgb, var(--signal) 18%, transparent); }
+.ci-st[data-tone="waiting"] { border-color: var(--ink-faint); }
+
+/* CI3 / CI4 pre-flight panel in the Changes dock */
+.ci-pf { margin-top: 8px; padding: 9px 10px 10px; border: 1px solid var(--hair); border-radius: var(--r-card); background: color-mix(in srgb, var(--void) 35%, transparent); }
+.ci-pf.red { border-color: color-mix(in srgb, var(--fail) 40%, transparent); }
+.ci-pf.green { border-color: color-mix(in srgb, var(--ok) 35%, transparent); }
+.ci-pf-legs { margin: 8px 0 0; padding: 0; list-style: none; position: relative; }
+.ci-pf-legs::before { content: ""; position: absolute; left: 5.5px; top: 8px; bottom: 8px; width: 1px; background: var(--hair); }
+.ci-pf-leg { position: relative; display: flex; align-items: flex-start; gap: 8px; padding: 3px 0; font-size: 12.5px; line-height: 16px; color: var(--ink); }
+.ci-pf-leg .ci-st { margin-top: 2px; }
+.ci-pf-tail { margin: 2px 0 0; font: 10.5px/15px var(--f-mono); color: var(--ink-faint); white-space: pre-wrap; word-break: break-all; }
+.ci-result { margin: 8px 0 0; font-size: 12.5px; line-height: 1.7; color: var(--ink); }
+.ci-result .sep { color: var(--ink-faint); margin: 0 2px; }
+.ci-result .ok { color: var(--ok); font-weight: 600; }
+.ci-result .no { color: var(--fail); font-weight: 600; }
+.ci-result .why { color: var(--ink-dim); }
+.ci-verdict { margin: 6px 0 0; font: 600 15px var(--f-display); }
+.ci-verdict.ok { color: var(--ok); }
+.ci-verdict.fail { color: var(--fail); }
+.ci-verdict.info { color: var(--ink-dim); }
+.ci-warn { margin: 6px 0 0; padding: 5px 8px; border-radius: 6px; font-size: 11.5px; line-height: 1.45; color: var(--ink); background: color-mix(in srgb, var(--slow) 9%, transparent); }
+.ci-fail-line { margin: 4px 0 0 20px; padding: 6px 8px; border-left: 2px solid var(--fail); }
+.ci-fail-line code { display: block; font: 10.5px/15px var(--f-mono); color: var(--ink-dim); white-space: pre-wrap; word-break: break-all; }
+.ci-link { color: var(--signal); font-size: 11.5px; }
+.ci-link:hover { text-decoration: underline; }
+.ci-approval { margin-top: 8px; padding: 8px 10px; border-radius: 8px; border: 1px solid color-mix(in srgb, var(--slow) 45%, transparent); background: color-mix(in srgb, var(--slow) 6%, transparent); }
+.ci-approval pre { margin: 6px 0 8px; padding: 6px 8px; border-radius: 6px; font: 10.5px/15px var(--f-mono); color: var(--ink); background: color-mix(in srgb, var(--void) 55%, transparent); white-space: pre-wrap; word-break: break-all; }
+.ci-agent { color: var(--violet); }
+
+/* The pipeline view: beside the dock, over the stage */
+.ci-view { position: absolute; top: 12px; right: 12px; bottom: 12px; z-index: 30; width: min(820px, calc(100% - 24px)); display: flex; flex-direction: column; border-radius: var(--r-pane); }
+.ci-view-scroll { min-height: 0; flex: 1; overflow: auto; padding: 4px 18px 18px; }
+.ci-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px 10px 18px; border-bottom: 1px solid var(--hair); }
+
+/* CI6 track record */
+.ci-record { padding: 14px 0 14px; }
+.ci-num { font: 300 40px/1 var(--f-display); letter-spacing: -0.01em; }
+.ci-num.ok { color: var(--ok); }
+.ci-num.slow { color: var(--slow); }
+.ci-num.idle { color: var(--ink-faint); }
+.ci-dots { display: flex; gap: 5px; margin-top: 6px; }
+.ci-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--ink-faint); }
+.ci-dot.clean { background: var(--ok); border-color: var(--ok); }
+.ci-dot.surprise { background: var(--fail); border-color: var(--fail); }
+.ci-dot.caught { background: var(--slow); border-color: var(--slow); }
+.ci-chip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border: 1px solid var(--hair); border-radius: 999px; font: 11px var(--f-mono); color: var(--ink); }
+
+/* CI1 pipeline thread: stages as lanes, jobs as stations */
+.ci-lanes { display: flex; flex-wrap: wrap; gap: 14px 26px; padding: 6px 0 4px; }
+.ci-lane { position: relative; min-width: min(260px, 100%); flex: 1; }
+.ci-lane-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.ci-lane-body { position: relative; padding-left: 0; }
+.ci-lane-body::before { content: ""; position: absolute; left: 5.5px; top: 4px; bottom: 4px; width: 1px; background: linear-gradient(180deg, var(--violet), var(--signal)); opacity: 0.55; }
+:root[data-glow="off"] .ci-lane-body::before { opacity: 1; background: var(--hair); }
+.ci-wf { position: relative; margin: 8px 0 3px 20px; font: 500 11px var(--f-display); color: var(--ink-faint); }
+.ci-job { position: relative; display: flex; align-items: center; gap: 8px; width: 100%; padding: 3px 6px 3px 0; border-radius: 7px; text-align: left; }
+.ci-job:hover { background: var(--glass); }
+.ci-job.on { background: var(--glass); box-shadow: inset 2px 0 0 var(--signal); }
+.ci-job .name { display: block; font-size: 12.5px; line-height: 17px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ci-job .meta { display: block; font: 10px/14px var(--f-mono); color: var(--ink-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ci-job.off .name { color: var(--ink-faint); }
+.ci-touch { flex: none; width: 5px; height: 5px; border-radius: 50%; background: var(--signal); }
+
+/* CI5 local vs hosted */
+.ci-vs { width: 100%; border-collapse: collapse; }
+.ci-vs th { padding: 0 0 6px; text-align: center; font: 500 11px var(--f-display); color: var(--ink-dim); }
+.ci-vs th:first-child { text-align: left; }
+.ci-vs td { padding: 4px 0; font-size: 12.5px; color: var(--ink); }
+.ci-vs td.st { width: 64px; text-align: center; }
+.ci-vs td.link { width: 64px; text-align: center; }
+.ci-vs .bar { display: block; height: 1px; margin: 0 6px; background: var(--hair); position: relative; }
+.ci-vs .bar.match::after { content: "✓"; position: absolute; left: 50%; top: -8px; transform: translateX(-50%); font-size: 9px; color: color-mix(in srgb, var(--ok) 70%, var(--ink-faint)); }
+.ci-vs tr.snap .bar { background: var(--fail); height: 2px; }
+.ci-vs tr.snap td:first-child { color: var(--fail); font-weight: 600; }
+.ci-snap { position: relative; display: inline-block; }
+.ci-snap .ring { position: absolute; inset: -5px; border-radius: 50%; border: 1.5px solid var(--fail); animation: ci-ring 0.9s var(--ease-out) 1 forwards; }
+.ci-snap .spark { position: absolute; left: 50%; top: 50%; width: 2px; height: 6px; margin: -3px 0 0 -1px; border-radius: 1px; background: var(--fail); transform-origin: 1px 3px; animation: ci-spark 0.6s var(--ease-out) 1 forwards; }
+@keyframes ci-ring { from { transform: scale(0.6); opacity: 1; } to { transform: scale(1.9); opacity: 0; } }
+@keyframes ci-spark { from { opacity: 1; transform: rotate(var(--a)) translateY(0); } to { opacity: 0; transform: rotate(var(--a)) translateY(-16px); } }
+
+/* Job details */
+.ci-detail { margin-top: 12px; padding: 12px 14px; border: 1px solid var(--hair); border-radius: var(--r-card); background: color-mix(in srgb, var(--void) 30%, transparent); }
+.ci-cmds { margin: 6px 0 0; padding: 0; list-style: none; counter-reset: c; }
+.ci-cmds li { counter-increment: c; display: flex; gap: 8px; padding: 2px 0; font: 11.5px/17px var(--f-mono); color: var(--ink); word-break: break-all; }
+.ci-cmds li::before { content: counter(c); flex: none; width: 14px; color: var(--ink-faint); }
+.ci-facts { margin: 8px 0 0; font-size: 12px; line-height: 1.55; color: var(--ink-dim); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ci-snap .ring, .ci-snap .spark { animation: none; }
+  .ci-snap .spark { display: none; }
+}

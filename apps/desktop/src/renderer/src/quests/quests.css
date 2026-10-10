@@ -1,0 +1,79 @@
+/* QB: the quest board (design-system QB-board, QB-card, QB-thread, QB-sliver, QB-new). Tokens only. */
+
+.qb-scrim {
+  background: color-mix(in srgb, var(--void) 82%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+/* QB-thread: one node per objective on a 2px vertical thread. */
+.qb-obj {
+  position: relative;
+  padding: 0 0 14px 26px;
+  list-style: none;
+}
+.qb-obj::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 14px;
+  bottom: -2px;
+  border-left: 2px dashed color-mix(in srgb, var(--ink-faint) 45%, transparent);
+}
+.qb-obj:last-child::before { display: none; }
+.qb-node {
+  position: absolute;
+  left: 0;
+  top: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--ink-faint) 70%, transparent);
+  background: var(--abyss);
+}
+.qb-obj[data-look="ghost"] .qb-text { color: var(--ink-dim); opacity: 0.7; }
+.qb-obj[data-look="next"] .qb-node {
+  border-color: var(--signal);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--signal) 18%, transparent), 0 0 10px color-mix(in srgb, var(--signal) 55%, transparent);
+}
+.qb-obj[data-look="next"] .qb-text { color: var(--c-core); }
+.qb-obj[data-look="passed"]::before { border-left-style: solid; border-left-color: color-mix(in srgb, var(--ok) 70%, transparent); }
+.qb-obj[data-look="passed"] .qb-node { border-color: var(--ok); background: var(--ok); }
+.qb-obj[data-look="passed"] .qb-text { color: var(--ink-dim); }
+.qb-obj[data-look="failed"] .qb-node { border-color: var(--fail); background: color-mix(in srgb, var(--fail) 35%, var(--abyss)); }
+.qb-obj[data-look="dropped"] .qb-text { color: var(--ink-faint); text-decoration: line-through; }
+.qb-obj[data-look="dropped"] .qb-node { border-style: dashed; }
+
+/* QB-sliver */
+.qb-sliver {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 32px;
+  padding: 0 10px 0 0;
+  border: 1px solid var(--hair);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--glass) 50%, transparent);
+  color: var(--ink-dim);
+  text-align: left;
+  overflow: hidden;
+}
+.qb-sliver:hover { color: var(--ink); border-color: var(--glass-edge); }
+.qb-sliver > i { align-self: stretch; width: 3px; flex: none; background: var(--ink-faint); }
+.qb-sliver[data-state="active"] > i { background: var(--signal); }
+.qb-sliver[data-state="planning"] > i { background: var(--violet); }
+.qb-sliver[data-state="complete"] > i { background: var(--ok); }
+
+.qb-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  height: 20px;
+  padding: 0 7px;
+  border: 1px solid var(--hair);
+  border-radius: 5px;
+  font: 500 10.5px/1 var(--f-mono);
+  color: var(--ink-dim);
+  white-space: nowrap;
+}
