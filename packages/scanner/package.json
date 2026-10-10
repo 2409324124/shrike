@@ -1,0 +1,13 @@
+{
+  "name": "@shrike/scanner",
+  "version": "0.0.0",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@shrike/schema": "workspace:*"
+  }
+}
