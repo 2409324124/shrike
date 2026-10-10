@@ -1,0 +1,14 @@
+{
+  "name": "@shrike/correlator",
+  "version": "0.0.0",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@jridgewell/trace-mapping": "^0.3.30",
+    "@shrike/schema": "workspace:*"
+  }
+}
