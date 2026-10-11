@@ -60,5 +60,9 @@ electron=$(node -p "require('$desktop/node_modules/electron/package.json').versi
   -c.electronVersion="$electron" -c.electronDist="$desktop/node_modules/electron/dist" -c.directories.output="$out/dist" --publish never)
 
 dmg=$(ls "$out"/dist/*.dmg)
+if [ "${SHRIKE_SKIP_NOTARY:-}" != 1 ]; then
+  xcrun notarytool submit "$dmg" --keychain-profile shrike --wait
+  xcrun stapler staple "$dmg"
+fi
 echo "built $dmg"
 shasum -a 256 "$dmg"

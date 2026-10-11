@@ -1,6 +1,6 @@
 # Releasing the macOS build
 
-One command builds a signed macOS arm64 `.dmg`. It is signed with a Developer ID and the hardened runtime but **not notarised yet**, so users open it the first time with right-click > Open.
+One command builds a signed macOS arm64 `.dmg`. It is signed with a Developer ID and the hardened runtime, then notarised by Apple and stapled, so it opens with no warning.
 
 ## Needs
 
@@ -24,7 +24,7 @@ What it does (all inside the output folder, never `apps/desktop/out`, so a runni
    - `prompts/agent`, `prompts/skills`
    - `fixtures/todo-app` with its own `node_modules` (the sample project; copied into userData on first open)
    - `apps/desktop/native/voice/build/ShrikeVoice.app`, built by `native/voice/build.sh`, then signed with the Developer ID, hardened runtime and `native/voice/entitlements.plist` (microphone). `mlx.metallib` moves to `Contents/Resources` with a symlink beside the binary, so it is a sealed resource.
-4. `electron-builder` with `apps/desktop/electron-builder.yml`: appId `dev.shrike.app`, icon from `apps/desktop/resources/icon.png`, entitlements `apps/desktop/resources/entitlements.mac.plist` (JIT, unsigned executable memory, microphone), `NSMicrophoneUsageDescription`, `notarize: false`. It uses the installed Electron (`electronDist`), so nothing big is downloaded.
+4. `electron-builder` with `apps/desktop/electron-builder.yml`: appId `dev.shrike.app`, icon from `apps/desktop/resources/icon.png`, entitlements `apps/desktop/resources/entitlements.mac.plist` (JIT, unsigned executable memory, microphone), `NSMicrophoneUsageDescription`, `notarize: false` (the script notarises the `.dmg` itself, see below). It uses the installed Electron (`electronDist`), so nothing big is downloaded.
 
 Brand images (the dot bust, emblem) are JSON imported by the renderer, so they are inside `app.asar` already.
 
@@ -35,7 +35,7 @@ Output: `release/dist/Shrike-<version>-arm64.dmg` and the unpacked `release/dist
 ```sh
 APP=release/dist/mac-arm64/Shrike.app
 codesign --verify --deep --strict --verbose=2 "$APP"     # valid on disk, satisfies its Designated Requirement
-spctl -a -vvv -t exec "$APP"                             # rejected, source=Unnotarized Developer ID (expected until notarised)
+spctl -a -vvv -t exec "$APP"                             # accepted, source=Notarized Developer ID
 codesign -d --entitlements - "$APP"
 shasum -a 256 release/dist/*.dmg
 ```
@@ -52,9 +52,15 @@ SHRIKE_PACKAGED_APP="$PWD/../../release/dist/mac-arm64/Shrike.app" node --test e
 Upload the `.dmg` to a GitHub release by hand (nothing in the script pushes or uploads):
 
 ```sh
-gh release create v0.1.0 release/dist/Shrike-0.1.0-arm64.dmg --title "Shrike 0.1.0" --notes "First public build. Signed, not notarised: right-click > Open the first time."
+gh release create v0.1.0 release/dist/Shrike-0.1.0-arm64.dmg --title "Shrike 0.1.0" --notes "First public build. Signed and notarised."
 ```
 
-## Notarising later
+## Notarising
 
-Set `mac.notarize: true` in `apps/desktop/electron-builder.yml` and provide `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` and `APPLE_TEAM_ID` in the environment (never in the repo). Every binary in the sample's `node_modules` is already signed with the hardened runtime, which notarisation requires.
+`build-mac.sh` sends the finished `.dmg` to Apple with `xcrun notarytool submit --keychain-profile shrike --wait` and staples the ticket. Store the credentials once in your keychain (never in the repo), using an app-specific password from appleid.apple.com:
+
+```sh
+xcrun notarytool store-credentials shrike --apple-id <apple id> --team-id ZK8UX8XUW9
+```
+
+`SHRIKE_SKIP_NOTARY=1` skips it for a local test build. electron-builder's own `notarize` stays off: the script notarises the final `.dmg`.

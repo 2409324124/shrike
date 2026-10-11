@@ -200,7 +200,7 @@ Works today with Node servers (Express, Next.js, NestJS, Hono, Remix) and Vite o
 ### Download
 
 1. Get `Shrike-<version>-arm64.dmg` from [Releases](https://github.com/SumantxD/shrike/releases/latest) and drag Shrike to Applications.
-2. The build is signed but not notarised yet. The first time, **right-click Shrike and choose Open**, then Open again. After that it opens normally.
+2. Open Shrike. The build is signed and notarised by Apple, so it opens like any other app.
 3. Click **Open the sample project**, press **Run**, add a todo, and watch it break.
 
 ### Run from source
@@ -258,7 +258,8 @@ Details in [docs/07-security-privacy.md](docs/07-security-privacy.md).
 
 ## Roadmap
 
-- [ ] Notarised builds and auto-update
+- [x] Notarised builds
+- [ ] Auto-update
 - [ ] Windows and Linux
 - [ ] Codex and OpenCode as agent brains
 - [ ] Shareable recordings (`.shriketrace`) and a read-only web viewer
