@@ -1,6 +1,6 @@
 # 04 · Data model
 
-All types live in `@shrike/schema` as zod schemas, with TS types derived via `z.infer`. Every collector emits `DebugEvent`; the UI and the agent read nothing else.
+All types live in `@shrike/schema` as plain TypeScript types; zod validates them where they cross a process boundary (`apps/desktop/src/main/ipc.ts`, `ingest.ts`, `otlp.ts`). Every collector emits `DebugEvent`; the UI and the agent read nothing else.
 
 ## Core types
 

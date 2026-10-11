@@ -9,6 +9,6 @@
 
 Rules for runtime prompts:
 
-- Variables use `{{name}}` and are filled by `packages/agent/src/prompts.ts`. Every variable must be filled or the run fails loudly.
+- Variables use `{{name}}` and are filled by `packages/agent/src/prompt.ts`. Every variable must be filled or the run fails loudly.
 - Anything from the user's app (code, logs, bodies, page text) goes inside an XML-style tag and is described as data.
 - Changing a runtime prompt means re-running the agent eval (`docs/09-testing.md`) and noting the result.

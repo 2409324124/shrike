@@ -141,4 +141,4 @@ All channels are typed in `@shrike/schema` and validated with zod in main. The r
 
 ## Repo layout
 
-See the root [README.md](../README.md#repository-layout). Every app and package has its own README with responsibilities, planned `src/` tree and its "done when" check.
+`apps/` (desktop, plus planned cloud and site), `packages/` (one README each with responsibilities, `src/` layout and its "done when" check), `design-system/`, `prompts/`, `fixtures/`, `scripts/release/`. See [CLAUDE.md](../CLAUDE.md#where-things-are).
