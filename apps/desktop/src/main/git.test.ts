@@ -5,8 +5,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import type { AgentOptions, Flow, GitState } from "@shrike/schema";
-import { branchName, commitMessage, createGit, gitMissing, parseStatus, readGit, type GitDeps } from "./git.ts";
-import type { ExecResult, Gh } from "./github.ts";
+import { branchName, commitMessage, createGit, exec, gitMissing, parseStatus, readGit, type GitDeps } from "./git.ts";
+import { listPrs, makeGh, type ExecResult, type Gh } from "./github.ts";
 
 const sh = (cwd: string, ...args: string[]) => execFileSync("git", args, { cwd, encoding: "utf8", env: { ...process.env, GIT_EDITOR: "true" } }).trim();
 
@@ -294,4 +294,20 @@ test("state(): the branch's PR with checks, failing ones carry their log summary
   assert.equal(s.pr?.number, 5);
   assert.deepEqual(s.pr?.checks.map((c) => c.state), ["fail", "pass"]);
   assert.match(s.pr?.checks[0]?.summary ?? "", /"lint" check failed during "Lint"\. The first problem it printed: src\/a\.ts:3:1 error/);
+});
+
+test("a gh that never answers (packets dropped) is stopped and reads as a network problem", async () => {
+  const bin = join(mkdtempSync(join(tmpdir(), "shrike-gh-hang-")), "gh");
+  writeFileSync(bin, "#!/usr/bin/env node\nsetTimeout(() => {}, 60_000);\n", { mode: 0o755 }); // one process, like the real gh binary
+  const prev = process.env.SHRIKE_GH_BIN;
+  process.env.SHRIKE_GH_BIN = bin;
+  try {
+    const gh = makeGh((cmd, args, o) => exec(cmd, args, { ...o, timeoutMs: 500 }));
+    const t = Date.now();
+    await assert.rejects(listPrs(gh, tmpdir()), /^Error: Couldn't list pull requests\. The network didn't answer\. Check your internet connection/);
+    assert.ok(Date.now() - t < 5000);
+  } finally {
+    if (prev === undefined) delete process.env.SHRIKE_GH_BIN;
+    else process.env.SHRIKE_GH_BIN = prev;
+  }
 });

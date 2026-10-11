@@ -1,0 +1,94 @@
+// The API client against a host that misbehaves: nothing listening, a certificate nobody trusts, a binary answer and a
+// 12MB one. Each ends in a plain answer and the window keeps drawing. Run `pnpm build` first (or SHRIKE_E2E_APP=<a build>).
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { createServer } from "node:http";
+import { createServer as createHttps } from "node:https";
+import type { AddressInfo } from "node:net";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import type { Page } from "playwright";
+import { fixtureCopy, key, launch, openFolder, shot, sleep } from "./helpers.ts";
+
+const LINE = `${"GET /api/todos 200 ok, user 7 saved a todo called buy milk ".repeat(4)}\n`;
+
+async function longestFrameGap(win: Page, during: () => Promise<void>): Promise<number> {
+  await win.evaluate(() => {
+    const w = window as unknown as { __gap: number; __last: number; __on: boolean };
+    Object.assign(w, { __gap: 0, __last: performance.now(), __on: true });
+    const tick = () => {
+      const now = performance.now();
+      w.__gap = Math.max(w.__gap, now - w.__last);
+      w.__last = now;
+      if (w.__on) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+  await during();
+  await sleep(1500);
+  return win.evaluate(() => {
+    const w = window as unknown as { __gap: number; __on: boolean };
+    w.__on = false;
+    return Math.round(w.__gap);
+  });
+}
+
+test("api client: unreachable, untrusted TLS, binary and a huge answer end in a clear state without freezing", { timeout: 300_000 }, async () => {
+  const huge = Buffer.from(LINE.repeat(Math.ceil((12 * 1024 * 1024) / LINE.length)));
+  const srv = createServer((q, r) => {
+    if (q.url === "/bin") return void r.writeHead(200, { "content-type": "application/octet-stream" }).end(Buffer.from([0, 1, 2, 3, 255]));
+    r.writeHead(200, { "content-type": "text/plain" }).end(huge);
+  }).listen(0, "127.0.0.1");
+  await new Promise((r) => srv.once("listening", r));
+  const port = (srv.address() as AddressInfo).port;
+  const dir = mkdtempSync(join(tmpdir(), "shrike-e2e-tls-"));
+  execFileSync("openssl", ["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-keyout", join(dir, "k.pem"), "-out", join(dir, "c.pem"), "-days", "1", "-subj", "/CN=localhost"], { stdio: "ignore" });
+  const tls = createHttps({ key: readFileSync(join(dir, "k.pem")), cert: readFileSync(join(dir, "c.pem")) }, (_q, r) => r.end("secure")).listen(0, "127.0.0.1");
+  await new Promise((r) => tls.once("listening", r));
+  const proj = fixtureCopy("todo-app");
+  const { app, win, cleanup } = await launch({ SHRIKE_OPEN_FOLDER: proj });
+  try {
+    await win.emulateMedia({ reducedMotion: "reduce" });
+    await openFolder(win);
+    const closeSetup = win.getByRole("button", { name: "Close setup" });
+    if (await closeSetup.isVisible({ timeout: 3000 }).catch(() => false)) await closeSetup.click();
+    await key(win, "a");
+    const sheet = win.getByRole("region", { name: "API client" });
+    await sheet.waitFor();
+    const send = async (url: string) => {
+      await sheet.getByRole("textbox", { name: "URL", exact: true }).fill(url);
+      await sheet.getByRole("button", { name: "Send", exact: true }).click();
+    };
+
+    await send("http://127.0.0.1:1/health");
+    await sheet.getByText("Nothing is listening on 127.0.0.1:1. Is your app running?").waitFor({ timeout: 10_000 });
+    await shot(app, "api-net-01-unreachable");
+
+    await send(`https://127.0.0.1:${(tls.address() as AddressInfo).port}/`);
+    await sheet.getByText(/has a certificate Shrike doesn't trust/).waitFor({ timeout: 10_000 });
+    await shot(app, "api-net-02-tls");
+
+    await send(`http://127.0.0.1:${port}/bin`);
+    await sheet.getByText(/A binary answer \(application\/octet-stream, 5 B\)/).waitFor({ timeout: 10_000 });
+    await shot(app, "api-net-03-binary");
+
+    const prettyGap = await longestFrameGap(win, async () => {
+      await send(`http://127.0.0.1:${port}/huge`);
+      await sheet.getByText(/\(cut\)/).waitFor({ timeout: 30_000 });
+    });
+    await shot(app, "api-net-04-huge");
+    const rawGap = await longestFrameGap(win, () => sheet.getByRole("tab", { name: "Raw" }).click());
+    console.log(`longest frame gap: pretty ${prettyGap}ms, raw ${rawGap}ms`);
+    assert.ok(prettyGap < 1000 && rawGap < 1000, `the window froze for ${Math.max(prettyGap, rawGap)}ms on a 12MB answer`);
+    await sheet.getByText(/Showing the first/).first().waitFor();
+    await shot(app, "api-net-05-huge-raw");
+  } finally {
+    await cleanup();
+    srv.close();
+    tls.close();
+    rmSync(dir, { recursive: true, force: true });
+    rmSync(join(proj, ".."), { recursive: true, force: true });
+  }
+});

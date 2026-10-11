@@ -872,7 +872,7 @@ export function sample(runs: RawRun[]): RawRun[] {
 /** Fills job.stats from gh run history. Reads only: run list, run view --json jobs, --log-failed. */
 export async function readHistory(gh: Gh, cwd: string, jobs: CiJob[]): Promise<{ runs: number; problem?: string }> {
   const st = await ghStatus(gh, cwd);
-  if (!st.ready) return { runs: 0, problem: st.problem === "signed-out" ? "Sign in to GitHub (gh auth login) to read CI history." : "Install GitHub's gh tool to read CI history." };
+  if (!st.ready) return { runs: 0, problem: st.problem === "signed-out" ? "Sign in to GitHub (gh auth login) to read CI history." : st.problem === "offline" ? "Shrike can't reach GitHub right now, so CI history can't load. Check your internet connection." : "Install GitHub's gh tool to read CI history." };
   const asks = [...new Set(jobs.map((j) => j.workflow))].flatMap((wf) => [[wf, "completed", HISTORY.list], [wf, "failure", 5]] as const); // the newest failures too, so a green streak still teaches
   const lists = await pool(asks, 4, ([wf, status, n]) => gh.run(["run", "list", "--workflow", wf, "--limit", String(n), "--status", status, "--json", "databaseId,workflowName,headSha,conclusion,attempt,event,createdAt"], { cwd }));
   if (lists.length && lists.every((r) => r.code !== 0)) return { runs: 0, problem: "GitHub didn't list this repo's CI runs." };

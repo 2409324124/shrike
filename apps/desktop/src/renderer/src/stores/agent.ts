@@ -76,6 +76,7 @@ interface AgentState {
   setBrain(b: BrainId): void;
   setGoal(g: string): void;
   start(): Promise<void>;
+  retry(): Promise<void>;
   stop(): Promise<void>;
   onStatus(info: AgentRunInfo): void;
   onStep(step: AgentStep): void;
@@ -183,6 +184,12 @@ export const useAgent = create<AgentState>((set, get) => ({
     if (!goal.trim() || !brain) return;
     set({ steps: [], picked: {}, approvals: [], answered: {}, run: null, usage: null, revising: null, sentNotes: [] });
     const info = await call((a) => a.startAgent(goal.trim(), brain), "Couldn't start the agent");
+    if (info) set((s) => ({ run: s.run?.id === info.id ? { ...info, status: s.run.status } : info }));
+  },
+  async retry() {
+    const run = get().run;
+    if (!run) return;
+    const info = await call((a) => a.retryRun(run.id), "Couldn't start your agent again"); // its status event swaps the run in and clears the steps
     if (info) set((s) => ({ run: s.run?.id === info.id ? { ...info, status: s.run.status } : info }));
   },
   async stop() {

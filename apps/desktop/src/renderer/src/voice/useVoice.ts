@@ -204,6 +204,7 @@ export function onVoiceEvent(e: VoiceEvent): void {
       return set({ phase: "setup" });
     case "permission":
       if (e.mic !== "granted") {
+        setHands(false);
         set({ problem: { text: "Shrike can't use the microphone. Allow ShrikeVoice in Privacy settings.", pane: "mic" }, phase: "idle" });
         turn = null;
       } else if (get().problem?.pane === "mic") set({ problem: null });
@@ -245,6 +246,7 @@ export function onVoiceEvent(e: VoiceEvent): void {
     }
     case "error":
       if (e.id != null && e.id !== turn?.id) return;
+      if (e.id == null) setHands(false); // the helper itself is gone: hands-free can't be listening
       set({ problem: { text: e.message, pane: e.code === "dictation" ? "dictation" : undefined }, phase: "idle", level: 0 });
       return;
   }

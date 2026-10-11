@@ -248,7 +248,7 @@ export interface GitState { // G*
   base?: string; // the default branch ("main")
   operation?: "rebase" | "merge"; // a sync stopped part way (conflicts)
   incoming?: { sha: string; subject: string }[]; // commits on origin/<base> not in this branch, as of the last fetch (G6 preview)
-  ghProblem?: "missing" | "signed-out"; // why ghReady is false
+  ghProblem?: "missing" | "signed-out" | "offline"; // why ghReady is false
   gitMissing?: boolean; // git itself isn't on this computer (not "this folder isn't a repo")
   onBranch?: number; // commits on this branch that its base doesn't have (Ship opens a PR for them)
 }
@@ -772,6 +772,7 @@ export interface ConnectInfo {
   skill: string; // SKILL.md text for ~/.claude/skills/shrike/
   settings: string; // permissions.deny for Claude Code's own edit and shell tools
   clients: { name: string; at: number }[]; // outside clients since Shrike opened, last call time, newest first
+  movedFrom?: number; // the saved port was taken, so the address changed this session
 }
 
 export interface AgentUsage {
@@ -1397,6 +1398,7 @@ export interface ShrikeApi {
   // C: conversation branches
   listRuns(): Promise<AgentRunInfo[]>;
   getRunSteps(runId: string): Promise<AgentStep[]>;
+  retryRun(runId: string): Promise<AgentRunInfo>; // a failed or stopped run again (a follow-up resumes its conversation)
   branchRun(runId: string, fromStepId: string, question: string, opts?: { name?: string }): Promise<AgentRunInfo>; // C1
   askAside(runId: string, question: string): Promise<AgentRunInfo>; // C3: answer arrives as steps of an aside run
   keepAside(asideRunId: string, name?: string): Promise<AgentRunInfo>; // C3 → branch
@@ -1551,7 +1553,7 @@ export interface VoicePlanRequest {
   text: string; // what was heard
   schema: Record<string, unknown>; // this turn's JSON schema: every slot an enum of live values
 }
-export type VoicePlanResult = { ok: true; json: unknown; ms: number } | { ok: false; error: "missing" | "timeout" | "failed" };
+export type VoicePlanResult = { ok: true; json: unknown; ms: number } | { ok: false; error: "missing" | "timeout" | "failed" | "broken" }; // broken: the model is there but won't load (corrupt, or node-llama-cpp failed)
 
 // main → renderer push channels
 export interface ShrikeEvents {

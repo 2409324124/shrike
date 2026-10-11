@@ -30,8 +30,10 @@ export interface McpServerOptions {
 
 export interface RunningMcpServer {
   url: string;
-  readonly token: string;
-  rotateToken(): Promise<string>; // a fresh token; every open session is closed
+  readonly token: string; // what outside clients use
+  readonly internalToken: string; // Shrike's own brains: never rotated, so a token reset doesn't cut off a live run
+  movedFrom?: number; // the asked-for port was taken
+  rotateToken(): Promise<string>; // a fresh token; every session an outside client opened is closed
   close(): Promise<void>;
 }
 
@@ -40,17 +42,22 @@ export const newToken = (): string => randomBytes(32).toString("hex");
 export async function startMcpServer(host: ShrikeHost, opts: McpServerOptions = {}): Promise<RunningMcpServer> {
   let token = opts.token ?? newToken();
   let expected = Buffer.from(`Bearer ${token}`);
+  const internalToken = newToken();
+  const internalExpected = Buffer.from(`Bearer ${internalToken}`);
+  const outside = new Set<string>(); // session ids opened with the outside token
   const sessions = new Map<string, StreamableHTTPServerTransport>();
   const clientOf = new Map<string, string>(); // session id -> outside client name
 
-  const authorized = (req: http.IncomingMessage) => {
+  const matches = (got: Buffer, want: Buffer) => got.length === want.length && timingSafeEqual(got, want);
+  const authorized = (req: http.IncomingMessage): "outside" | "internal" | undefined => {
     const got = Buffer.from(req.headers.authorization ?? "");
-    return got.length === expected.length && timingSafeEqual(got, expected);
+    return matches(got, internalExpected) ? "internal" : matches(got, expected) ? "outside" : undefined;
   };
 
   const server = http.createServer(async (req, res) => {
     try {
-      if (!authorized(req)) return send(res, 401, "Unauthorized");
+      const auth = authorized(req);
+      if (!auth) return send(res, 401, "Unauthorized");
       if (new URL(req.url ?? "/", "http://x").pathname !== "/mcp") return send(res, 404, "Not found");
 
       let body: unknown;
@@ -81,6 +88,7 @@ export async function startMcpServer(host: ShrikeHost, opts: McpServerOptions = 
         sessionIdGenerator: randomUUID,
         onsessioninitialized: (id) => {
           sessions.set(id, transport);
+          if (auth === "outside") outside.add(id);
           if (client) clientOf.set(id, client);
         },
       });
@@ -88,6 +96,7 @@ export async function startMcpServer(host: ShrikeHost, opts: McpServerOptions = 
         if (!transport.sessionId) return;
         sessions.delete(transport.sessionId);
         clientOf.delete(transport.sessionId);
+        outside.delete(transport.sessionId);
       };
       const mcp = new McpServer({ name: "shrike", version: "0.1.0" });
       const internal = req.headers[INTERNAL_HEADER] === "1";
@@ -111,10 +120,10 @@ export async function startMcpServer(host: ShrikeHost, opts: McpServerOptions = 
     });
   await (opts.port ? listen(opts.port).catch(() => listen(0)) : listen(0));
   const { port } = server.address() as AddressInfo;
-  const closeSessions = async () => {
-    await Promise.allSettled([...sessions.values()].map((t) => t.close()));
-    sessions.clear();
-    clientOf.clear();
+  const closeSessions = async (only?: Set<string>) => {
+    const ids = [...(only ?? sessions.keys())];
+    await Promise.allSettled(ids.map((id) => sessions.get(id)?.close()));
+    for (const id of ids) (sessions.delete(id), clientOf.delete(id), outside.delete(id));
   };
 
   return {
@@ -122,10 +131,12 @@ export async function startMcpServer(host: ShrikeHost, opts: McpServerOptions = 
     get token() {
       return token;
     },
+    internalToken,
+    ...(opts.port && opts.port !== port ? { movedFrom: opts.port } : {}),
     async rotateToken() {
       token = newToken();
       expected = Buffer.from(`Bearer ${token}`);
-      await closeSessions();
+      await closeSessions(new Set(outside));
       return token;
     },
     async close() {

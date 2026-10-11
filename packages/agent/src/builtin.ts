@@ -16,6 +16,16 @@ export interface AnthropicLike {
 }
 
 // Returns true when the run failed.
+/** The SDK's errors (it has retried twice already) in plain words. */
+export function plainApiError(status: unknown, msg: string): string {
+  if (status === 401 || status === 403) return "Claude's API refused your ANTHROPIC_API_KEY. Check the key, then try again.";
+  if (status === 429) return "Your API key hit its rate limit. Try again in a minute.";
+  if (status === 529 || status === 503 || /overloaded/i.test(msg)) return "Claude's servers are busy. Try again in a moment.";
+  if (/credit balance/i.test(msg)) return "Your Anthropic account is out of credit. Add credit, then try again.";
+  if (/connection|timed out|timeout|fetch failed|ENOTFOUND|ECONNREFUSED|ECONNRESET/i.test(msg)) return "The built-in agent couldn't reach Claude's servers. Check your internet connection, then try again.";
+  return `The built-in agent stopped: ${msg}`;
+}
+
 export async function runBuiltin(o: {
   goal: string;
   system: string;
@@ -114,7 +124,8 @@ export async function runBuiltin(o: {
     return true;
   } catch (err) {
     if (o.signal.aborted) return false;
-    o.emit({ kind: "error", text: `The built-in agent stopped: ${err instanceof Error ? err.message : String(err)}` });
+    const msg = err instanceof Error ? err.message : String(err);
+    o.emit({ kind: "error", text: plainApiError((err as { status?: unknown }).status, msg), detail: msg });
     return true;
   } finally {
     await transport.terminateSession().catch(() => {});

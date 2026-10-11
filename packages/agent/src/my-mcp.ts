@@ -120,9 +120,12 @@ const alive = (pid: number) => {
   }
 };
 
-function plain(err: unknown, s: Server, stderr: string, timedOut: boolean, timeoutMs: number): string {
+function plain(err: unknown, s: Server, stderr: string, timedOut: boolean, timeoutMs: number, garbage = false): string {
   const msg = err instanceof Error ? err.message : String(err ?? "");
   const last = stderr.trim().split("\n").filter(Boolean).at(-1)?.trim().slice(0, 200);
+  if (garbage) return "It printed plain text where MCP messages go, so Shrike couldn't talk to it. Check its command and args: it may not be an MCP server, or it logs to its output instead of stderr.";
+  if ((err instanceof Error && err.name === "ZodError") || /"code":\s*"invalid_type"/.test(msg)) return "It answered, but not the way an MCP server does. Update it, or check that it's an MCP server.";
+  if (typeof s.url === "string" && /Unexpected content type|HTTP (404|405)\b/i.test(msg)) return `Something answered at ${s.url}, but it isn't an MCP server. Check the address.`;
   if (timedOut) return `It didn't answer within ${Math.round(timeoutMs / 1000)} seconds. A first start can be slow while it downloads: try again in a minute.${last ? ` It said: ${last}` : ""}`;
   if (/ENOENT/.test(msg) && typeof s.command === "string") return `Couldn't find "${s.command}" on this computer.${s.command === "npx" || s.command === "node" ? " Install Node.js." : s.command === "uvx" ? " Install uv (astral.sh/uv)." : " Check the command."}`;
   if (/\b(401|403)\b|unauthori[sz]ed|invalid_token|forbidden/i.test(msg)) return "It needs you to sign in or a valid token. For servers that sign in, run claude in a terminal, type /mcp and sign in there.";
@@ -150,6 +153,8 @@ export async function checkMcpServer(s: Server, o: { timeoutMs?: number; cwd?: s
     stdio.stderr?.on("data", (c: Buffer) => (stderr = (stderr + c.toString("utf8")).slice(-4000)));
     transport = stdio;
   }
+  let garbage = false; // stdout lines that aren't JSON-RPC
+  client.onerror = (e) => void (stdio && /JSON|ZodError/.test(`${e.name} ${e.message}`) && (garbage = true));
   let timedOut = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
   const deadline = new Promise<never>((_, fail) => (timer = setTimeout(() => ((timedOut = true), fail(new Error("timeout"))), timeoutMs)));
@@ -171,7 +176,7 @@ export async function checkMcpServer(s: Server, o: { timeoutMs?: number; cwd?: s
     const tools = await Promise.race([work, deadline]);
     return { ok: true, tools, ms: Date.now() - t0 };
   } catch (err) {
-    return { ok: false, tools: [], error: plain(err, s, stderr, timedOut, timeoutMs), ms: Date.now() - t0 };
+    return { ok: false, tools: [], error: plain(err, s, stderr, timedOut, timeoutMs, garbage), ms: Date.now() - t0 };
   } finally {
     clearTimeout(timer);
     pid ??= stdio?.pid ?? null;

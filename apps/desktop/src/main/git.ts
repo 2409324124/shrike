@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import type { AgentOptions, AgentRunInfo, BrainId, Flow, GitState, PullRequest } from "@shrike/schema";
 import * as hub from "./github.ts";
 import type { Exec, Gh, PrDetail } from "./github.ts";
@@ -24,10 +24,12 @@ function loginPath(): Promise<string | undefined> {
 export const exec: Exec = async (cmd, args, o) => {
   const PATH = await loginPath();
   const env = { ...process.env, ...(PATH ? { PATH } : {}), GIT_TERMINAL_PROMPT: "0", GIT_EDITOR: "true", GH_PROMPT_DISABLED: "1", GH_NO_UPDATE_NOTIFIER: "1", NO_COLOR: "1" };
+  const timeout = o.timeoutMs ?? 180_000;
   return new Promise((done) => {
-    const child = execFile(cmd, args, { cwd: o.cwd, env, maxBuffer: 64 * 1024 * 1024, timeout: 180_000 }, (err, stdout, stderr) =>
-      done({ code: err ? (typeof err.code === "number" ? err.code : 127) : 0, stdout: String(stdout), stderr: String(stderr) || (err?.message ?? "") }),
-    );
+    const child = execFile(cmd, args, { cwd: o.cwd, env, maxBuffer: 64 * 1024 * 1024, timeout }, (err, stdout, stderr) => {
+      const late = err?.killed && err.signal ? `${basename(cmd)} didn't answer in ${Math.round(timeout / 1000)} seconds.` : "";
+      done({ code: err ? (typeof err.code === "number" ? err.code : 127) : 0, stdout: String(stdout), stderr: late || String(stderr) || (err?.message ?? "") });
+    });
     child.stdin?.on("error", () => {}); // git can exit before reading it: EPIPE on Linux
     child.stdin?.end(o.input ?? "");
   });

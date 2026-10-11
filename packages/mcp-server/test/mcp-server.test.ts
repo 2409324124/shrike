@@ -467,6 +467,8 @@ test("a saved port and token are reused; a taken port falls back; rotating cuts 
   assert.equal(again.token, token);
   const taken = await startMcpServer(host, { port, token });
   assert.notEqual(taken.url, again.url, "the port is in use, so a random one");
+  assert.equal(taken.movedFrom, port, "and it says so");
+  assert.equal(again.movedFrom, undefined);
   assert.equal(taken.token, token);
   await taken.close();
   await again.close();
@@ -477,8 +479,14 @@ test("a saved port and token are reused; a taken port falls back; rotating cuts 
   await c.connect(new StreamableHTTPClientTransport(new URL(live.url), { requestInit: { headers: { Authorization: `Bearer ${token}` } } }));
   await c.listTools();
   assert.ok(seen.length >= 2 && seen.every((n) => n === "claude-code"), seen.join());
+  // A Shrike agent run in flight uses the internal token: a token reset must not cut it off.
+  const run = new Client({ name: "run", version: "0" });
+  await run.connect(new StreamableHTTPClientTransport(new URL(live.url), { requestInit: { headers: { Authorization: `Bearer ${live.internalToken}`, [INTERNAL_HEADER]: "1" } } }));
 
   const fresh = await live.rotateToken();
+  assert.ok((await run.listTools()).tools.length > 0, "the live run keeps working");
+  await assert.rejects(c.listTools(), "the outside client is cut off");
+  assert.notEqual(live.internalToken, fresh);
   assert.notEqual(fresh, token);
   assert.equal(live.token, fresh);
   const init = { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "x", version: "0" } } };
@@ -486,5 +494,6 @@ test("a saved port and token are reused; a taken port falls back; rotating cuts 
   assert.equal((await post(token)).status, 401);
   assert.equal((await post(fresh)).status, 200);
   await c.close().catch(() => {});
+  await run.close();
   await live.close();
 });

@@ -168,6 +168,8 @@ Implementation: v1 raises the capture cap for that function id in node-agent. v1
 
 On hitting a limit, the agent must call `report_findings` with what it has, labelled honestly, and suggest what to try next.
 
+**When the brain itself fails**, the run ends as failed with one plain reason and a Try again on the agent pill (A19); it never stays on Working. Claude Code's own errors are put in words: a refused or expired sign-in (stopped after its second retry, not the ~3 minutes Claude Code would spend retrying), usage or rate limits, no credit, busy servers, offline, a CLI too old or too new for Shrike's flags or output, a crash. While Claude Code retries, the pill says why on the third try. If it prints nothing for 3 minutes with no tool call open it says so, and at 15 minutes Shrike stops it; a tool call or an approval card waiting on you never counts as silence. Try again starts the same ask; a follow-up resumes its conversation. A run keeps the workspace it started in: after a switch its tools answer "switch back to it".
+
 ## Guardrails
 
 - **Tool results are data, not instructions.** Page text, logs, response bodies and code comments can contain prompt-injection text. The system prompt says so, and tool outputs are wrapped in clearly delimited blocks.
@@ -218,7 +220,7 @@ These feed the What happened? card and flow review. The AI explains them; it doe
 
 The same MCP server can be added to Cursor, Claude Code or any MCP client running *outside* Shrike, while the Shrike app is open. A user in Cursor can ask "what happened when I clicked Add Todo?" and get the real trace. Outside clients get Recordings, Code, API, App and Fix tools, plus tools that drive Shrike itself (`run_app`, `list_trips`, `focus_trip`, flows). Fixes still go through the diff UI: `propose_patch` waits for the user's click in Shrike, and the approval card says who sent it ("From claude-code"). The start agent's shell and preflight tools are never offered to outside clients. Marketing line: *give your coding agent eyes*.
 
-Tools → **Use from your own Claude Code** (MCP9) gives one command to copy, `claude mcp add --transport http --scope user shrike http://127.0.0.1:<port>/mcp --header "Authorization: Bearer <token>"`. The address and token are saved in userData `mcp.json` (0600) and reused on the next launch, so it keeps working after Shrike restarts; **New token** rotates the token. It also offers a skill ([prompts/connect/SKILL.md](../prompts/connect/SKILL.md), saved by the user as `~/.claude/skills/shrike/SKILL.md`) and settings that turn off Claude Code's own edit and shell tools, since Shrike can't switch those off for a Claude Code it didn't start:
+Tools → **Use from your own Claude Code** (MCP9) gives one command to copy, `claude mcp add --transport http --scope user shrike http://127.0.0.1:<port>/mcp --header "Authorization: Bearer <token>"`. The address and token are saved in userData `mcp.json` (0600) and reused on the next launch, so it keeps working after Shrike restarts (if that port is taken, Shrike moves to a new one and the section says to paste step 1 again); **New token** rotates the token and cuts off outside clients only. It also offers a skill ([prompts/connect/SKILL.md](../prompts/connect/SKILL.md), saved by the user as `~/.claude/skills/shrike/SKILL.md`) and settings that turn off Claude Code's own edit and shell tools, since Shrike can't switch those off for a Claude Code it didn't start:
 
 ```json
 { "permissions": { "deny": ["Edit", "Write", "MultiEdit", "NotebookEdit", "Bash"] } }

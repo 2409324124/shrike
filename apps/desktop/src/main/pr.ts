@@ -1,5 +1,5 @@
 import type { AgentOptions, AgentRunInfo, ChainsState, PrAction, PrAgentTask, PrCheck, PrCheckJob, PrComment, PrInfo, PrReaction, PrReview, PrThread, PrView } from "@shrike/schema";
-import { actionsIds, failedLog, ghError, ghStatus, GH_SETUP, type Exec, type Gh } from "./github.ts";
+import { actionsIds, failedLog, ghError, ghStatus, ghTrouble, GH_SETUP, type Exec, type Gh } from "./github.ts";
 
 // PR1–PR8: the pull request and CI panel. Reads through gh (graphql, pr checks, run list/view); every write asks first.
 
@@ -197,6 +197,7 @@ export function createPrPanel(deps: PrDeps) {
     if (!found) {
       if (n) throw new Error(ghError(head, `Couldn't find pull request #${n}`));
       if (!branch) return { ...empty, problem: "This folder isn't on a branch right now." };
+      if (ghTrouble(head)) return { ...empty, branch, problem: ghError(head, "Couldn't ask GitHub about this branch") }; // not "no pull request yet" when GitHub never answered
       const runs = await gh.run(["run", "list", "--branch", branch, "--limit", "30", "--json", "databaseId,name,workflowName,status,conclusion,url,createdAt,updatedAt"], { cwd });
       return { ...empty, branch, checks: runs.code === 0 ? parseRuns(json<RawRun[]>(runs.stdout) ?? []) : [] };
     }

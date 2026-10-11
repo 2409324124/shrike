@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import type { AgentOptions, AgentRunInfo, AgentStep, AgentUsage, BrainId, BrainInfo } from "@shrike/schema";
+import { basename, join } from "node:path";
+import type { AgentOptions, AgentRunInfo, AgentStep, AgentUsage, BrainId, BrainInfo, ShrikeHost } from "@shrike/schema";
 import type Anthropic from "@anthropic-ai/sdk";
 import { runBuiltin, BUILTIN_MODEL, type AnthropicLike } from "./builtin.ts";
 import { claudeArgs, resolveClaude, runClaudeCode, type Effort } from "./claude-code.ts";
@@ -31,6 +31,20 @@ export { fillTemplate, buildSystemPrompt } from "./prompt.ts";
 export { checkMcpServer, mcpPromptLine, readClaudeMcp, readMyMcpServers, servers as mcpServersOf, withMyMcp, type ClaudeMcp, type McpCheck, type Server as McpServerConfig } from "./my-mcp.ts"; // B4, MCP
 export type { AnthropicLike } from "./builtin.ts";
 export * from "./branches.ts"; // C1–C7
+
+/** A run's tools stay on the folder it started in: after a workspace switch they refuse, rather than read or patch the other folder. */
+export function bindHost(host: ShrikeHost, root: string, current: () => string | undefined): ShrikeHost {
+  return new Proxy(host, {
+    get(t, k, r) {
+      const v = Reflect.get(t, k, r);
+      if (typeof v !== "function") return v;
+      return (...a: unknown[]) => {
+        if (current() !== root) throw new Error(`This run started in ${basename(root)}, which isn't the open workspace now. Switch back to it in Shrike, then ask again.`);
+        return v.apply(t, a);
+      };
+    },
+  });
+}
 
 export async function detectBrains(): Promise<BrainInfo[]> {
   const bin = await resolveClaude();

@@ -251,6 +251,7 @@ export function registerIpc(win: () => BrowserWindow | undefined, appWin: AppWin
   const question = z.string().trim().min(1).max(2000);
   handle("listRuns", none, () => agentExtras.listRuns());
   handle("getRunSteps", z.tuple([str]), (runId) => agentExtras.getRunSteps(runId));
+  handle("retryRun", z.tuple([str]), (runId) => agentExtras.retryRun(runId, emit));
   const branchName = z.string().trim().max(40).optional();
   // optional trailing args may be left off entirely, so each call shape is its own tuple
   handle("branchRun", z.union([z.tuple([str, str, question]), z.tuple([str, str, question, z.object({ name: branchName }).optional()])]), (runId, stepId, q, o) => agentExtras.branchRun(runId, stepId, q, emit, { name: o?.name }));

@@ -208,7 +208,10 @@ function once(p: Prepared, verifyTls: boolean, timeoutMs: number, signal: AbortS
       s.once("connect", () => mark("connect"));
       s.once("secureConnect", () => mark("tls"));
     });
-    req.on("timeout", () => req.destroy(Object.assign(new Error("timeout"), { name: "TimeoutError" })));
+    const timeUp = () => req.destroy(Object.assign(new Error("timeout"), { name: "TimeoutError", started: at.ttfb !== undefined }));
+    req.on("timeout", timeUp);
+    const deadline = setTimeout(timeUp, timeoutMs); // the socket timeout is idle time: a body that trickles forever never trips it
+    req.on("close", () => clearTimeout(deadline));
     req.on("error", reject);
     req.end(p.body);
   });
@@ -232,13 +235,15 @@ const headerRecord = (res: IncomingMessage): Record<string, string> => {
   return out;
 };
 
-export function friendlyError(err: unknown, url: URL, timeoutMs: number): string {
+export function friendlyError(err: unknown, url: URL, timeoutMs: number, curlHint = true): string {
   const e = err as NodeJS.ErrnoException;
   if (e?.name === "AbortError") return "Cancelled.";
-  if (e?.name === "TimeoutError") return `No answer from ${url.host} after ${timeoutMs < 1000 ? `${timeoutMs}ms` : `${Math.round(timeoutMs / 1000)} seconds`}.`;
+  const secs = timeoutMs < 1000 ? `${timeoutMs}ms` : `${Math.round(timeoutMs / 1000)} seconds`;
+  if (e?.name === "TimeoutError") return (e as { started?: boolean }).started ? `${url.host} was still sending after ${secs}, so Shrike stopped waiting.` : `No answer from ${url.host} after ${secs}.`;
   if (e?.code === "ECONNREFUSED") return isLoopback(url) ? `Nothing is listening on ${url.host}. Is your app running?` : `${url.host} refused the connection.`;
   if (e?.code === "ENOTFOUND" || e?.code === "EAI_AGAIN") return `Couldn't find ${url.hostname}. Check the address or your connection.`;
-  if (e?.code && /CERT|SSL|TLS|SELF_SIGNED/i.test(e.code)) return `${url.host} has a certificate Shrike doesn't trust (${e.code}). Turn off "Check TLS certificates" to send anyway.`;
+  if (e?.code && /WRONG_VERSION_NUMBER|PACKET_LENGTH_TOO_LONG/i.test(e.code)) return `${url.host} didn't answer over https. Try http:// instead.`;
+  if (e?.code && /CERT|SSL|TLS|SELF_SIGNED/i.test(e.code)) return `${url.host} has a certificate Shrike doesn't trust (${e.code}).${curlHint ? " If it's your own dev certificate, import the request as cURL with -k to skip the check." : ""}`;
   if (e?.code === "ECONNRESET") return `${url.host} closed the connection.`;
   return `Couldn't reach ${url.host}: ${e?.message ?? String(err)}`;
 }

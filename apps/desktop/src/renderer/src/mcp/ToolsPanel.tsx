@@ -174,6 +174,11 @@ function Connect() {
           New token
         </button>
       </div>
+      {!!info.movedFrom && !rotated && (
+        <p className="m-0 mt-1 text-[11px] leading-snug text-faint">
+          Port {info.movedFrom} was in use, so Shrike moved to a new address this time. If you added Shrike before, run <span className="font-mono text-dim">claude mcp remove shrike -s user</span>, then paste step 1 again.
+        </p>
+      )}
       {rotated && (
         <p className="m-0 mt-1 text-[11px] leading-snug text-faint">
           New token made. In your terminal run <span className="font-mono text-dim">claude mcp remove shrike -s user</span>, then paste step 1 again.

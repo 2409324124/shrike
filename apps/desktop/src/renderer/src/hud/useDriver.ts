@@ -125,7 +125,8 @@ export function useAgentWalk(): void {
     if (run.status === "stopped" || run.status === "failed") {
       const th = useThread.getState();
       if (th.probe && th.probe.found == null) th.setProbe(null);
-      say(run.status === "failed" ? "Your agent stopped with a problem." : null, 6000);
+      const why = run.status === "failed" ? useAgent.getState().steps.findLast((s) => s.kind === "error" && s.runId === run.id)?.text : undefined;
+      say(run.status === "failed" ? (why ?? "Your agent stopped with a problem.") : null, 8000);
     }
   }, [run?.id, run?.status]);
 

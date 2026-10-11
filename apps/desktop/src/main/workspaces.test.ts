@@ -111,6 +111,9 @@ test("WS1/WS2: list, create from PR (fake gh) / branch / name, offsets, groups, 
   ws.observe("agent:status", { id: "r2", status: "done" });
   l = await ws.list();
   assert.deepEqual([l.find((w) => w.name === "try-cents")!.agent, l.find((w) => w.name === "try-cents")!.group], ["done", "idle"]);
+  ws.observe("agent:status", { id: "r3", status: "running" });
+  ws.observe("agent:status", { id: "r3", status: "failed" });
+  assert.equal((await ws.list()).find((w) => w.name === "try-cents")!.agent, "idle", "a failed run never reads Agent done");
 
   // delete: refuses the open one; asks when work would be lost
   await assert.rejects(ws.remove(nm.path), /Switch to another workspace first/);

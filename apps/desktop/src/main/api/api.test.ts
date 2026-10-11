@@ -198,6 +198,7 @@ before(async () => {
       if (u.pathname === "/away") return void res.writeHead(302, { location: `http://localhost:${(srv.address() as AddressInfo).port}/echo` }).end();
       if (u.pathname === "/cookie") return void res.writeHead(200, { "set-cookie": "sid=abc; Path=/; HttpOnly" }).end("ok");
       if (u.pathname === "/slow") return void setTimeout(() => res.writeHead(200).end("late"), 1500);
+      if (u.pathname === "/drip") return void (res.writeHead(200), res.on("close", clearInterval.bind(null, setInterval(() => res.write("x"), 50))));
       if (u.pathname === "/bin") return void res.writeHead(200, { "content-type": "image/png" }).end(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 1, 2]));
       if (u.pathname === "/gzip") return void res.writeHead(200, { "content-type": "application/json", "content-encoding": "gzip" }).end(gzipSync('{"zipped":true}'));
       if (u.pathname === "/login") return void res.writeHead(200, { "content-type": "application/json" }).end('{"token":"t-123","user":{"id":7}}');
@@ -285,6 +286,8 @@ test("exec: redirects, cookies, gzip, binary, timeouts, cancel, unreachable", as
 
   r = await execute(req({ url: "/slow", settings: { timeoutMs: 200 } }), { baseUrl: base });
   assert.match(r.error!, /No answer from 127\.0\.0\.1:\d+ after 200ms/);
+  r = await execute(req({ url: "/drip", settings: { timeoutMs: 300 } }), { baseUrl: base }); // before: a body that never ends hung the send forever
+  assert.match(r.error!, /127\.0\.0\.1:\d+ was still sending after 300ms, so Shrike stopped waiting/);
   const ac = new AbortController();
   setTimeout(() => ac.abort(), 100);
   r = await execute(req({ url: "/slow" }), { baseUrl: base, signal: ac.signal });
