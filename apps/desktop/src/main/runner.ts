@@ -97,6 +97,25 @@ export function portEnv(project: Pick<ProjectInfo, "appUrl" | "processes">, serv
   return env;
 }
 
+/** A process's OpenTelemetry SDK (.NET, Python, Go, Java) exports its traces to Shrike's /v1/traces. Its own exporter settings win. */
+export function addOtelEnv(env: NodeJS.ProcessEnv, service: string, ingestUrl: string, token: string): void {
+  if (env.OTEL_EXPORTER_OTLP_ENDPOINT || env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT) return;
+  const ours: Record<string, string> = {
+    OTEL_EXPORTER_OTLP_ENDPOINT: ingestUrl,
+    OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf",
+    OTEL_EXPORTER_OTLP_HEADERS: `x-shrike-token=${token}`,
+    OTEL_SERVICE_NAME: service,
+    OTEL_TRACES_EXPORTER: "otlp",
+    OTEL_METRICS_EXPORTER: "none",
+    OTEL_LOGS_EXPORTER: "none",
+    OTEL_BSP_SCHEDULE_DELAY: "200", // steps show up while the user still looks, not 5 s later
+    // Shrike's readiness checks carry x-shrike-internal; recording the header lets the store drop them (Python, Java names).
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "x-shrike-internal",
+    OTEL_INSTRUMENTATION_HTTP_SERVER_CAPTURE_REQUEST_HEADERS: "x-shrike-internal",
+  };
+  for (const [k, v] of Object.entries(ours)) env[k] ??= v;
+}
+
 // Runs with a live process; portTaken doesn't count their ports as "another program" (a worktree's run, W2).
 const live = new Set<Runner>();
 
@@ -191,7 +210,10 @@ export class Runner {
       const plain = project.declaredPlaces?.[hostOf(spec.url) ?? ""]?.kind === "outside" || /\bemulators:start\b/.test(spec.command);
       const url = shiftUrl(spec.url, off);
       const childEnv: NodeJS.ProcessEnv = { ...dotenvs[specs.indexOf(spec)], ...base, SHRIKE_SERVICE: spec.name, ...(portOf(url) ? { PORT: portOf(url) } : {}) };
-      if (!plain) childEnv.NODE_OPTIONS = base.NODE_OPTIONS ? `${base.NODE_OPTIONS} ${ours}` : ours;
+      if (!plain) {
+        childEnv.NODE_OPTIONS = base.NODE_OPTIONS ? `${base.NODE_OPTIONS} ${ours}` : ours;
+        addOtelEnv(childEnv, spec.name, env.ingestUrl, env.token);
+      }
       const cwd = resolve(project.root, spec.cwd ?? ".");
       const rel = relative(project.root, cwd);
       if (rel.startsWith("..") || isAbsolute(rel)) return this.fail(`The "${spec.name}" process folder is outside the project: ${spec.cwd}`);
@@ -360,6 +382,7 @@ export class Runner {
     if (spec.instrument !== false && !outside) {
       const ours = `--import=${pathToFileURL(env.nodeAgentRegister).href} --enable-source-maps`;
       childEnv.NODE_OPTIONS = base.NODE_OPTIONS ? `${base.NODE_OPTIONS} ${ours}` : ours;
+      addOtelEnv(childEnv, spec.name, env.ingestUrl, env.token);
     }
     const child = spawn(process.env.SHELL || "/bin/zsh", ["-lc", spec.command], { cwd, env: childEnv, detached: true, stdio: ["ignore", "pipe", "pipe"] });
     let done!: () => void;

@@ -13,7 +13,7 @@ This is the binding contract for the MVP build. Parallel builders each own one a
 
 **MVP simplifications** (deliberate; each gets a `ponytail:` comment at the code site):
 - In-memory store in main (no SQLite yet). Cleared on restart.
-- Server instrumentation is our own (Babel function hooks + `http.Server` patch + `node:sqlite` patch + console patch). No OpenTelemetry yet.
+- Server instrumentation is our own (Babel function hooks + `http.Server` patch + `node:sqlite` patch + console patch). Other backends come in through OpenTelemetry: OTLP/HTTP traces on `/v1/traces` (`apps/desktop/src/main/otlp.ts`), basic tracing only.
 - ESM user code only; `.ts` imports must use explicit extensions (Node ≥ 22.18 type stripping). CJS and extensionless TS imports come later.
 - Browser network capture via the injected fetch/XHR patch only (no CDP Network domain).
 - No rrweb replay, no React render events, no clock alignment (same machine).

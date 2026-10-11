@@ -241,7 +241,8 @@ Opening a trace never touches the live repo. Sources come from the snapshot.
 
 ## Ingest wire format (agents → main)
 
-- **Node agent:** OTLP/HTTP JSON for spans and logs (`POST /v1/traces`, `/v1/logs`), plus `POST /shrike/v1/events` for function events in batches of up to 500.
+- **Node agent:** `POST /ingest` with an `IngestMessage` (`hello`, `events`, `action_end`) as JSON.
+- **Any OpenTelemetry SDK:** OTLP/HTTP traces on `POST /v1/traces`, protobuf (the SDKs' default) or JSON, gzip allowed; the answer is an empty `ExportTraceServiceResponse` in the same encoding. `apps/desktop/src/main/otlp.ts` decodes the subset Shrike uses (no logs, metrics, links or gRPC), maps spans to `DebugEvent`s (SERVER with an HTTP method to `http_request`, `db.*` to `db_query`, CLIENT or PRODUCER to `external_call`, the rest to `function`; ids as lowercase hex, nanoseconds to ms, `code.*` attributes or a Python traceback to `source`), sends a `hello` per `service.name` (place `service:<name>`) and hands them to the store like any agent's events. A service node-agent already records is skipped.
 - **Browser agent:** WebSocket messages `{ type: "events", events: DebugEvent[] }` and `{ type: "rrweb", actionId, chunk }`.
 - Every request carries `x-shrike-token`. Wrong or missing token gets a 401, and the payload is dropped.
 - Main validates with zod, redacts, then stores. Invalid payloads are logged and dropped, never crash the ingest.

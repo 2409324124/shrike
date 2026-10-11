@@ -101,7 +101,7 @@ Verification levels:
 | DynamoDB | client-dynamodb, lib-dynamodb | Fake (DynamoDB Local container not run) |
 | In-process caches | lru-cache | In-process (fixtures) |
 | In-process caches | node-cache, keyv | Not yet: no hook |
-| Any engine from Python, Go, Ruby | any | Not yet: no agent for those runtimes |
+| Any engine from .NET, Python, Go, Java | the SDK's OpenTelemetry database instrumentation, sent to `/v1/traces` | In-process for Python sqlite3 (`fixtures/py-app`, the real SDK, a test in `otlp.test.ts`); other SDKs and engines not tested |
 
 ### Look inside (direct read-only connections)
 
@@ -174,7 +174,7 @@ At the start every project ran but none had a working database lane, and only on
 | Login's writes (sessions, refresh tokens, last sign-in) don't show in "what this click changed" | nextjs-supabase | `packages/browser-agent/src/data.ts` only builds a change for sign up; GoTrue writes inside Supabase, so Shrike only sees the HTTP reply |
 | Mongo queries have no source line | express-mongoose | `drivers/mongodb.mjs` reads the stack from the driver's command event and doesn't use the approximate fallback yet |
 | Prisma INSERT placed at the middleware's await (trpc.ts:91), not post.ts | nextjs-prisma-t3 | Prisma's query is lazy and starts at the first await. That frame is real app code, so the fallback never runs |
-| Python, Go and Ruby backends: no queries or function steps, so "what this click changed" stays empty | fastapi-sqlalchemy-pg | There is only a Node agent. Look-inside works for any language; see-it-run does not |
+| Non-Node backends get basic tracing only: requests, queries and outside calls through OpenTelemetry, but no function steps or values, and "what this click changed" stays empty | fastapi-sqlalchemy-pg (not re-run since `/v1/traces` landed; it needs `opentelemetry-instrument` in its command) | Spans carry no row data and no per-function values. Checked on `fixtures/py-app` only |
 | A real Firebase project can't be read (emulator only), and server-side firebase-admin isn't hooked | vite-react-firebase | Needs firebase-admin and a service account; marked as the upgrade path in `datasources/firestore.ts` |
 | nestjs detection not re-checked without the typed `.env` command | nestjs-typeorm-mysql | The runner now passes `.env` to every process (unit test), but the real project wasn't re-run without the hint |
 | Drizzle insert without RETURNING shows no generated id | hono-drizzle-pg | pg doesn't return the key in that case |

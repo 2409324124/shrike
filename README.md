@@ -21,7 +21,7 @@
   finds the line, fixes it after you say OK, and clicks again to prove it works.
 </p>
 
-<p align="center"><sub>Works with Node backends (Express, Next.js, NestJS, Hono, Remix) and Vite or Next frontends. Any backend through OpenTelemetry is next.</sub></p>
+<p align="center"><sub>Works with Node backends (Express, Next.js, NestJS, Hono, Remix) and Vite or Next frontends. Any other backend that speaks OpenTelemetry (.NET, Python, Go, Java) gets basic tracing.</sub></p>
 
 <p align="center">
   <a href="https://github.com/SumantxD/shrike/releases/latest"><b>Download for Mac</b></a> ·
@@ -193,7 +193,7 @@ Try a fix in a git worktree copy with its own ports and its own agent. Race two 
 </tr>
 </table>
 
-Works today with Node servers (Express, Next.js, NestJS, Hono, Remix) and Vite or Next frontends. Python servers show their requests, but not function steps or queries yet.
+Works today with Node servers (Express, Next.js, NestJS, Hono, Remix) and Vite or Next frontends. Any backend that speaks OpenTelemetry (.NET, Python, Go, Java) works with basic tracing: its requests, queries and outside calls show up, but not per-function values. Shrike points the app's OpenTelemetry SDK at itself when it runs the app; see [fixtures/py-app](fixtures/py-app) for a FastAPI example.
 
 ## Quick start
 
@@ -263,7 +263,7 @@ Details in [docs/07-security-privacy.md](docs/07-security-privacy.md).
 - [ ] Windows and Linux
 - [ ] Codex and OpenCode as agent brains
 - [ ] Shareable recordings (`.shriketrace`) and a read-only web viewer
-- [ ] More stacks: Vite SSR, SvelteKit, Nuxt, Python and FastAPI function steps
+- [ ] More stacks: Vite SSR, SvelteKit, Nuxt, function steps for Python and other OpenTelemetry backends
 
 The full plan is in [docs/08-roadmap.md](docs/08-roadmap.md).
 
