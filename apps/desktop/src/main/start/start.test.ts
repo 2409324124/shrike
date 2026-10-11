@@ -16,6 +16,19 @@ import { discoverRecipes, setupSections } from "./recipes.ts";
 import { proposeLesson, saveRunSkill } from "./runskill.ts";
 import { StartSession } from "./session.ts";
 
+/** A killed group can linger a moment on Linux while its children are reaped. */
+async function groupGone(pid: number): Promise<boolean> {
+  for (let i = 0; i < 40; i++) {
+    try {
+      process.kill(-pid, 0);
+    } catch {
+      return true;
+    }
+    await new Promise((r) => setTimeout(r, 50));
+  }
+  return false;
+}
+
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, "../../../../..");
 const tmp = mkdtempSync(join(tmpdir(), "shrike-start-"));
@@ -252,7 +265,7 @@ test("a whole start: plan, refused push, a failed service fixed, ready, Skill Ac
 
     // Next Run: the run skill comes first, Claude follows it and marks it used.
     await runner.stop();
-    assert.throws(() => process.kill(-web.pid!, 0), "stop kills the service's whole process group");
+    assert.ok(await groupGone(web.pid!), "stop kills the service's whole process group");
     const again = await runStart("again", f, d, runner);
     assert.equal(again.session.quest.plan.state, "ready");
     assert.equal(again.session.quest.plan.recipes![0]!.id, "shrike:run-fixture-app");
