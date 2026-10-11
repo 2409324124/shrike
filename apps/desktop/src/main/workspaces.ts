@@ -1,7 +1,7 @@
 // WS1/WS2: every project Shrike knows and all of its worktrees, grouped by status, and the Create workspace flow.
 // No Electron imports (tested with node:test): index wiring passes the Electron bits in.
 import { existsSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
-import { basename, join } from "node:path";
+import { basename, join, sep } from "node:path";
 import type { ApprovalRequest, CreateWorkspace, RunStatus, ShrikeEvents, Workspace, WorkspaceSources } from "@shrike/schema";
 import { groupOf, parsePorcelain, parseSmart, slugName } from "../renderer/src/workspaces/logic.ts";
 import * as wt from "./worktrees.ts";
@@ -101,7 +101,7 @@ export function createWorkspaces(d: WorkspaceDeps) {
       const real = realpathSync(w.path);
       const path = sub ? join(real, sub) : real;
       if (!existsSync(path)) continue;
-      const shrikeName = real.startsWith(join(main, ".shrike", "worktrees") + "/") ? basename(real) : undefined;
+      const shrikeName = real.startsWith(join(main, ".shrike", "worktrees") + sep) ? basename(real) : undefined;
       const kind: Workspace["kind"] = i === 0 ? "main" : shrikeName && meta[shrikeName] ? "shrike" : "git";
       const [lr, st] = await Promise.all([
         wt.git(real, ["rev-list", "--left-right", "--count", "HEAD...@{upstream}"]).catch(() => ""),

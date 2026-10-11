@@ -19,7 +19,7 @@ export function focusStep(plan: StartPlan | null): StartStep | undefined {
   return steps.find((s) => s.state === "waiting_approval") ?? steps.findLast((s) => s.state === "running") ?? steps.findLast((s) => s.state === "failed") ?? steps.findLast((s) => s.state !== "pending");
 }
 
-export const questTitle = (plan: Pick<StartPlan, "name" | "projectRoot"> | null, fallback = "your app"): string => `Get ${plan?.name || plan?.projectRoot.split("/").pop() || fallback} running`;
+export const questTitle = (plan: Pick<StartPlan, "name" | "projectRoot"> | null, fallback = "your app"): string => `Get ${plan?.name || plan?.projectRoot.split(/[\\/]/).pop() || fallback} running`;
 
 export const SOURCE_WORDS: Record<NonNullable<StartPlan["recipes"]>[number]["source"], string> = {
   "shrike-skill": "your Shrike run skill",

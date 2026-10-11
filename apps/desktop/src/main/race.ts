@@ -1,7 +1,7 @@
 // W1–W5 orchestration: per-worktree runs (W2), switching (W1), fix race (W3), sandbox fix (W4), clean up (W5).
 // No Electron imports: index wiring passes the Electron bits in through init().
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import type { ActionView, AgentRunInfo, ApprovalRequest, BrainId, DebugEvent, IngestMessage, Patch, ProjectInfo, Race, RunStatus, ShrikeEvents, ShrikeHost, TimelineNode, Worktree } from "@shrike/schema";
 import { detectBrains, startAgentRun } from "@shrike/agent";
 import { formatActionTree } from "@shrike/correlator";
@@ -173,7 +173,7 @@ export async function switchTo(path: string, portOffset = 0): Promise<ProjectInf
   const cur = x.getProject();
   if (cur?.root === path) return cur;
   offsets.set(path, portOffset);
-  const from = cur && { name: cur.root.split("/").pop()!, path: cur.root, portOffset: offsets.get(cur.root) ?? 0 };
+  const from = cur && { name: basename(cur.root), path: cur.root, portOffset: offsets.get(cur.root) ?? 0 };
   const to = { path };
   const wasRunning = alive(x.runner.status);
   if (from) stash.set(from.path, tripEvents(x.store.listActions()));

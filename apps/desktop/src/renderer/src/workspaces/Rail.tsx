@@ -23,7 +23,7 @@ export const RAIL_GAIN = 244 - 46; // what opening the rail takes from the stage
 export const title = (w: Workspace) => w.label ?? (w.kind === "main" ? w.branch || w.project : w.name);
 const count = (n: number, one: string) => `${n.toLocaleString()} ${one}${n === 1 ? "" : "s"}`;
 const folder = (root: string) => {
-  const p = root.replace(/^(\/private)?\/(Users|home)\/[^/]+/, "~").replace(/\/[^/]+\/?$/, "");
+  const p = root.replace(/\\/g, "/").replace(/^(\/private|[A-Za-z]:)?\/(Users|home)\/[^/]+/i, "~").replace(/\/[^/]+\/?$/, "");
   return p.startsWith("~") ? p : p.split("/").pop() || "/";
 };
 const initials = (s: string) => {

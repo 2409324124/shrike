@@ -10,7 +10,7 @@ interface RunCtx { goal: string; memory: string; segs: Seg[]; prompt: number; ou
 
 const INSTRUCTIONS = "Shrike's instructions and tools";
 const prompt = (u: NonNullable<AgentStep["usage"]>) => u.input + u.cacheRead + u.cacheWrite;
-const short = (p: string) => p.split("/").pop() || p;
+const short = (p: string) => p.split(/[\\/]/).pop() || p;
 
 function add(segs: Seg[], s: Seg): Seg | undefined {
   if (s.tokens <= 0) return undefined;
