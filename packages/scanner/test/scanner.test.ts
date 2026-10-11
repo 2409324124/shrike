@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync, existsSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { after, test } from "node:test";
@@ -377,4 +377,23 @@ test("real projects: turbo monorepo runs each app directly on the ports the env 
   assert.equal(fa.backend, "fastapi");
   assert.equal(fa.appUrl, "http://localhost:15174");
   assert.deepEqual(ids(fa), ["client:http://localhost:15174", "service:api", "data:postgres"]);
+});
+
+test("Python backends with no page: FastAPI and Flask commands, ports, routes and sqlite3 from the code (fixtures/py-api-only, fixtures/flask-api-only)", async () => {
+  const fixture = (name: string, files: string[]) => Object.fromEntries(files.map((f) => [f, readFileSync(fileURLToPath(new URL(`../../../fixtures/${name}/${f}`, import.meta.url)), "utf8")]));
+  const venv = { ".venv/bin/python": "", ".venv/bin/uvicorn": "", "venv/lib/site-packages/flask/app.py": '@app.route("/never")\n' };
+  const fa = await procs({ ...fixture("py-api-only", ["main.py", "reorder.py", "requirements.txt"]), ...venv });
+  assert.deepEqual(fa.list, ["api | .venv/bin/uvicorn main:app --reload --port 8000 | . | http://localhost:8000"]);
+  assert.equal(fa.backend, "fastapi");
+  assert.equal(fa.appUrl, undefined);
+  assert.deepEqual(ids(fa), ["service:api", "data:sqlite"]);
+  assert.deepEqual(fa.routes.map((r) => `${r.method} ${r.path} ${r.handler?.file}:${r.handler?.line}`), ["GET /health main.py:69", "POST /orders main.py:79", "GET /orders/:order_id main.py:86", "GET /products main.py:74"]);
+  const fl = await procs({ ...fixture("flask-api-only", ["app.py", "channel_sync.py", "requirements.txt"]), ...venv });
+  assert.deepEqual(fl.list, ["api | .venv/bin/python app.py | . | http://localhost:4411"]);
+  assert.equal(fl.backend, "flask");
+  assert.deepEqual(ids(fl), ["service:api", "data:sqlite"]);
+  assert.deepEqual(fl.routes.map((r) => `${r.method} ${r.path}`), ["GET /api/bookings", "POST /api/bookings", "GET /api/rooms/:room/free", "GET /health"]);
+  const factory = await procs({ "requirements.txt": "Flask==3.0\n", "web/server.py": 'app = Flask(__name__)\n\n@app.route("/items/<int:item_id>", methods=["GET", "DELETE"])\ndef item(item_id): ...\n' });
+  assert.deepEqual(factory.list, ["api | flask --app web.server run --port 5000 | . | http://localhost:5000"]);
+  assert.deepEqual(factory.routes.map((r) => `${r.method} ${r.path}`), ["DELETE /items/:item_id", "GET /items/:item_id"]);
 });
