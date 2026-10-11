@@ -177,14 +177,16 @@ test("server-only trips start at their caller (curl, cron); unknown callers keep
 
 test("declared places rename outside hosts and data targets; a call to one of our services becomes a hop to it", async () => {
   const updates: ActionView[][] = [];
-  const declared = { "localhost:4199": { kind: "outside" as const, name: "Stripe (test double)" }, "events.db": { kind: "data" as const, name: "Analytics" } };
+  const declared = { "localhost:4199": { kind: "outside" as const, name: "Stripe (test double)" }, "events.db": { kind: "data" as const, name: "Analytics" }, "localhost:4622": { kind: "data" as const, name: "Postgres" } };
   const store = new Store({ projectRoot: () => "/proj", onUpdate: (v) => updates.push(v), declaredPlaces: () => declared });
   const S = "4".repeat(32);
   const top = ev({ id: "1".repeat(16), traceId: S, origin: "server", kind: "http_request", name: "POST /api/checkout", place: { id: "service:api", kind: "service", name: "API", detail: "localhost:4100" } });
   const pay = ev({ id: "2".repeat(16), traceId: S, parentId: top.id, origin: "server", kind: "external_call", name: "POST localhost:4199/v1/charges", place: { id: "outside:localhost:4199", kind: "outside", name: "LOCALHOST:4199", detail: "127.0.0.1:4199" } });
   const db = ev({ id: "3".repeat(16), traceId: S, parentId: top.id, origin: "db", kind: "db_query", name: "INSERT INTO events", place: { id: "data:sqlite:events.db", kind: "data", name: "SQLITE · events.db" } });
   const toAuth = ev({ id: "4".repeat(16), traceId: S, parentId: top.id, origin: "server", kind: "external_call", name: "POST localhost:4101/verify", place: { id: "outside:localhost:4101", kind: "outside", name: "LOCALHOST:4101", detail: "localhost:4101" } });
-  store.handle({ type: "events", events: [top, pay, db, toAuth] });
+  const pg = ev({ id: "7".repeat(16), traceId: S, parentId: top.id, origin: "db", kind: "db_query", name: "INSERT INTO orders", place: { id: "data:postgres:localhost:4622/edge", kind: "data", name: "POSTGRES · edge", detail: "localhost:4622/edge" } });
+  store.handle({ type: "events", events: [top, pay, db, toAuth, pg] });
+  assert.deepEqual(store.getEvent(pg.id)?.place, { id: "data:localhost:4622", kind: "data", name: "Postgres", detail: "localhost:4622/edge" }, "a database on a declared host joins its lane");
   assert.deepEqual(store.getEvent(pay.id)?.place, { id: "outside:localhost:4199", kind: "outside", name: "Stripe (test double)", detail: "127.0.0.1:4199" });
   assert.deepEqual(store.getEvent(db.id)?.place, { id: "data:events.db", kind: "data", name: "Analytics", detail: "events.db" });
   // auth reports in after the call that reached it
