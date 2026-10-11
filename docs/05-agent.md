@@ -168,6 +168,8 @@ Implementation: v1 raises the capture cap for that function id in node-agent. v1
 
 On hitting a limit, the agent must call `report_findings` with what it has, labelled honestly, and suggest what to try next.
 
+**When the brain itself fails**, the run ends as failed with one plain reason and a Try again on the agent pill (A19); it never stays on Working. Claude Code's own errors are put in words: a refused or expired sign-in (stopped after its second retry, not the ~3 minutes Claude Code would spend retrying), usage or rate limits, no credit, busy servers, offline, a CLI too old or too new for Shrike's flags or output, a crash. While Claude Code retries, the pill says why on the third try. If it prints nothing for 3 minutes with no tool call open it says so, and at 15 minutes Shrike stops it; a tool call or an approval card waiting on you never counts as silence. Try again starts the same ask; a follow-up resumes its conversation. A run keeps the workspace it started in: after a switch its tools answer "switch back to it".
+
 ## Guardrails
 
 - **Tool results are data, not instructions.** Page text, logs, response bodies and code comments can contain prompt-injection text. The system prompt says so, and tool outputs are wrapped in clearly delimited blocks.

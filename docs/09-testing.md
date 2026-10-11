@@ -126,6 +126,47 @@ Starting set (15 bugs, covering what vibe-coded apps actually break on):
 
 Run the eval per brain (Claude Code, built-in, Codex, OpenCode) and record results in `fixtures/bugs/RESULTS.md` with the date, brain and model.
 
+## Reliability
+
+What happens when something outside Shrike fails. Each row: what the user saw before, what they see now, and the check that fails if it breaks again.
+
+### Area C: agent, network and integrations
+
+Claude Code failures were recorded against the real `claude` 2.1.280 pointed at a local stand-in for Claude's API (`ANTHROPIC_BASE_URL`, its own `CLAUDE_CONFIG_DIR`), so the stream lines in the tests are real ones.
+
+| Case | Before | After | Check |
+|---|---|---|---|
+| Claude Code: rejected or expired sign-in | Claude Code retries a 401 ten times (179s measured) while the pill said "Claude's servers are busy", then showed the raw "Invalid API key · Fix external API key" or "Failed to authenticate. API Error: 401 OAuth token has expired…" | Stopped after the second retry (the first may follow a token refresh): "Sign in to Claude Code again: open a terminal, run claude, and type /login. Then try again." A bad `ANTHROPIC_API_KEY` says so | `agent.test.ts` reliability; e2e `agent-failures.test.ts` (failed state in ~1.3s, process gone) |
+| Claude Code: rate limit, no credit, overloaded, offline, request timeout | Raw CLI text ("API Error: Request rejected (429) · …", "Repeated 529 Overloaded errors…", "Connection refused…", with the CLI's own dashes); a 429 retry was called "busy" | One plain sentence each (usage limit, out of credit, servers busy, couldn't reach Claude's servers); the CLI's words stay in the step's detail; a 429 retry says "rate limit" | `agent.test.ts` reliability |
+| Claude Code: CLI with changed flags or output | "Claude Code exited with code 1 before finishing." (stderr `error: unknown option '--tools'` only in detail); a plain-text run said "exited with code 0" | "This version of Claude Code (x) doesn't accept what Shrike asks of it. Update Claude Code…"; output Shrike can't read says the same | `agent.test.ts` reliability |
+| Claude Code: crash mid-run | "Claude Code was stopped (SIGKILL) before finishing." | Same facts, plus "Try again", and the Try again button | `agent.test.ts` reliability |
+| Claude Code: silent forever (blackholed network: 10 min request timeout x 11 tries) | Working with no steps for up to two hours | After 3 minutes with no tool call open: "No word from Claude Code for a few minutes…"; at 15 minutes Shrike stops it with the reason. An open tool call or approval card never counts as silence | `agent.test.ts` reliability |
+| A failed run on the agent pill | Caption "Your agent stopped with a problem." for 6s, then the pill faded; the reason only on hover; no way to run it again but retyping | A19: the reason stays on the pill (`role=alert`) with Try again; the caption says the reason for 8s. Try again reruns the ask (a follow-up resumes its conversation) | e2e `agent-failures.test.ts`, screenshot `rel-agent-fail-signin.png` |
+| Workspaces rail after a failed run | Green "Agent done" | No agent fact | `workspaces.test.ts` |
+| Built-in brain: offline, refused key, rate limit | "The built-in agent stopped: Connection error." / a raw `401 {"type":"error",…}` | Plain sentences, raw in detail | `agent.test.ts` "built-in brain: offline…" |
+| Two runs across workspaces | A run left going in workspace A read and proposed patches against workspace B after a switch (every tool used the open project) | Each run gets a per-folder MCP server whose tools answer "This run started in A, which isn't the open workspace now. Switch back to it…" | `agent.test.ts` "two workspaces" |
+| User cancels mid-run | Already clean: stopped at once, SIGKILL after 3s | Unchanged | `agent.test.ts` "stop() kills the process" |
+| My tools: server prints text on stdout, garbage tools/list, a URL that isn't MCP | "didn't answer within N seconds…", a raw zod dump, "Streamable HTTP error: Unexpected content type: text/html" | Plain lines naming what's wrong; exits at once and hangs were already fine (timeout kills the tree) | `my-mcp.test.ts` |
+| My tools server fails inside a run | Ignored | "Your tool X didn't start, so this run goes on without it." | `agent.test.ts` (init line) |
+| Connect: saved MCP port taken | Silently moved; outside clients added with `claude mcp add` broke | Tools shows that the port moved and how to re-add | `mcp-server.test.ts` "a saved port and token are reused…" |
+| Connect: token reset during a live run | Every session closed, so the run's next tool call got 401 | Only outside clients are cut off; Shrike's runs use a token that never rotates (and their own per-folder server) | `mcp-server.test.ts` |
+| GitHub offline | `gh auth status` reports "token is invalid" offline, so Shrike said to run gh auth login | One `gh api rate_limit` probe tells offline from signed out: "Shrike can't reach GitHub right now…" and it re-checks every 15s | `github.test.ts` "gh runtime failures"; e2e `github-failures.test.ts` |
+| GitHub slow or hung endpoint | gh has no timeout: still waiting at 40s; Shrike gave up after 180s with a raw command line; the git state queue stalled | Shared gh helper times out (30s, writes 120s, failed-check logs 60s) with a plain line | `github.test.ts` "a gh that never answers" |
+| GitHub rate limit, bad token, no remote / not GitHub | Raw "GraphQL: API rate limit exceeded…", "HTTP 401: Bad credentials", "no git remotes found"; the PR panel looked like "no pull request yet" | Plain lines; the PR panel shows the problem | `github.test.ts` |
+| PR list fails | PR panel stuck on "Asking GitHub", Ship stuck on "Loading pull requests" | The error and Try again | e2e `github-failures.test.ts`, screenshots `rel-gh-offline.png`, `rel-gh-rate-limit.png` |
+| API client: agent quick send redirected off localhost | fetch followed any 3xx with no approval card | Redirects followed by hand (max 5) only to the same loopback origin; otherwise the 3xx comes back | `http-send.test.ts` "redirects stay on localhost…" |
+| API client: huge or binary response | Quick send read the whole body (RSS +202MB on 60MB) and decoded PNGs as text; the panel froze 2s on a 10MB Pretty view | Body capped at 1MB and marked; binary named, not dumped; the panel shows the first 256KB with Copy for the rest (43ms longest frame) | `http-send.test.ts`; e2e `api-network.test.ts` |
+| API client: body that never ends | Idle timeout only: a trickling stream hung forever | Overall deadline equal to the request timeout | `api.test.ts` "/drip" |
+| API client: unreachable, https to an http port, untrusted TLS | "Couldn't reach X. Is your app running?" for everything; a TLS hint pointing at a toggle that doesn't exist | Specific lines (nothing listening, no such host, try http://, how to skip a dev certificate) | `http-send.test.ts`, `api.test.ts`; e2e screenshots `v5-e2e-api-net-0*.png` |
+| Voice: helper missing from an install | "Couldn't build voice (needs Xcode): spawn …/build.sh ENOENT" | "Voice isn't installed in this copy of Shrike. Reinstall Shrike to use it." | `voice.test.ts` "helper: missing" |
+| Voice: helper dies, or mic denied, while hands-free | Hands-free stayed on over a dead helper; turning voice off relaunched it | Hands-free turns off with "Voice stopped…" or the mic message and Privacy button; off commands to a dead helper are dropped | `voice.test.ts` "helper: a crash mid-turn"; e2e `voice-failures.test.ts` |
+| Voice: planner model corrupt, node-llama-cpp won't load, worker crash | "Didn't catch that" with no reason, re-forking every turn (23.7s); a throw left a rejected promise | Said once ("only set phrases work…"), marked broken until the file changes (158ms turns); set phrases keep working | `voice.test.ts` "planner"; e2e `voice-failures.test.ts` |
+| Approval card across an app restart | Approvals live in memory; on quit Claude Code is stopped and the run is saved as stopped | Confirmed: no ghost card after relaunch | code read (`host.ts`, `agent.ts ensureLoaded`) |
+| propose_patch on a file you changed meanwhile | Already refused | Confirmed | `patches.test.ts` "refuses when the file changed while waiting" |
+| Skill draft when the verify run fails or is stopped | Draft stays pending with "the run stopped before the fix was verified"; the skill file is untouched | Confirmed | `skills.test.ts` "a missed outcome leaves the skill byte-identical" |
+
+Not covered yet: two Claude Code runs racing for one session file (Shrike never resumes one session twice at once); a real Claude usage-limit (subscription) message, matched by words only; what an approval card does once its run has ended (not checked).
+
 ## Perf budgets
 
 | Budget | Limit |
