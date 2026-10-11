@@ -24,7 +24,7 @@ src/
 └── options.ts  # M1 ask_options reply text
 ```
 
-`startMcpServer(host, { port, token, onClient })` tries `port` first and takes a random one if it's in use; `rotateToken()` makes a new token and closes every open session.
+`startMcpServer(host, { port, token, onClient })` tries `port` first and takes a random one if it's in use (then `movedFrom` is the port it asked for); `rotateToken()` makes a new token and closes every session an outside client opened. Shrike's own brains use `internalToken`, which never rotates, so a reset doesn't cut off a run in flight.
 
 ## Connecting an outside client
 
@@ -40,4 +40,4 @@ Tools → **Use from your own Claude Code** (MCP9) has three things to copy. Shr
 { "permissions": { "deny": ["Edit", "Write", "MultiEdit", "NotebookEdit", "Bash"] } }
 ```
 
-The panel lists clients by name with their last call. **New token** cuts off everything using the old one (a running Shrike agent too); run `claude mcp remove shrike -s user` and paste step 1 again. Reads of trips by an outside client show a "watched by" eye with its name (A11).
+The panel lists clients by name with their last call. **New token** cuts off every outside client using the old one (a running Shrike agent keeps going on its own token); run `claude mcp remove shrike -s user` and paste step 1 again. Reads of trips by an outside client show a "watched by" eye with its name (A11).

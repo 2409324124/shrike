@@ -770,6 +770,7 @@ export interface ConnectInfo {
   skill: string; // SKILL.md text for ~/.claude/skills/shrike/
   settings: string; // permissions.deny for Claude Code's own edit and shell tools
   clients: { name: string; at: number }[]; // outside clients since Shrike opened, last call time, newest first
+  movedFrom?: number; // the saved port was taken, so the address changed this session
 }
 
 export interface AgentUsage {
