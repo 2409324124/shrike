@@ -46,7 +46,11 @@ export function registerDriveTools(tool: Tool, host: ShrikeHost, d: ShrikeDriver
     async ({ limit }) => {
       const list = host.listActions().sort((a, b) => b.startMs - a.startMs).slice(0, limit ?? 20);
       if (!list.length) return "No trips yet.";
-      return list.map((a) => `${a.id}  ${a.label}  ${a.status === "error" ? "broke" : a.status === "slow" ? "slow" : "worked"}  ${Math.round(a.durationMs)}ms`).join("\n");
+      const at = (a: (typeof list)[number]) => {
+        const s = a.summary?.steps.find((x) => !x.ok && x.source)?.source;
+        return s ? `  at ${s.file}:${s.line}` : "";
+      };
+      return list.map((a) => `${a.id}  ${a.label}  ${a.status === "error" ? "broke" : a.status === "slow" ? "slow" : "worked"}  ${Math.round(a.durationMs)}ms${a.status === "error" ? at(a) : ""}`).join("\n");
     },
   );
 
