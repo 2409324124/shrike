@@ -165,15 +165,6 @@ export function RaceView() {
   );
 }
 
-/** W3 entry: put next to a broken trip or a finding. */
-export function TryBothButton({ actionId, className }: { actionId: string; className?: string }) {
-  return (
-    <button type="button" className={cx("btn", className)} title="Your agent tries two different fixes, each in its own copy of your code" onClick={() => void useWorktrees.getState().race(actionId, 2)}>
-      Try both
-    </button>
-  );
-}
-
 /** W4 entry: put on the patch card next to Apply. */
 export function SandboxButton({ patchId, actionId, className }: { patchId: string; actionId?: string; className?: string }) {
   return (

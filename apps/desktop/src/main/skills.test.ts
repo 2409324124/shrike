@@ -138,13 +138,13 @@ test("proposals: a verified outcome writes in place or to a copy (never into ~/.
   assert.equal(existsSync(join(d.personal, "auth.md")), false);
 
   // Built-in: a personal copy.
-  const p3 = await proposeUpdate(d, { skillId: "auth", reason: "x", after: "1. New auth step.\n2. Two." });
+  await proposeUpdate(d, { skillId: "auth", reason: "x", after: "1. New auth step.\n2. Two." });
   await keep(d, "auth");
   assert.equal(readFileSync(join(d.builtin, "auth.md"), "utf8"), md("name: Auth\nwhen: Logins fail"));
   assert.equal((await loadSkills(d)).find((s) => s.id === "auth")!.source, "personal");
 
   // Claude: copy-on-write into personal, marked as the evolving version, still listed as Claude's; ~/.claude untouched.
-  const p4 = await proposeUpdate(d, { skillId: "navigate-app", reason: "Learned: port 5173 is often taken", after: "## 1. Check the port\n\n## 2. Attach\n" });
+  await proposeUpdate(d, { skillId: "navigate-app", reason: "Learned: port 5173 is often taken", after: "## 1. Check the port\n\n## 2. Attach\n" });
   const copy = join(d.personal, "navigate-app.md");
   await keep(d, "navigate-app");
   assert.equal(readFileSync(claudeFile, "utf8"), claudeText);
@@ -154,7 +154,7 @@ test("proposals: a verified outcome writes in place or to a copy (never into ~/.
   assert.equal((await loadSkills(d)).filter((s) => s.id === "navigate-app").length, 1);
 
   // A second improvement to the evolving copy lands in the same copy.
-  const p5 = await proposeUpdate(d, { skillId: "navigate-app", reason: "again", after: "## 1. A\n\n## 2. B\n" });
+  await proposeUpdate(d, { skillId: "navigate-app", reason: "again", after: "## 1. A\n\n## 2. B\n" });
   await keep(d, "navigate-app");
   nav = (await loadSkills(d)).find((s) => s.id === "navigate-app")!;
   assert.equal(nav.version, 3);

@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Play, Trash2, X } from "lucide-react";
-import type { Flow, HttpRequestSpec } from "@shrike/schema";
+import type { Flow } from "@shrike/schema";
 import { call } from "../lib/api.ts";
 import { relativeTime } from "../lib/format.ts";
 import { cx, IconButton, Kbd, Spinner } from "../components/ui.tsx";
 import { Dot, Elapsed } from "../components/Activity.tsx";
 import { connectFlows, stepText, useFlows, watchWords } from "../stores/flows.ts";
 import { useProject } from "../stores/project.ts";
-import { toast, useUi } from "../stores/ui.ts";
+import { useUi } from "../stores/ui.ts";
 
-// B2 flows shelf (W), B1 recording bar, B3 Keep watching, "Pick up where you left off", "Save as flow".
+// B2 flows shelf (W), B1 recording bar, B3 Keep watching, "Pick up where you left off".
 // Shell mounts FlowsShelf as the "flows" panel and FlowRecordingOverlay over the Thread; Welcome mounts PickUpCard.
 
 const WATCH: { label: string; value: Flow["watch"] | null }[] = [
@@ -226,31 +226,5 @@ export function PickUpCard() {
       </span>
       {opening ? <Spinner size={13} /> : <ArrowRight size={14} className="shrink-0 text-dim" />}
     </button>
-  );
-}
-
-/** API explorer: keep this request as a flow (a "request" flow replays it). The explorer's owner mounts it next to Send. */
-export function SaveAsFlow({ request }: { request: HttpRequestSpec }) {
-  const [naming, setNaming] = useState(false);
-  const [name, setName] = useState("");
-  if (!naming) {
-    return (
-      <button type="button" className="hud-btn" disabled={!request.url.trim()} onClick={() => (setName(`${request.method.toUpperCase()} ${request.url}`.slice(0, 80)), setNaming(true))}>
-        Save as flow
-      </button>
-    );
-  }
-  const save = async () => {
-    const f = await call((a) => a.saveFlow(name, [{ type: "request", request }]), "Couldn't save the flow");
-    if (f) toast(`Saved "${f.name}". Press W to run it.`, "ok");
-    setNaming(false);
-  };
-  return (
-    <form className="flex items-center gap-1.5" onSubmit={(e) => (e.preventDefault(), name.trim() && void save())}>
-      <input aria-label="Flow name" autoFocus value={name} maxLength={120} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), setNaming(false))} className="field h-6 w-[180px] text-[11px]" />
-      <button type="submit" className="hud-btn solid" disabled={!name.trim()}>
-        Save
-      </button>
-    </form>
   );
 }

@@ -778,5 +778,3 @@ export function createReviewLessons(deps: LessonsDeps) {
 
   return { view, refresh, learn, selfCheck, fixSelfCheck, selfReview };
 }
-
-export type ReviewLessons = ReturnType<typeof createReviewLessons>;

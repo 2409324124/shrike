@@ -1,6 +1,6 @@
 import type { FileNode } from "@shrike/schema";
 import { redactText } from "@shrike/redact";
-import { api, call } from "../lib/api.ts";
+import { api } from "../lib/api.ts";
 import { ask, openFocusedFile, openIssue, run, runEntry, runMove, runSlash, togglePoint, viewTrip } from "../hud/commands.ts";
 import { sentence } from "../hud/logic.ts";
 import { useAgent } from "../stores/agent.ts";
@@ -356,5 +356,3 @@ export const BINDINGS: Bindings = {
   },
   pre,
 };
-
-export const BOUND = new Set(Object.keys(RUN));

@@ -42,7 +42,7 @@ test("acquired and leveled come from one rescan: first look is quiet, copies are
   await editablePath(d, "bad-value"); // a project copy of a built-in skill: same skill, not a new one
   assert.deepEqual(await rescan(d), []);
 
-  const p = await proposeUpdate(d, { skillId: "run-todo-app", reason: "Learned: port 5173 is often taken, check it first", after: "# Run\n\n1. Check 5173.\n" });
+  await proposeUpdate(d, { skillId: "run-todo-app", reason: "Learned: port 5173 is often taken, check it first", after: "# Run\n\n1. Check 5173.\n" });
   await settle(d, { expect: "run", ok: true, skillIds: ["run-todo-app"] });
   await pushUpdate(); // what settleNow does after a level up
   assert.deepEqual(kinds(events), ["leveled:run-todo-app"]);

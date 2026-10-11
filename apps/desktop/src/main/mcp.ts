@@ -501,7 +501,6 @@ export function createMcpHub(d: HubDeps) {
     },
   };
 }
-export type McpHub = ReturnType<typeof createMcpHub>;
 
 /** MCP8: the server behind a tool step that worked (mcp__<server>__<tool>), or undefined. */
 export function mcpServerOfStep(s: { kind: string; tool?: string; text: string }): string | undefined {

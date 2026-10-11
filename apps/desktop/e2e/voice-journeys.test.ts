@@ -8,7 +8,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, linkSync, mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
-import type { ElectronApplication, Page } from "playwright";
+import type { Page } from "playwright";
 import { PLANNER_MODEL } from "../src/main/voice-planner-model.ts";
 import { noiseWav } from "../../../fixtures/voice/eval.ts";
 import { actions, addTodoAction, fixtureCopy, freePort, gitIn, launch, listening, openFolder, questReady, shot, sleep, typeTodo, waitFor } from "./helpers.ts";

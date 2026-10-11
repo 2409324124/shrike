@@ -9,7 +9,7 @@ import { frontMatter } from "@shrike/mcp-server";
 import { ghStatus, type Exec, type Gh } from "./github.ts";
 import { killTree, spawnShell } from "./platform.ts";
 import { judge } from "./start/policy.ts";
-import { loadSkills, pendingDraft, proposeUpdate, rescanNow, settleNow, noteSkillUse, slug, type SkillDirs } from "./skills.ts";
+import { loadSkills, pendingDraft, proposeUpdate, rescanNow, settleNow, noteSkillUse, type SkillDirs } from "./skills.ts";
 
 // CI1–CI8: what CI runs (config + gh run history, reads only), a per-project lessons skill Claude writes, and pre-flight:
 // the legs a change touches, run here like CI. A lesson is kept (S4 outcome "preflight") only when pre-flight matched hosted CI.

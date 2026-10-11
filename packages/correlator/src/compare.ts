@@ -1,5 +1,5 @@
 import type { ActionView, TimelineNode } from "@shrike/schema";
-import { allEvents, errMsg, fmtMs, httpStatus, isFailure, reqName, topRequests, trunc, withWord } from "./util.ts";
+import { allEvents, errMsg, fmtMs, httpStatus, isFailure, topRequests, trunc, withWord } from "./util.ts";
 
 interface Req {
   key: string;

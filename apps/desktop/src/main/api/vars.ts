@@ -29,8 +29,6 @@ export function interpolate(s: string, scope: Scope, depth = 0): string {
   return depth < 3 && out !== s && /\{\{[^{}\s]+\}\}/.test(out) ? interpolate(out, scope, depth + 1) : out;
 }
 
-export const unresolved = (s: string) => [...s.matchAll(/\{\{\s*([^{}\s$]+)\s*\}\}/g)].map((m) => m[1]!);
-
 export interface ResLike {
   status: number;
   headers: Record<string, string>;

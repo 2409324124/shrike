@@ -174,8 +174,6 @@ function creditGit(id: string, runId?: string): void {
   });
 }
 
-/** S1: the shelf is the "skills" panel (K, bound by the sdlc engineer). */
-export const toggleSkillShelf = (): void => useUi.getState().togglePanel("skills");
 const closeShelf = () => {
   if (useUi.getState().panel === "skills") useUi.setState({ panel: null });
   useSkills.setState({ query: "" });

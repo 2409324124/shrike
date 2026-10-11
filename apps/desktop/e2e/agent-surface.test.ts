@@ -2,7 +2,7 @@
 // Uses the user's subscription, so it only runs with SHRIKE_E2E_AGENT=1.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import type { Page } from "playwright";
 import { actions, addTodoAction, flatten, launch, openSampleAndRun, shot, sleep, typeTodo, waitFor } from "./helpers.ts";
