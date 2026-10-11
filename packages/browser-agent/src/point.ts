@@ -78,7 +78,7 @@ function pick(el: Element): PointPick {
     rect: { x: Math.round(r.left), y: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height), viewportWidth: innerWidth, viewportHeight: innerHeight },
   };
   const src = reactSource(el);
-  if (src) p.source = src;
+  if (typeof src === "object") p.source = src; // ponytail: a React 19 stack isn't mapped for a pick
   return p;
 }
 

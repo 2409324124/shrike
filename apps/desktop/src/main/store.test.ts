@@ -120,6 +120,18 @@ test("browser request stacks are resolved before the action completes", async ()
   assert.equal(v?.tree[0]?.event.source?.file, "src/api.ts");
 });
 
+test("a React 19 click's JSX stack resolves to its component's file and survives the closing re-send", async () => {
+  const { store } = make(async () => "export function App() {}\n");
+  const root = ev({ id: "6".repeat(16), kind: "user_action", name: 'Clicked "Add"', trigger: "click", stack: "Error: react-stack-top-frame\n    at exports.jsxDEV (http://localhost:4510/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=1:250:30)\n    at App (http://localhost:4510/src/App.tsx?t=1:72:13)" });
+  store.handle({ type: "events", events: [root] });
+  store.handle({ type: "action_end", actionId: root.id, at: Date.now() });
+  const { stack: _, ...closed } = root;
+  store.handle({ type: "events", events: [{ ...closed, durationMs: 5 }] });
+  const v = await store.waitForAction(root.id, 2000);
+  assert.deepEqual(v?.root.source && { file: v.root.source.file, line: v.root.source.line }, { file: "src/App.tsx", line: 72 });
+  assert.equal(store.getEvent(root.id)?.stack, undefined);
+});
+
 test("traces from Shrike's own requests are dropped", async () => {
   const { store } = make();
   const S = "3".repeat(32);

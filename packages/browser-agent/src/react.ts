@@ -3,6 +3,7 @@ import type { SourceLocation } from "@shrike/schema";
 interface Fiber {
   return: Fiber | null;
   _debugSource?: { fileName?: string; lineNumber?: number; columnNumber?: number } | null;
+  _debugStack?: { stack?: unknown } | null; // React 19 dev: an Error made where the element's JSX ran
 }
 
 function reactKey(el: Element, prefix: string): unknown {
@@ -15,8 +16,8 @@ export function hasReactOnClick(el: Element): boolean {
   return typeof props?.onClick === "function";
 }
 
-// ponytail: React <= 18 dev only (_debugSource). React 19 dropped it; upgrade path is _debugStack + source maps.
-export function reactSource(el: Element): SourceLocation | undefined {
+/** Where the element's JSX is, in dev: React <= 18's _debugSource, else React 19's _debugStack as a raw stack for main to map. */
+export function reactSource(el: Element): SourceLocation | string | undefined {
   let node: Element | null = el;
   let fiber: Fiber | undefined;
   while (node && !fiber) {
@@ -31,5 +32,6 @@ export function reactSource(el: Element): SourceLocation | undefined {
       return loc;
     }
   }
-  return undefined;
+  const stack = fiber?._debugStack?.stack;
+  return typeof stack === "string" ? stack : undefined;
 }

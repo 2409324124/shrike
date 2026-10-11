@@ -96,7 +96,7 @@ export class Store {
     const e = redactEvent(clampBodies(raw));
     e.traceId = this.aliases.get(e.traceId) ?? e.traceId;
     if (e.source && (e.origin === "browser" || isAbsolute(e.source.file))) e.source = { ...e.source, file: relativize(e.source.file, this.opts.projectRoot()) }; // OpenTelemetry SDKs send absolute paths
-    if ((e.kind === "http_request" || e.kind === "db_query") && e.origin === "browser" && e.stack) {
+    if ((e.kind === "http_request" || e.kind === "db_query" || e.kind === "user_action") && e.origin === "browser" && e.stack) {
       const stack = e.stack;
       delete e.stack;
       this.resolveStack(e, stack);
