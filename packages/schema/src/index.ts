@@ -1538,7 +1538,7 @@ export interface VoicePlanRequest {
   text: string; // what was heard
   schema: Record<string, unknown>; // this turn's JSON schema: every slot an enum of live values
 }
-export type VoicePlanResult = { ok: true; json: unknown; ms: number } | { ok: false; error: "missing" | "timeout" | "failed" };
+export type VoicePlanResult = { ok: true; json: unknown; ms: number } | { ok: false; error: "missing" | "timeout" | "failed" | "broken" }; // broken: the model is there but won't load (corrupt, or node-llama-cpp failed)
 
 // main → renderer push channels
 export interface ShrikeEvents {

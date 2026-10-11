@@ -46,6 +46,7 @@ export class VoiceHelper {
   send(cmd: VoiceCommand): void {
     if (cmd.cmd === "config" || cmd.cmd === "context" || cmd.cmd === "hands") this.sticky.set(cmd.cmd, cmd);
     if (this.sock && !this.sock.destroyed) return void this.sock.write(`${JSON.stringify(cmd)}\n`);
+    if (!this.connecting && (cmd.cmd === "stop" || ((cmd.cmd === "hands" || cmd.cmd === "arm") && !cmd.on))) return; // turning off a helper that isn't running mustn't start it
     this.queue.push(cmd);
     void this.ensure().catch((e: Error) => {
       this.queue = [];
@@ -119,6 +120,7 @@ export class VoiceHelper {
     const bin = join(this.appPath, "Contents/MacOS/ShrikeVoice");
     const srcs = ["ShrikeVoice.swift", "Package.swift", "build.sh", "Info.plist"].map((f) => join(this.deps.nativeDir, f)).filter(existsSync);
     if (existsSync(bin) && srcs.every((s) => statSync(bin).mtimeMs >= statSync(s).mtimeMs)) return;
+    if (!existsSync(join(this.deps.nativeDir, "build.sh"))) throw new Error("Voice isn't installed in this copy of Shrike. Reinstall Shrike to use it."); // packaged: the helper ships built, no sources
     this.deps.emit({ type: "setup" });
     await new Promise<void>((ok, fail) =>
       execFile(join(this.deps.nativeDir, "build.sh"), { timeout: BUILD_MS }, (err, _o, stderr) =>
