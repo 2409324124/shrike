@@ -7,7 +7,7 @@
 | Unit | `node:test` | One runnable check per non-trivial module (list below) |
 | Integration | `node:test` + fixtures | Launch a fixture with node-agent, fire requests, assert on the DebugEvent tree |
 | Desktop e2e | Playwright `_electron` | The killer demo end to end in the real app (`apps/desktop/e2e`: `demo`, `shop` (multi-process places, cache, fork, Stripe refusal), `big-app` (one Place order trip: 60+ functions in 30+ files across 8 services, queue, 3 caches, 3 Postgres, SQLite, Stripe and email doubles, CRON; fork, N+1 coil, backoff polls, snap at `totals.ts:25`; the Files view on it; the one-line fix turns it green), `api-only` (no page; explorer, curl and cron callers), `power` (point mode, drag to Ask, slash palette, quick open, issue copy, status strip), `inspector` (place inspector on todo-app and shop-app copies, offset ports); `branches` (C1–C5, C7: fork from FOUND IT and a step, map, Compare, aside, Bring it back; main's session file unchanged) `xray` (X1–X7: activity, file chips, thinking, tokens, context map adds up to the ring, race cards) and `chains` (P1–P5: two prompts queued while a run works fire in order in the same session; a critique of 5 polishes, then stops when it passes or at the round limit; a failed run takes the failure branch; save as chain; a scheduled prompt fires; the fake critic scores from `FAKE_CRITIQUE_SCORES`, `FAKE_CLAUDE_FAIL` fails a run) and `options` (M1 to M6: Show me options on the composer, three mockup cards in sandboxed iframes, enlarge and arrows, More like this on B, combine B2 + C across rounds, approve, the approved mockup beside the patch, Apply, design-taste learned into the project; `fake-options.mjs` plays it for real over the MCP tools) and `themes-composer` (Z, Q: ask from the docked composer, the conversation shows the ask, the answer and folded steps, `/` commands and `@` files, all six themes restyle the root and code colours, Match system follows a light or dark system, the pick survives a relaunch) on a recorded stream (`fake-claude.mjs` via `SHRIKE_CLAUDE_BIN`); `agent` and `agent-surface` need `SHRIKE_E2E_AGENT=1`). `SHRIKE_OPEN_FOLDER` stands in for the folder picker |
-| Agent evals | `scripts/eval` runner | Bug corpus, scored |
+| Agent evals | `scripts/eval` runner (planned) | Bug corpus, scored |
 | Perf | Integration harness | Overhead and event volume budgets |
 
 **Headed by default, without stealing focus:** test windows appear (so runs can be watched) via `showInactive`, never take keyboard focus, and never send notifications. `SHRIKE_HEADLESS=1` hides everything (no window, no Dock icon) for runs that must stay off screen (`apps/desktop/src/main/headless.ts`).
@@ -17,7 +17,7 @@
 | Module | Check |
 |---|---|
 | `correlator` tree builder | Out-of-order events with parent links produce the right tree |
-| `correlator` clock alignment | Browser/server skew of ±300ms still nests correctly |
+| `correlator` clock alignment (planned) | Browser/server skew of ±300ms still nests correctly |
 | `redact` | Every rule in [07-security-privacy.md](07-security-privacy.md#redaction-rules-shrikeredact) masks its sample and leaves non-secrets alone |
 | `scanner` | Finds every route in both fixtures with handler file:line |
 | `node-agent` transform | Wrapped function keeps behaviour, `this`, generators, async, and source-map line numbers |
@@ -79,9 +79,9 @@ Python 3.13 was not installed on the machine that ran it. Re-run on every python
 | `fixtures/shop-app` | Vite React + three node:http services, PGlite, lru-cache, node:sqlite, a Stripe test double | The cart total goes to the charge in dollars where cents are expected (49 instead of 4900); the payments double refuses it |
 | `fixtures/big-app` | Vite React + nine node:http services, a queue, a cron worker, PGlite (3 databases), lru-cache (3 caches), node:sqlite outbox, Stripe and email test doubles | The showcase: one Place order click charges, saves, emails, then the receipt's per-line tax isn't rounded to whole cents and `money()` throws at `services/orders/src/domain/totals.ts:25` |
 | `fixtures/api-only` | node:http + node:sqlite, no web page, a nightly script | Case-sensitive "already registered?" check vs a case-insensitive unique index: 409 |
-| `fixtures/next-app` | Next.js app router + Prisma + SQLite | Same scenarios in Next.js, React 19 |
+| `fixtures/next-app` (planned) | Next.js app router + Prisma + SQLite | Same scenarios in Next.js, React 19 |
 | `fixtures/py-app` | Plain page + the same shop API on FastAPI, Flask and Django, SQLite | A gift card's pack size of 0 divides by zero (`api/main.py:47`, `api/shop.py:27`); recorded by python-agent, or by OpenTelemetry under `opentelemetry-instrument` |
-| `fixtures/bugs` | Variants of the two apps, one bug each | The agent eval corpus |
+| `fixtures/bugs` (planned) | Variants of the two apps, one bug each | The agent eval corpus |
 
 ## Agent eval corpus (`fixtures/bugs`)
 
@@ -125,7 +125,7 @@ Starting set (15 bugs, covering what vibe-coded apps actually break on):
 | Honesty | No "Observed" claim that the recording contradicts | 100% |
 | Steps / cost / time | Median per run | track, no target yet |
 
-Run the eval per brain (Claude Code, built-in, Codex, OpenCode) and record results in `fixtures/bugs/RESULTS.md` with the date, brain and model.
+Run the eval per brain (Claude Code, built-in, and Codex and OpenCode once they're supported) and record results in `fixtures/bugs/RESULTS.md` with the date, brain and model.
 
 ## Reliability
 
@@ -153,7 +153,7 @@ Each case was broken on purpose first. Unit checks run in `pnpm test`; e2e cases
 | A click with 100k events, a server loop, giant bodies | Unbounded: +171 MB heap and a 42.8 MB update for one trip; 20k trips kept | 5,000 events a trip (errors up to 10,000) with a note, 500 trips, 100,000 events, bodies cut at 64KB | `store.test.ts` |
 | Sleep, wake or a clock jump during a start | The 45 s readiness deadline and the quiet-process wait used the wall clock, so a jump could fail a start at once or stall it | Both use a monotonic clock | code review only |
 
-Not verified: a clock jump in the middle of a trip (event times come from each agent's wall clock; the correlator's skew handling is tested only to ±300 ms), network interface changes (everything is loopback), a real full disk (only the read-only folder case is tested; the full-disk wording is mapped but not exercised), and orphan cleanup on Windows (not tracked there).
+Not verified: a clock jump in the middle of a trip (event times come from each agent's wall clock and nothing corrects skew yet), network interface changes (everything is loopback), a real full disk (only the read-only folder case is tested; the full-disk wording is mapped but not exercised), and orphan cleanup on Windows (not tracked there).
 
 ### Area C: agent, network and integrations
 

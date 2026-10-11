@@ -59,7 +59,6 @@ const OPS: Record<string, (a: unknown, raw: string) => boolean> = {
   isArray: (a) => Array.isArray(a),
   isJson: (a) => typeof a === "object" && a !== null,
 };
-export const ASSERT_OPS = Object.keys(OPS);
 
 export function runAssertions(list: ApiAssertion[], res: ResLike, scope: Scope): ApiAssertionResult[] {
   return list

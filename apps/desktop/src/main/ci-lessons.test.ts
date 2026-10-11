@@ -6,7 +6,7 @@ import { dirname, join } from "node:path";
 import { test } from "node:test";
 import type { CiLessonsState, ShrikeEvents, SkillEvent } from "@shrike/schema";
 import type { Exec, Gh } from "./github.ts";
-import { circleJobs, classify, cleanLog, compare, createCiLessons, decideIf, evalExpr, fill, githubJobs, gitlabJobs, historyStats, jenkinsJobs, legsOf, lessonsBody, parseYaml, scopeOf, touches, verdictOf, workspacePackages, type RunJobs, type Runner } from "./ci-lessons.ts";
+import { circleJobs, classify, cleanLog, compare, createCiLessons, decideIf, evalExpr, fill, githubJobs, gitlabJobs, historyStats, jenkinsJobs, legsOf, parseYaml, scopeOf, touches, verdictOf, workspacePackages, type RunJobs, type Runner } from "./ci-lessons.ts";
 import { configureSkills, listDrafts, loadSkills, type SkillDirs } from "./skills.ts";
 
 const repoRoot = join(import.meta.dirname, "..", "..", "..", "..");

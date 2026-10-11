@@ -1276,7 +1276,6 @@ export interface ShrikeApi {
   readFile(path: string): Promise<string>;
   writeFile(path: string, content: string): Promise<void>;
   getActions(): Promise<ActionView[]>;
-  clearActions(): Promise<void>;
   sendRequest(req: HttpRequestSpec): Promise<{ response: HttpResponseSpec; actionId: string }>;
   detectBrains(): Promise<BrainInfo[]>;
   startAgent(goal: string, brain: BrainId): Promise<AgentRunInfo>;
@@ -1288,7 +1287,6 @@ export interface ShrikeApi {
   saveClip(bytes: Uint8Array, ext: "webm" | "mp4"): Promise<string | null>; // save dialog; returns saved path
   setProcesses(processes: ProcessSpec[]): Promise<ProjectInfo>; // D12: edit and persist to .shrike/config.json
   getMemory(): Promise<MemoryNote[]>; // A5
-  addMemory(note: Omit<MemoryNote, "id" | "createdAt">): Promise<MemoryNote>;
   removeMemory(id: string): Promise<void>;
   getCheckpoints(): Promise<Checkpoint[]>; // A6
   rewindTo(checkpointId: string): Promise<void>;
@@ -1346,10 +1344,8 @@ export interface ShrikeApi {
   apiSend(req: ApiRequest, opts?: ApiSendOptions): Promise<ApiSendResult>; // the user's own send: any http(s) host
   apiCancel(sendId: string): Promise<void>;
   apiHistory(): Promise<ApiHistoryEntry[]>; // last 200 for this project, newest first, redacted
-  apiClearHistory(): Promise<void>;
   apiImport(kind: ApiImportKind, text?: string, name?: string): Promise<ApiCollection | ApiRequest>; // curl returns a request; the rest a new owned collection (bruno: folder dialog; text absent: file dialog)
   apiCode(req: ApiRequest, lang: ApiCodeLang, opts?: ApiSendOptions): Promise<string>;
-  apiFromTrip(actionId: string): Promise<ApiRequest>; // edit and resend: prefilled from the trip's first request (redacted values stay redacted)
   apiPickFile(): Promise<string | null>; // a file for a multipart field
   // G: git and GitHub
   gitState(): Promise<GitState>;
@@ -1425,7 +1421,6 @@ export interface ShrikeApi {
   listCommands(): Promise<{ name: string; prompt: string }[]>; // saved slash commands from .shrike/commands/<name>.md (sdlc engineer)
   // V: voice (ShrikeVoice.app helper, Jev fallback)
   voiceSend(cmd: VoiceCommand): Promise<void>; // starts the helper on first use
-  voiceDecide(utterance: string, commands: { id: string; desc: string }[]): Promise<string | null>; // Jev picks one id, null when unsure or not running
   openVoiceSettings(pane: "mic" | "speech" | "dictation"): Promise<void>; // System Settings: Privacy, or Keyboard for Dictation
   voiceModels(): Promise<VoiceModels>; // V7: on-device models in userData, their state and free disk
   voiceModelAct(act: "download" | "cancel" | "delete", id?: VoiceModelId): Promise<VoiceModels>; // no id: every model; progress on "voice:models"

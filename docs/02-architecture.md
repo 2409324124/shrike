@@ -15,12 +15,12 @@
 │  BrowserCollector   CDP on app pane + injects browser-agent                       │
 │  Ingest             127.0.0.1 HTTP (/ingest, OTLP /v1/traces), per-session token  │
 │  Correlator         adapters → DebugEvent, clock alignment, tree   (@shrike/correlator)│
-│  Store              SQLite + NDJSON blobs                          (@shrike/store) │
+│  Store              in memory + NDJSON per project  (SQLite planned, @shrike/store)│
 │  Redactor           runs on ingest, before store                   (@shrike/redact)│
 │  AgentHost          runs Claude Code / Codex / OpenCode / built-in (@shrike/agent) │
 │  McpServer          Shrike tools + approval gate, for every agent  (@shrike/mcp-server)│
 └───────────────────────────────────────────────────────────────────────────────────┘
-          ▲ OTLP + WS (localhost)                     ▲ CDP + injected script
+          ▲ HTTP /ingest + OTLP (localhost)           ▲ CDP + injected script
 ┌─────────┴───────────────┐   HTTP + traceparent   ┌──┴────────────────────────┐
 │ User's dev server       │◀───────────────────────│ User's frontend           │
 │ + @shrike/node-agent     │                        │ + @shrike/browser-agent    │
@@ -47,19 +47,19 @@ No source code or raw recordings go to the cloud unless the user shares.
 User clicks "Add Todo" in app pane
  1 browser-agent: click listener opens action window, actionId=A1, traceId=T1
    - resolves clicked element → React fiber → TodoForm.tsx:31
-   - emits user_action event over WS
+   - emits user_action event through the window.__shrikeEmit CDP binding
  2 onClick runs → fetch("/api/todos")
    - patched fetch: inherits A1, adds traceparent: 00-T1-<span>-01
    - captures stack → api.ts:12 (resolved later)
- 3 CDP Network.requestWillBeSent / responseReceived → timing, headers, bodies
- 4 Node: OTel http server span joins T1 via traceparent
+ 3 patched fetch records timing, headers, bodies
+ 4 Node: node-agent's http.Server patch joins T1 via traceparent
  5 node-agent function hooks: createTodo() enter/exit with args, timing, file:line
  6 console.log inside createTodo → log event attached to active span
- 7 OTel db span: INSERT fails → error event
- 8 Response 500 → CDP + fetch patch close the request
- 9 React commit observed via fiber hook → render event (TodoList)
-10 Action window closes after network idle 500ms and no pending renders
-11 Correlator builds tree, Redactor already ran on ingest, Store persists
+ 7 node-agent db driver hook: INSERT fails → error event
+ 8 Response 500 → fetch patch closes the request
+ 9 (planned) React commit observed via fiber hook → render event (TodoList)
+10 Action window closes 400ms after the last request settles
+11 Correlator builds tree, Redactor already ran on ingest, Store keeps it
 12 Renderer receives action:completed → Timeline + What happened? card
 ```
 
@@ -71,7 +71,7 @@ This is the riskiest engineering area. Spike it in week one (see [08-roadmap.md]
 
 | Setup | How we get function-level spans | Notes |
 |---|---|---|
-| `node`/`tsx`/`ts-node` + Express, Fastify, Hono | `NODE_OPTIONS=--import @shrike/node-agent/register` → OTel SDK + `module.register()` loader that SWC-transforms user files | Loader must chain after `tsx`'s own loader. Skip `node_modules`. |
+| `node`/`tsx`/`ts-node` + Express, Fastify, Hono | `NODE_OPTIONS=--import @shrike/node-agent/register` → `module.register()` loader and a CommonJS `_compile` hook that Babel-transform user files ([packages/node-agent](../packages/node-agent/README.md)) | Loader must chain after `tsx`'s own loader. Skip `node_modules`. |
 | Next.js (webpack, dev) | Server code is bundled, so a Node loader never sees route files. Inject a webpack loader. | v1: launcher preloads a require hook on Next's config loader to append our loader without editing `next.config.*`. Fallback: one-click "Enable full tracing" adds `withShrike()` to the config, shown as a diff. |
 | Next.js (Turbopack) | Turbopack loader rules (`turbopack.rules`) via the same config wrap | Spike; if blocked, OTel-only with `approximate` locations. |
 | Vite SSR | Vite plugin via the same config-wrap approach | v1.x |
@@ -84,32 +84,21 @@ When function hooks are unavailable, degrade to **OTel-only**: HTTP and DB spans
 
 | Need | Mechanism |
 |---|---|
-| Network, console, exceptions | CDP via `webContents.debugger` on the app pane |
-| Clicks, inputs, navigation, DOM replay | `@shrike/browser-agent` injected with `Page.addScriptToEvaluateOnNewDocument`; uses rrweb |
-| Element → component → file:line | React DevTools global hook (bippy approach). React ≤18: `_debugSource`. React 19: parse `_debugStack` through source maps. |
+| Network, console, exceptions | `@shrike/browser-agent`: patched `fetch`/XHR, console and error hooks |
+| Clicks, inputs, navigation | `@shrike/browser-agent` injected with `Page.addScriptToEvaluateOnNewDocument` through `webContents.debugger`. DOM replay (rrweb) is planned |
+| Element → component → file:line | React DevTools global hook (bippy approach). React ≤18: `_debugSource`. React 19: parse `_debugStack` through source maps (planned). |
 | Request ↔ click linking | Patched `fetch`/XHR inherit the open action window; W3C `traceparent` header joins the backend |
-| Renders | Fiber commit hook (react-scan approach) |
+| Renders (planned) | Fiber commit hook (react-scan approach) |
 
-The `traceparent` header is only added to same-origin requests and origins on an allowlist, so we don't break CORS on third-party APIs.
+The `traceparent` header is only added to same-origin requests, so we don't break CORS on third-party APIs.
 
 ## Clock alignment
 
-Browser and Node clocks differ. At session start each agent reports `(wallClockMs, monotonicMs)` pairs over WS; the Correlator computes per-source offsets and re-syncs every 30s. Nesting uses parent/child links first and timestamps second, so small skew never reorders a child before its parent.
+Planned, not built: nesting already uses parent/child links. Browser and Node clocks differ. At session start each agent reports `(wallClockMs, monotonicMs)` pairs; the Correlator computes per-source offsets and re-syncs every 30s. Nesting uses parent/child links first and timestamps second, so small skew never reorders a child before its parent.
 
 ## IPC contract (renderer ↔ main)
 
-All channels are typed in `@shrike/schema` and validated with zod in main. The renderer never gets raw Node access.
-
-| Channel | Direction | Payload |
-|---|---|---|
-| `project:open` / `project:info` | R→M / M→R | path / framework, routes, commands |
-| `run:start` / `run:stop` / `run:status` | R→M / M→R | command / url, pid, state, error |
-| `action:started` / `action:event` / `action:completed` | M→R | Action, DebugEvent (batched every 50ms) |
-| `timeline:query` | R→M | filters, search text → events |
-| `file:read` / `file:write` / `file:changed` | R↔M | repo-relative path, contents, hash |
-| `api:list` / `api:send` | R↔M | routes / request → actionId |
-| `agent:start` / `agent:step` / `agent:approve` / `agent:stop` | R↔M | goal, autonomy / step stream / approval id |
-| `settings:get` / `settings:set` | R↔M | settings object |
+Every method of `ShrikeApi` in `@shrike/schema` is one `ipcRenderer.invoke("shrike:<method>")`, validated with zod in `apps/desktop/src/main/ipc.ts`; main pushes events as `shrike:event:<channel>` (`ShrikeEvents`: `run:status`, `agent:step`, `file:changed`, `project:opened`, ...). The preload (`apps/desktop/src/preload/index.ts`) exposes only that list. The renderer never gets raw Node access.
 
 ## Local ports
 
@@ -141,4 +130,4 @@ All channels are typed in `@shrike/schema` and validated with zod in main. The r
 
 ## Repo layout
 
-See the root [README.md](../README.md#repository-layout). Every app and package has its own README with responsibilities, planned `src/` tree and its "done when" check.
+`apps/` (desktop, plus planned cloud and site), `packages/` (one README each with responsibilities, `src/` layout and its "done when" check), `design-system/`, `prompts/`, `fixtures/`, `scripts/release/`. See [CLAUDE.md](../CLAUDE.md#where-things-are).

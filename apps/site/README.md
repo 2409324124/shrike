@@ -1,6 +1,6 @@
 # apps/site
 
-Marketing site and docs (Astro).
+Marketing site and docs (Astro). Not started.
 
 ## Pages
 

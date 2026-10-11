@@ -328,6 +328,3 @@ function NewQuest() {
     </section>
   );
 }
-
-/** The quest board's own count, for the top bar's flag. */
-export const useOpenQuests = (): number => useQuests((s) => s.list.filter((q) => q.state === "planning" || q.state === "active").length);

@@ -8,11 +8,6 @@ export function formatDuration(ms: number | undefined): string {
   return `${Math.floor(ms / 60_000)}m ${Math.round((ms % 60_000) / 1000)}s`;
 }
 
-export function spokenDuration(ms: number | undefined): string {
-  if (ms == null) return "";
-  return ms < 1000 ? `${Math.round(ms)} milliseconds` : `${(ms / 1000).toFixed(1)} seconds`;
-}
-
 const STATUS_WORDS: Record<number, string> = {
   200: "OK",
   201: "Created",
@@ -58,18 +53,8 @@ export const byteLength = (s: string | undefined): number => (s ? new TextEncode
 
 export const basename = (p: string): string => p.slice(p.lastIndexOf("/") + 1);
 
-export function locLabel(loc: SourceLocation): string {
-  return `${loc.precision === "approximate" ? "~" : ""}${basename(loc.file)}:${loc.line}`;
-}
-
 export const isUserLoc = (loc: SourceLocation | undefined): loc is SourceLocation =>
   !!loc && loc.precision !== "unavailable" && !!loc.file && !loc.file.includes("node_modules");
-
-/** Where clicking an event takes you: the call site for function calls, else where it happened. */
-export function jumpTarget(e: DebugEvent): SourceLocation | undefined {
-  if (e.kind === "function" && isUserLoc(e.callSite)) return e.callSite;
-  return isUserLoc(e.source) ? e.source : undefined;
-}
 
 export function clockTime(ms: number): string {
   return new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });

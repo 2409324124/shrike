@@ -109,8 +109,6 @@ export const useGit = create<GitStore>((set, get) => {
   };
 });
 
-/** S: the Ship sheet is the "ship" panel. */
-export const toggleShip = (): void => useUi.getState().togglePanel("ship");
 export const shipOpen = (): boolean => useUi.getState().panel === "ship";
 
 /** Keeps the store in step with main. Mount once (Ship does). */

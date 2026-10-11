@@ -14,6 +14,7 @@ src/
 ├── react.ts      # DOM element -> fiber -> _debugSource (React 18 dev)
 ├── names.ts      # accessible names
 ├── record.ts     # B1: while recording, clicks (accessible name) and typing (secrets marked) as flow steps
+├── point.ts      # O1 point mode: outline what's under the mouse, take the next click for Shrike
 └── page-api.ts   # window.__shrike.snapshot/click/type
 ```
 

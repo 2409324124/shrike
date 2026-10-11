@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { ActionRecipe, RecipeSettings } from "@shrike/schema";
 import { call } from "../lib/api.ts";
-import { toast, useUi } from "../stores/ui.ts";
+import { toast } from "../stores/ui.ts";
 
 // S8: the Recipes tab of the skill shelf.
 
@@ -32,9 +32,3 @@ export const useRecipes = create<RecipesState>((set) => ({
     if (list) set({ list });
   },
 }));
-
-/** Slash and voice "recipes": the skill shelf, on its Recipes tab. */
-export function openRecipes(): void {
-  useRecipes.setState({ open: true });
-  useUi.setState({ panel: "skills", sheet: null });
-}

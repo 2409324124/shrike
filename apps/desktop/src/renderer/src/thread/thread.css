@@ -166,16 +166,6 @@
 .th-dive .why { padding: 10px 14px; border-top: 1px solid var(--hair); color: var(--ink-dim); font-size: 13px; }
 .th-dive .none { padding: 12px 14px; color: var(--ink-faint); font: 500 12px var(--mono); }
 
-.th-caption {
-  position: absolute; left: 0; right: 0; bottom: 0; z-index: 7; padding: 18px 18px 14px; display: flex; align-items: flex-end; gap: 12px; pointer-events: none;
-  background: linear-gradient(0deg, color-mix(in srgb, var(--void) 96%, transparent), transparent);
-}
-.th-caption .c { font: 500 18px/1.35 var(--display); max-width: 64ch; text-wrap: balance; }
-.th-caption .c.error { color: var(--fail-ink); }
-.th-caption .k { margin-left: auto; white-space: nowrap; }
-.th-hint { position: absolute; right: 16px; bottom: 44px; z-index: 8; display: grid; gap: 3px; justify-items: end; pointer-events: none; }
-.th-hint span { font: 500 10px var(--mono); letter-spacing: .1em; color: var(--ink-faint); }
-.th-hint b { color: var(--ink-dim); font-weight: 500; }
 .th-empty { position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; pointer-events: none; color: var(--ink-dim); font: 500 16px var(--display); text-align: center; padding: 0 24px; }
 .th-empty p { margin: 0; max-width: 36ch; }
 

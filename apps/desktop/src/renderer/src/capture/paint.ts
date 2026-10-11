@@ -1,7 +1,7 @@
 import { color, font } from "@shrike/design";
 import type { Token } from "../lib/highlight.ts";
 import { enclosingFunction } from "../lib/panes.ts";
-import { firstFailure, layoutTrip, type LaneCol, type PlacedStation, type Trip, type TripGeometry } from "../lib/thread-layout.ts";
+import { firstFailure, layoutTrip, type PlacedStation, type Trip, type TripGeometry } from "../lib/thread-layout.ts";
 
 // Canvas2D painter for REC clips (docs/06-design.md "Recording clips"). paint(ctx, scene, t) is a pure function of t:
 // frame n at any fps paints the same image every time. Pure helpers are exported for clip.test.ts.

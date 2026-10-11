@@ -2,7 +2,7 @@
 // slash palette (A10), quick open (O5) and the issue card (O6). Run `pnpm build` first. Uses ports 5173/3001.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readdirSync, rmSync } from "node:fs";
+import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import { actions, addTodoAction, launch, listening, openSampleAndRun, shot, sleep, typeTodo, waitFor } from "./helpers.ts";
 

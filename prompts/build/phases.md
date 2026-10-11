@@ -1,5 +1,7 @@
 # Build prompts, one per phase
 
+The original build plan. Some choices here changed while building (Babel instead of OTel + SWC, shiki instead of Monaco, a `<webview>` app pane, no rrweb or `@shrike/store` yet, MCP over Streamable HTTP only); `docs/02` to `docs/05` and each package README describe what exists.
+
 Paste one at a time into your coding agent (Claude Code, Cursor, Codex) from the repo root. Each assumes the agent has read `CLAUDE.md` and `MASTER_PROMPT.md`. Don't start the next phase until the "done when" check passes; ask the agent to show you the check running.
 
 ---

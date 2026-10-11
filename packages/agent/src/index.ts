@@ -11,7 +11,7 @@ import { WRITE_TOOLS } from "./branches.ts";
 import { mcpPromptLine, readMyMcpServers, withMyMcp, type Server } from "./my-mcp.ts";
 import type { StepInput } from "./steps.ts";
 
-export { createStreamParser, claudeArgs, loginPath, resolveClaude, type Effort, type UsageInput } from "./claude-code.ts";
+export { createStreamParser, claudeArgs, loginPath, type UsageInput } from "./claude-code.ts";
 
 /** Think harder dial: Quick and Deep move the brain's effort; Normal leaves its default. */
 export const effortFor = (t: AgentOptions["thinking"]): Effort | undefined => (t === "quick" ? "low" : t === "deep" ? "xhigh" : undefined);
@@ -28,7 +28,7 @@ export function goalWithOptions(goal: string, o: Pick<AgentOptions, "planFirst" 
   return lines.join("\n");
 }
 export { fillTemplate, buildSystemPrompt } from "./prompt.ts";
-export { checkMcpServer, mcpPromptLine, readClaudeMcp, readMyMcpServers, servers as mcpServersOf, withMyMcp, type ClaudeMcp, type McpCheck, type Server as McpServerConfig } from "./my-mcp.ts"; // B4, MCP
+export { checkMcpServer, mcpPromptLine, readClaudeMcp, readMyMcpServers, servers as mcpServersOf, withMyMcp, type McpCheck, type Server as McpServerConfig } from "./my-mcp.ts"; // B4, MCP
 export type { AnthropicLike } from "./builtin.ts";
 export * from "./branches.ts"; // C1–C7
 

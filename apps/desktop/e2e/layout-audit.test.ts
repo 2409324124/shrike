@@ -243,7 +243,6 @@ test("layout audit: every screen and state at three sizes and six themes", { tim
       await esc(win, 2);
     });
 
-    let runId = "";
     await scene("agent", async () => {
       await blur(win);
       await win.keyboard.press("Meta+k");
@@ -262,7 +261,6 @@ test("layout audit: every screen and state at three sizes and six themes", { tim
       await win.getByRole("button", { name: /Apply fix/ }).waitFor({ timeout: 60_000 });
       await sleep(600);
       await audit("fix-card");
-      runId = (await win.evaluate(() => window.shrike.listRuns())).at(-1)?.id ?? "";
     });
 
     await scene("conversation", async () => {

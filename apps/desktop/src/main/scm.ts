@@ -162,8 +162,6 @@ export interface ScmDeps {
   used(skillId: string): void; // SL3: a skill that ran outside an agent run worked
 }
 
-export type ScmService = ReturnType<typeof createScm>;
-
 const MAX_PATCH = 400_000;
 const lit = (p: string) => `:(literal)${p}`;
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;

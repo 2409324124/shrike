@@ -8,9 +8,6 @@ type Os = NodeJS.Platform;
 
 export const isMac = process.platform === "darwin";
 export const isWin = process.platform === "win32";
-export const isLinux = process.platform === "linux";
-/** Voice runs in ShrikeVoice.app (Swift, MLX): macOS only for now. */
-export const voiceSupported = isMac;
 /** A GUI app on macOS or Linux starts with a minimal PATH, so tools come from the login shell's. Windows has no login shell. */
 export const loginPathNeeded = (os: Os = process.platform): boolean => os !== "win32";
 

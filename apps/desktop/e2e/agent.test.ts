@@ -1,8 +1,7 @@
 // Real agent run on the Thread with the real Claude Code brain. Uses the user's subscription, so it only runs with SHRIKE_E2E_AGENT=1.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { actions, addTodoAction, caption, flatten, launch, openSampleAndRun, shot, sleep, tripDom, typeTodo, waitFor } from "./helpers.ts";
 

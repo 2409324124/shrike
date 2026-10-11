@@ -187,14 +187,6 @@ export function bulkParse(text: string, prev: Row[] = []): Row[] {
   return out;
 }
 
-export function absoluteUrl(url: string, base: string | undefined): string {
-  try {
-    return new URL(url, base ? (base.endsWith("/") ? base : `${base}/`) : undefined).toString();
-  } catch {
-    return url;
-  }
-}
-
 export const looksLikeCurl = (s: string): boolean => /^\s*curl\s/i.test(s);
 
 const safeDecode = (s: string) => {

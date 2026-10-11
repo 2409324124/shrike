@@ -1,21 +1,21 @@
 # 05 · The debug agent
 
-The agent is the product's headline. Shrike doesn't own the brain: it runs **the user's own coding agent** and gives it tools that act on the running app and read Shrike's recordings. All tools are served by `@shrike/mcp-server`, which also enforces autonomy levels and approvals, so the rules are the same whichever brain is driving.
+The agent is the product's headline. Shrike doesn't own the brain: it runs **the user's own coding agent** and gives it tools that act on the running app and read Shrike's recordings. All tools are served by `@shrike/mcp-server`, which also enforces approvals, so the rules are the same whichever brain is driving.
 
 ## Agent brains
 
 | Brain | How Shrike runs it | Notes |
 |---|---|---|
 | **Claude Code** | Child process, headless (`claude -p`), `--mcp-config` pointing at Shrike, `--allowedTools` limited to `mcp__shrike__*`, `--output-format stream-json` | Default when installed. Uses the user's Claude subscription. |
-| **Codex CLI** | `codex exec` with Shrike in its MCP config, read-only sandbox, JSON event output | Uses the user's ChatGPT/OpenAI plan. |
-| **OpenCode** | Headless run with Shrike as an MCP server, its edit/bash tools disabled | Any model OpenCode supports. |
+| **Codex CLI** | `codex exec` with Shrike in its MCP config, read-only sandbox, JSON event output | Planned: listed in settings, can't be started yet. Uses the user's ChatGPT/OpenAI plan. |
+| **OpenCode** | Headless run with Shrike as an MCP server, its edit/bash tools disabled | Planned: listed in settings, can't be started yet. Any model OpenCode supports. |
 | **Built-in** | `@anthropic-ai/sdk` tool-use loop in the main process, user's API key (or hosted key on a paid plan) | Fallback when no CLI is installed. Same tools, called in-process. |
 
 Rules for every brain:
 
 - **Disable the brain's own file-edit and shell tools.** Code changes must go through `propose_patch` so the user sees a diff. If a CLI can't disable them, run it in a read-only sandbox or a throwaway git worktree and turn any changes it makes into a proposed patch.
 - **Same system prompt** ([prompts/agent/system.md](../prompts/agent/system.md)), passed through each CLI's system-prompt option or prepended to the task.
-- **Normalise the stream.** `packages/agent/src/brains/<name>.ts` turns each CLI's JSON events into `AgentStep`s for the agent panel. Detect the CLI and its auth state at startup; show "Sign in to Claude Code" rather than failing.
+- **Normalise the stream.** `packages/agent/src/claude-code.ts` (with `steps.ts`) turns the CLI's JSON events into `AgentStep`s for the agent panel. Detect the CLI and its auth state at startup; show "Sign in to Claude Code" rather than failing.
 - Before writing an adapter, read how [stablyai/orca](https://github.com/stablyai/orca) spawns and streams these CLIs.
 
 ## The loop
@@ -71,7 +71,7 @@ You: Apply
 
 ## Autonomy levels
 
-Set per run, default from settings. The level caps which tools the agent can call.
+Planned. Today every run works at the Fix level (`packages/agent/src/index.ts`); the rule that only a click applies code already holds.
 
 | Level | Can do | Needs approval for |
 |---|---|---|
@@ -83,7 +83,7 @@ There is no level that applies code without a click.
 
 ## Tools
 
-Defined in `packages/mcp-server/src/tools/`, one file per group, each with a zod input schema converted to JSON Schema. Agent CLIs reach them over MCP; the built-in agent calls the same functions in-process.
+Defined in `packages/mcp-server/src/tools.ts` (the debug agent's tools), `drive.ts` (tools that drive Shrike, for outside clients) and `start.ts` (Shrike's own start agent only), each with a zod input schema converted to JSON Schema. Agent CLIs reach them over MCP; the built-in agent calls the same functions in-process.
 
 ### Recordings
 
@@ -101,12 +101,10 @@ Defined in `packages/mcp-server/src/tools/`, one file per group, each with a zod
 | Tool | Input | Returns |
 |---|---|---|
 | `app_snapshot` | `{}` | accessibility tree of the current page with stable element refs, URL, title |
-| `app_screenshot` | `{}` | PNG of the app pane |
 | `app_click` | `{ ref }` or `{ locator }` | the resulting actionId |
 | `app_type` | `{ ref, text, submit? }` | the resulting actionId |
 | `app_navigate` | `{ url }` (same origin only) | the resulting actionId |
 | `run_scenario` | `{ scenarioId }` or `{ steps }` | actionIds, plus pass/fail against the scenario's `expect` |
-| `save_scenario` | `{ name, steps, expect }` | scenarioId (written to `.shrike/scenarios/`) |
 
 ### API
 
@@ -114,6 +112,8 @@ Defined in `packages/mcp-server/src/tools/`, one file per group, each with a zod
 |---|---|---|
 | `list_routes` | `{ query? }` | discovered routes with handler file:line |
 | `send_request` | `{ method, url, headers?, body? }` | response + actionId of the traced server work |
+| `list_requests` | `{}` | requests saved in the project's API collections (`.shrike/api`, Bruno format) |
+| `save_request` | request fields | saves it into the project's API collection without sending it |
 
 ### Code
 
@@ -123,20 +123,31 @@ Defined in `packages/mcp-server/src/tools/`, one file per group, each with a zod
 | `search_code` | `{ query, glob? }` | matches with file:line (ripgrep) |
 | `list_files` | `{ glob? }` | repo-relative paths, respecting `.gitignore` |
 
-### Probe
+### Plan, playbooks and memory
 
 | Tool | Input | Returns |
 |---|---|---|
-| `deep_capture` | `{ file, functionName }` or `{ file, line }` | ok; the next run captures full args, locals at return, and the return value for that function |
+| `plan` | 2 to 5 short checks | shown to the user as the route the agent will walk; called first |
+| `load_skill` | `{ skill }` | a playbook's steps (`bad-value`, `n-plus-one`, `slow-page`, ...) |
+| `propose_skill_update` | one improvement | a draft tied to this run, kept once the playbook's outcome is verified |
+| `remember` | `{ text, file?, line? }` | saves one lasting fact about the project, shown as a pin on that line |
 
-Implementation: v1 raises the capture cap for that function id in node-agent. v1.x sets a CDP logpoint (no pause) through `node --inspect` to read locals at a line.
+### Quests
+
+| Tool | Input | Returns |
+|---|---|---|
+| `list_quests` | `{}` | the user's quests, each objective's state and the flow that proves it |
+| `propose_quest` | title and 2 to 5 objectives | waits for the user to approve the plan |
+| `update_objective` | `{ objectiveId?, ... }` | changes or adds an objective; only its flow passing marks it done |
+| `link_flow` | a flow id, name or new steps | links the flow that proves an objective |
+
+Planned, not built: `app_screenshot`, `save_scenario`, `deep_capture` (full args and locals for one function on the next run), `revert_patch`, `ask_user`.
 
 ### Fix
 
 | Tool | Input | Returns |
 |---|---|---|
-| `propose_patch` | `{ files: [{ path, edits: [{ oldText, newText }] }], rationale }` | patchId; UI shows Monaco diff with Apply / Reject |
-| `revert_patch` | `{ patchId }` | ok |
+| `propose_patch` | `{ files: [{ path, edits: [{ oldText, newText }] }], rationale }` | patchId; UI shows the diff with Apply / Reject |
 
 `apply` is not a tool. Only the user's click applies a patch. The dev server's hot reload picks it up; the agent then calls `run_scenario` to verify.
 
@@ -145,7 +156,6 @@ Implementation: v1 raises the capture cap for that function id in node-agent. v1
 | Tool | Input | Returns |
 |---|---|---|
 | `report_findings` | `{ findings: Finding[], summary }` | renders the Found it card; ends the investigate phase |
-| `ask_user` | `{ question, options? }` | the user's answer (for ambiguous goals, logins, test data) |
 | `ask_options` | `{ thread?, question, header?, options: [{ id?, label, description, mockupHtml?, preview? }] (2 to 4), multi? }` | Shows the options as cards (docs/13 M) and waits. Returns one JSON line `{ action: vary \| tweak \| combine \| approve \| other \| waiting, thread, option(s)?, count?, text? }`, the mockups it points at, and what to do next. The agent calls it again with the same `thread` and the new cards until `approve`, then builds the approved mockup with `propose_patch`. After 9 minutes (under Claude Code's 10-minute MCP timeout) it returns `waiting` and the cards stay up; calling again with only `thread` keeps waiting. Mockup HTML is redacted on the way in and only ever drawn in a sandboxed iframe |
 | `self_review` | `{ results?: [{ lesson, found, fixed?, where? }] }` | Review lessons before a pull request (docs/13 RL5). No results: the lessons the likely reviewers (CODEOWNERS, then recent ones) keep flagging, their conventions and the changed files. With results: recorded on Ship's self-check card ("Checked 6 repeat issues for @ana: 1 found (loading state), fixed"). Reads only; `where` is redacted |
 | `preflight` | `{}` | CI lessons pre-flight (docs/13 CI3): runs the CI jobs the current change touches on this computer, the way CI runs them, and returns each job's result, the first failing line and its usual fix. It takes no command: the legs come from the project's CI config or its CI lessons skill, every command goes through the guarded shell (R6), and one CI's config doesn't have asks the user first |
@@ -161,10 +171,10 @@ Implementation: v1 raises the capture cap for that function id in node-agent. v1
 
 | Limit | Default |
 |---|---|
-| Steps per run | 30 |
-| App interactions per run | 15 |
-| Wall time | 5 minutes |
-| Cost (built-in brain only) | shown live; soft cap $0.50 per run, configurable. CLI brains bill to the user's own subscription. |
+| Steps per run | 30 (built-in brain) |
+| App interactions per run | 15 (planned) |
+| Wall time | 5 minutes (planned) |
+| Cost (built-in brain only) | shown live; soft cap $0.50 per run, configurable (planned). CLI brains bill to the user's own subscription. |
 
 On hitting a limit, the agent must call `report_findings` with what it has, labelled honestly, and suggest what to try next.
 
@@ -174,8 +184,8 @@ On hitting a limit, the agent must call `report_findings` with what it has, labe
 
 - **Tool results are data, not instructions.** Page text, logs, response bodies and code comments can contain prompt-injection text. The system prompt says so, and tool outputs are wrapped in clearly delimited blocks.
 - **Network scope:** `app_navigate` and `send_request` only reach the project's own origins from `config.json`. No arbitrary internet.
-- **No shell tool in v1.** The agent can't run commands. It can suggest one for the user to run.
-- **Data-changing requests:** `POST/PUT/PATCH/DELETE` outside a recorded user scenario need an approval click in Investigate mode.
+- **No shell tool for the debug agent.** It can't run commands; it can suggest one for the user to run. Only Shrike's own start agent and `preflight` run commands, through the guarded shell (R6).
+- **Data-changing requests:** `POST/PUT/PATCH/DELETE` outside a recorded user scenario need an approval click.
 - **Secrets:** login forms. The agent asks the user to log in in the app pane, or uses a scenario step marked `secret` whose value never enters model context.
 - **Redaction** runs on every tool output before it reaches the model ([07-security-privacy.md](07-security-privacy.md)).
 - **Patches touch user files only** inside the project root, never `node_modules`, `.env*`, lockfiles or `.git`.
