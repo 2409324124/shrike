@@ -331,7 +331,7 @@ function placeFor(e: DebugEvent, parent: Place | undefined, hasServedChild: bool
 function labelOf(e: DebugEvent): string {
   switch (e.kind) {
     case "user_action":
-      return e.trigger === "navigation" ? "page loaded" : "onClick";
+      return e.trigger === "navigation" ? "page loaded" : e.trigger === "submit" ? "onSubmit" : "onClick";
     case "http_request":
       return e.origin === "server" ? `${e.http?.method ?? ""} ${e.http?.url ?? ""}`.trim() : `fetch ${e.http?.method ?? ""} ${e.http?.url ?? ""}`.trim();
     case "external_call":

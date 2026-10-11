@@ -46,6 +46,11 @@ test("killer demo: snaps at the database, chip shows userId undefined, shape db_
   assert.ok(glyphPath(trip).startsWith("M 3 2"));
 });
 
+test("a form submitted with Enter starts at onSubmit, a button at onClick", () => {
+  const root = (trigger: "click" | "submit") => ev({ kind: "user_action", origin: "browser", name: "x", trigger, source: src("web/src/App.tsx", 56) });
+  for (const [trigger, label] of [["submit", "onSubmit"], ["click", "onClick"]] as const) assert.equal(buildTrip(view(root(trigger), [], "ok")).stations[0]?.label, label);
+});
+
 test("repeated queries coil, worked trip, never-left-page trip", () => {
   const root = ev({ kind: "user_action", origin: "browser", name: "Opened /", trigger: "navigation" });
   const q = () => node(ev({ kind: "db_query", origin: "db", name: "SELECT", db: { system: "sqlite", statement: "SELECT * FROM users WHERE id = 3" }, durationMs: 7 }));
