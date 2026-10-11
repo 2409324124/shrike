@@ -7,6 +7,7 @@ import { BINDINGS, liveContext } from "../actions/run.ts";
 import { Executor, type ExecState } from "./understand/executor.ts";
 import { PLANNER_PREFIX, type PlanFn, type Step } from "./understand/index.ts";
 import type { Echo, RouterDeps } from "./router.ts";
+import { useVoiceStore } from "./store.ts";
 
 // The plan executor wired to the real actions (docs/16 §2.6). The card (V8, store.ts) gets every change through onPlan;
 // its buttons and the spoken answers call controls.
@@ -34,21 +35,21 @@ export const controls = {
   undo: (): Promise<string | null> => executor.undo(),
 };
 
-let plannerOk = true; // false once main says there's no planner model, until the next warm-up
+let toldBroken = false;
 
-/** The bundled planner through main; "missing" until its model is downloaded. */
+/** The bundled planner through main; "missing" until its model is downloaded (asked each turn, so a download mid-session counts). */
 const plan: PlanFn = async (ask) => {
-  if (!plannerOk) return { error: "missing" };
   const r = await api().voicePlan(ask).catch(() => ({ ok: false as const, error: "failed" as const }));
-  if (!r.ok && r.error === "missing") plannerOk = false;
-  return r.ok ? { json: r.json } : { error: r.error };
+  if (r.ok) return { json: r.json };
+  if (r.error !== "broken") return { error: r.error };
+  if (!toldBroken) useVoiceStore.setState({ problem: { text: "Voice couldn't load its command model, so only set phrases work. Delete it in Voice settings and download it again." } });
+  toldBroken = true;
+  return { error: "failed" };
 };
 
 /** Voice turned on (or the app opened with voice on): load the planner and its fixed prompt in the background. */
 export function warmPlanner(): void {
-  void api()
-    .voicePlanWarm(PLANNER_PREFIX)
-    .then((ok) => (plannerOk = ok), () => (plannerOk = false));
+  void api().voicePlanWarm(PLANNER_PREFIX).catch(() => {});
 }
 
 /** Answers the agent's own approval card, the same as clicking it. */
