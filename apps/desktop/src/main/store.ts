@@ -1,6 +1,6 @@
 // ponytail: in-memory store, cleared on restart. Upgrade path: @shrike/store (SQLite + NDJSON).
 import { readFileSync } from "node:fs";
-import { basename, join } from "node:path";
+import { basename, isAbsolute, join } from "node:path";
 import type { ActionView, DebugEvent, IngestMessage, Place, ProjectInfo } from "@shrike/schema";
 import { buildActionView, relativize, resolveBrowserStack } from "@shrike/correlator";
 import { redactEvent } from "@shrike/redact";
@@ -89,7 +89,7 @@ export class Store {
   private add(raw: DebugEvent): void {
     const e = redactEvent(raw);
     e.traceId = this.aliases.get(e.traceId) ?? e.traceId;
-    if (e.origin === "browser" && e.source) e.source = { ...e.source, file: relativize(e.source.file, this.opts.projectRoot()) };
+    if (e.source && (e.origin === "browser" || isAbsolute(e.source.file))) e.source = { ...e.source, file: relativize(e.source.file, this.opts.projectRoot()) }; // OpenTelemetry SDKs send absolute paths
     if ((e.kind === "http_request" || e.kind === "db_query") && e.origin === "browser" && e.stack) {
       const stack = e.stack;
       delete e.stack;
