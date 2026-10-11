@@ -1,4 +1,5 @@
 import type { DebugEvent, HttpRequestSpec, HttpResponseSpec } from "@shrike/schema";
+import { friendlyError, isBinary } from "./api/exec.ts";
 import { randomHex, type Store } from "./store.ts";
 
 const MAX_EVENT_BODY = 64 * 1024;
@@ -63,26 +64,65 @@ export async function sendRequest(
     http: { method, url: path, reqHeaders, reqBody: hasBody ? cut(spec.body!, MAX_EVENT_BODY) : undefined },
   };
 
+  let cur = url;
+  let started = false;
   try {
-    const res = await fetch(url, { method, headers: reqHeaders, body: hasBody ? spec.body : undefined, signal: AbortSignal.timeout(30_000) });
-    const body = await res.text();
-    const durationMs = Date.now() - start;
+    const signal = AbortSignal.timeout(30_000);
+    let res: Response;
+    let init: RequestInit = { method, headers: reqHeaders, body: hasBody ? spec.body : undefined, redirect: "manual", signal };
+    for (let hops = 0; ; hops++) {
+      res = await fetch(cur, init);
+      const loc = res.headers.get("location");
+      if (res.status < 300 || res.status > 399 || !loc || hops >= 5) break;
+      let next: URL;
+      try {
+        next = resolveTarget(loc, cur.href);
+      } catch {
+        break;
+      }
+      if (next.origin !== cur.origin) break; // like exec.ts: a redirect to another origin comes back as the 3xx, never followed
+      await res.body?.cancel();
+      if (res.status !== 307 && res.status !== 308) init = { ...init, method: method === "HEAD" ? "HEAD" : "GET", body: undefined };
+      cur = next;
+    }
+    started = true;
+    const { bytes, size, cutOff } = await readCapped(res, MAX_RETURN_BODY);
     const headers = Object.fromEntries(res.headers.entries());
+    const body = isBinary(headers["content-type"], bytes) ? `[binary ${headers["content-type"] ?? "data"}, ${size}${cutOff ? "+" : ""} bytes]` : bytes.toString("utf8") + (cutOff ? "…[truncated]" : "");
+    const durationMs = Date.now() - start;
     const status = res.status >= 500 ? "error" : "ok";
     event.durationMs = durationMs;
     event.status = status;
     event.http = { ...event.http!, status: res.status, resHeaders: headers, resBody: cut(body, MAX_EVENT_BODY) };
     store.handle({ type: "events", events: [event, { ...root, durationMs, status }] });
-    return { response: { status: res.status, statusText: res.statusText, headers, body: cut(body, MAX_RETURN_BODY), durationMs }, actionId: root.id };
+    return { response: { status: res.status, statusText: res.statusText, headers, body, durationMs }, actionId: root.id };
   } catch (err) {
-    const timedOut = (err as Error).name === "TimeoutError";
-    const message = timedOut ? "The request took longer than 30 seconds." : `Couldn't reach ${url.origin}. Is your app running?`;
+    const e = err as Error & { cause?: unknown };
+    const message = friendlyError(e.name === "TimeoutError" ? { name: e.name, started } : (e.cause ?? e), cur, 30_000, false);
     event.durationMs = Date.now() - start;
     event.status = "error";
-    event.error = { message, type: (err as Error).name };
+    event.error = { message, type: e.name };
     store.handle({ type: "events", events: [event, { ...root, durationMs: event.durationMs, status: "error" }] });
     throw new Error(message);
   } finally {
     store.handle({ type: "action_end", actionId: root.id, at: Date.now() });
   }
+}
+
+/** The body up to `max` bytes; the rest is never read, so a huge answer can't fill memory. */
+async function readCapped(res: Response, max: number): Promise<{ bytes: Buffer; size: number; cutOff: boolean }> {
+  const chunks: Buffer[] = [];
+  let size = 0;
+  const reader = res.body?.getReader();
+  while (reader) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(Buffer.from(value));
+    size += value.length;
+    if (size > max) {
+      await reader.cancel();
+      return { bytes: Buffer.concat(chunks).subarray(0, max), size, cutOff: true };
+    }
+  }
+  return { bytes: Buffer.concat(chunks), size, cutOff: false };
 }
