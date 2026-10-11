@@ -35,6 +35,9 @@ function onClick(ev: MouseEvent): void {
     if (!el) return;
     // A label click re-dispatches a click on its control; let that one open the action.
     if (el instanceof HTMLLabelElement && el.control && el.control !== ev.target) return;
+    // Enter in a field submits through a click on the form's default button: onSubmit names that one.
+    const typed = document.activeElement;
+    if (ev.detail === 0 && (el instanceof HTMLButtonElement || el instanceof HTMLInputElement) && el.type === "submit" && typed !== el && !!typed && !!el.form?.contains(typed)) return;
     openAction("click", clickLabel(el), reactSource(el), Date.now(), el);
     clickInProgress = true;
     setT(() => (clickInProgress = false), 0);
