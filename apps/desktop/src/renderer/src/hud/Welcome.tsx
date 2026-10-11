@@ -6,6 +6,7 @@ import { Appearance, useTheme } from "../themes/index.ts";
 import { Frame } from "./Shell.tsx";
 import { slot, SLOTS } from "./Sdlc.tsx";
 import { ShrikeBust } from "../brand/index.ts";
+import { isMac } from "../lib/platform.ts";
 
 const PickUpCard = slot(SLOTS.pickUp); // flows engineer's "Pick up where you left off"
 
@@ -14,7 +15,7 @@ export function Welcome() {
 
   return (
     <Frame>
-      <div className="drag flex h-11 shrink-0 items-center justify-end pr-2">
+      <div className={`drag flex h-11 shrink-0 items-center justify-end ${isMac ? "pr-2" : "pr-[calc(100%-env(titlebar-area-width,100%)+6px)]"}`}>
         <button type="button" className="hud-btn no-drag size-7 justify-center px-0" aria-label="Appearance" title="Appearance" onClick={() => useTheme.getState().setOpen(true)}>
           <Palette size={14} aria-hidden />
         </button>
