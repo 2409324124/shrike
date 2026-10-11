@@ -1,0 +1,12 @@
+{
+  "name": "shrike",
+  "description": "Shrike for Claude Code",
+  "owner": { "name": "Sumant Tirkey", "url": "https://github.com/SumantxD" },
+  "plugins": [
+    {
+      "name": "shrike",
+      "source": "./integrations/claude-code",
+      "description": "Debug your web app from Claude Code with Shrike's recordings"
+    }
+  ]
+}

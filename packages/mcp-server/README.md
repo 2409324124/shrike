@@ -40,4 +40,4 @@ Tools → **Use from your own Claude Code** (MCP9) has three things to copy. Shr
 { "permissions": { "deny": ["Edit", "Write", "MultiEdit", "NotebookEdit", "Bash"] } }
 ```
 
-The panel lists clients by name with their last call. **New token** cuts off every outside client using the old one (a running Shrike agent keeps going on its own token); run `claude mcp remove shrike -s user` and paste step 1 again. Reads of trips by an outside client show a "watched by" eye with its name (A11).
+The panel also shows the plugin route, which needs no pasting: [integrations/claude-code](../../integrations/claude-code/README.md) bridges stdio to this server by reading `mcp.json` itself, and its mod polls `list_trips` (a trip that broke ends `at file:line`). The panel lists clients by name with their last call. **New token** cuts off every outside client using the old one (a running Shrike agent keeps going on its own token); run `claude mcp remove shrike -s user` and paste step 1 again. Reads of trips by an outside client show a "watched by" eye with its name (A11).
