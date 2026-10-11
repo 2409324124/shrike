@@ -250,6 +250,24 @@ test("the project's .env reaches each process (the shell's env and Shrike win); 
   assert.match(refused.error ?? "", /doesn't know how to start your app\. Open Setup/);
 });
 
+test("OpenTelemetry SDKs in recorded processes export to Shrike; a project's own exporter settings win", async () => {
+  const root = mkdtempSync(join(tmpdir(), "shrike-otel-"));
+  const { mkdirSync } = await import("node:fs");
+  mkdirSync(join(root, "own"));
+  writeFileSync(join(root, "own", ".env"), "OTEL_EXPORTER_OTLP_ENDPOINT=http://collector:4318\n");
+  let out = "";
+  const r = new Runner({ onStatus: () => {}, onOutput: (c) => (out += c) });
+  const show = 'echo "$OTEL_EXPORTER_OTLP_ENDPOINT|$OTEL_EXPORTER_OTLP_PROTOCOL|$OTEL_EXPORTER_OTLP_HEADERS|$OTEL_SERVICE_NAME|$OTEL_TRACES_EXPORTER|$OTEL_METRICS_EXPORTER"';
+  await r.start(
+    { root, name: "t", devCommand: "", routes: [], expectedPlaces: [], processes: [{ name: "py", command: show }, { name: "own", command: show, cwd: "own" }] },
+    { nodeAgentRegister: "/x.mjs", ingestUrl: "http://127.0.0.1:9", token: "tok" },
+  );
+  while (r.status.state === "starting") await new Promise((res) => setTimeout(res, 50));
+  assert.match(out, /\[py\] http:\/\/127\.0\.0\.1:9\|http\/protobuf\|x-shrike-token=tok\|py\|otlp\|none/);
+  assert.match(out, /\[own\] http:\/\/collector:4318\|\|\|\|\|/);
+  await r.stop();
+});
+
 test("a command not found in a project with no node_modules says to install first", async () => {
   const root = mkdtempSync(join(tmpdir(), "shrike-noinstall-"));
   const r = new Runner({ onStatus: () => {}, onOutput: () => {} });
