@@ -35,6 +35,7 @@ export function parsePlace(id: string): { engine: string; host?: string; port?: 
   const tail = rest.join(":");
   if (kind === "cache") return { engine: engine === "redis" ? "redis" : engine, ...hostPart(tail) };
   if (engine === "sqlite") return { engine, file: tail || undefined };
+  if (kind === "data" && !(engine in LOAD) && engine !== "libsql") return { engine: "", ...hostPart(rest.length ? `${engine}:${tail}` : engine) }; // declared by host ("localhost:5432")
   return { engine, ...hostPart(tail) };
 }
 
@@ -50,7 +51,7 @@ function hostPart(tail: string): { host?: string; port?: number; database?: stri
 /** The project source that best matches a lane: same host, port and database beats same engine. */
 export function pick(id: string, sources: Source[]): { source: Source; database?: string } | undefined {
   const p = parsePlace(id);
-  const engines: Engine[] = p.engine === "supabase" ? ["postgres", "supabase"] : p.engine === "libsql" ? [] : [p.engine as Engine];
+  const engines: Engine[] = p.engine === "supabase" ? ["postgres", "supabase"] : p.engine === "libsql" ? [] : p.engine ? [p.engine as Engine] : ["postgres", "mysql", "mongodb"];
   let best: { s: Source; score: number } | undefined;
   for (const s of sources) {
     if (!engines.includes(s.engine)) continue;
@@ -59,7 +60,8 @@ export function pick(id: string, sources: Source[]): { source: Source; database?
     if (s.engine === "sqlite") {
       if (p.file && s.file && !s.file.endsWith(`/${p.file}`) && s.file !== p.file) continue;
       score = p.file ? 3 : 1;
-    } else if (p.host) {
+    } else if (!p.engine && !p.host) continue;
+    else if (p.host) {
       const sameHost = normHost(s.host) === normHost(p.host);
       const samePort = !p.port || !s.port || s.port === p.port;
       if (p.engine === "supabase") score = sameHost || isLocal(p.host) ? (s.engine === "postgres" ? 4 : 3) : 0; // its own database beats the API
