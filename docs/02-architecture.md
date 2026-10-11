@@ -116,7 +116,7 @@ All channels are typed in `@shrike/schema` and validated with zod in main. The r
 |---|---|---|
 | User's dev server (e.g. 3000, 5173) | User | as configured |
 | Ingest (random free port) | Shrike main | 127.0.0.1 only, token in `SHRIKE_INGEST_URL` |
-| MCP (stdio by default) | Shrike main | stdio; optional 127.0.0.1 HTTP |
+| MCP (Streamable HTTP) | Shrike main | 127.0.0.1 only, Bearer token; the main server keeps its port and token across restarts |
 
 ## Failure modes and what the user sees
 
