@@ -268,6 +268,22 @@ test("OpenTelemetry SDKs in recorded processes export to Shrike; a project's own
   await r.stop();
 });
 
+test("python-agent goes first on PYTHONPATH, before the project's own; a declared outside process runs plain", async () => {
+  const root = mkdtempSync(join(tmpdir(), "shrike-py-"));
+  writeFileSync(join(root, ".env"), "PYTHONPATH=/proj/lib:/agent\n");
+  let out = "";
+  const r = new Runner({ onStatus: () => {}, onOutput: (c) => (out += c) });
+  const show = 'echo "path=$PYTHONPATH"';
+  await r.start(
+    { root, name: "t", devCommand: "", routes: [], expectedPlaces: [], processes: [{ name: "py", command: show }, { name: "fake", command: show, url: "http://localhost:4999" }], declaredPlaces: { "localhost:4999": { kind: "outside", name: "Fake" } } },
+    { nodeAgentRegister: "/x.mjs", pythonAgent: "/agent", ingestUrl: "http://127.0.0.1:9", token: "tok" },
+  );
+  while (r.status.state === "starting") await new Promise((res) => setTimeout(res, 50));
+  assert.match(out, /\[py\] path=\/agent:\/proj\/lib\r?\n/);
+  assert.match(out, /\[fake\] path=\/proj\/lib:\/agent\r?\n/);
+  await r.stop();
+});
+
 test("a command not found in a project with no node_modules says to install first", async () => {
   const root = mkdtempSync(join(tmpdir(), "shrike-noinstall-"));
   const r = new Runner({ onStatus: () => {}, onOutput: () => {} });

@@ -36,6 +36,7 @@ export interface RaceDeps {
   rejectWithFeedback(patchId: string, text: string): boolean;
   makeView(onMessage: (msg: IngestMessage) => void): Promise<{ view: PageView; close(): void }>; // a hidden page for a worktree's app
   nodeAgentRegister: string;
+  pythonAgent?: string;
   promptsDir: string;
   skillsDir: string;
 }
@@ -221,7 +222,7 @@ async function startSession(w: Pick<Worktree, "name" | "path" | "portOffset">): 
   s.runner.offsetFor = () => w.portOffset;
   sessions.set(w.path, s);
   try {
-    await s.runner.start(p, { nodeAgentRegister: x.nodeAgentRegister, ingestUrl: s.ingest.url, token: s.ingest.token, serverUrl });
+    await s.runner.start(p, { nodeAgentRegister: x.nodeAgentRegister, pythonAgent: x.pythonAgent, ingestUrl: s.ingest.url, token: s.ingest.token, serverUrl });
     const deadline = Date.now() + 60_000;
     while (s.runner.status.state === "starting" && Date.now() < deadline) await sleep(250);
     if (s.runner.status.state !== "running") throw new Error(`${w.name} didn't start: ${s.runner.status.error ?? "it took too long"}`);

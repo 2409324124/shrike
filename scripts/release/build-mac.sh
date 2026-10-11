@@ -39,6 +39,10 @@ JSON
 cp "$repo/packages/browser-agent/dist/browser-agent.js" "$stage/extra/packages/browser-agent/dist/"
 cp -R "$repo/packages/node-agent/src" "$repo/packages/node-agent/package.json" "$stage/extra/packages/node-agent/"
 (cd "$stage/extra/packages/node-agent" && npm install --omit=dev --no-package-lock --no-audit --no-fund --loglevel=error)
+mkdir -p "$stage/extra/packages/python-agent"
+rsync -a --exclude __pycache__ "$repo/packages/python-agent/src" "$stage/extra/packages/python-agent/"
+# A file named __pycache__ where Python would make that folder: it never writes bytecode into the signed bundle.
+touch "$stage/extra/packages/python-agent/src/__pycache__" "$stage/extra/packages/python-agent/src/shrike_agent/__pycache__"
 cp -R "$repo/prompts/agent" "$repo/prompts/skills" "$repo/prompts/connect" "$stage/extra/prompts/"
 rsync -a --exclude node_modules --exclude .data --exclude .shrike/issues --exclude '.shrike/skills' --exclude '.shrike/flows' --exclude '.shrike/worktrees' "$repo/fixtures/todo-app" "$stage/extra/fixtures/"
 (cd "$stage/extra/fixtures/todo-app" && npm install --no-package-lock --no-audit --no-fund --loglevel=error)

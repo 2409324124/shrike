@@ -620,6 +620,7 @@ export function registerIpc(win: () => BrowserWindow | undefined, appWin: AppWin
       return { view, close };
     },
     nodeAgentRegister: paths.nodeAgentRegister,
+    pythonAgent: paths.pythonAgent,
     promptsDir: paths.promptsDir,
     skillsDir: joinPath(paths.promptsDir, "../skills"),
   });

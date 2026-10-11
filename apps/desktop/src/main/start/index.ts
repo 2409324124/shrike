@@ -115,7 +115,7 @@ async function begin(): Promise<StartPlan> {
     runner,
     runEnv: async () => {
       const { url, token } = await ingest();
-      return { nodeAgentRegister: paths.nodeAgentRegister, ingestUrl: url, token, serverUrl: getServerUrl() };
+      return { nodeAgentRegister: paths.nodeAgentRegister, pythonAgent: paths.pythonAgent, ingestUrl: url, token, serverUrl: getServerUrl() };
     },
     skillDirs: () => ({ ...skills.services.dirs(), project: project.root }),
     emit: (ch, p) => emit(ch, p),

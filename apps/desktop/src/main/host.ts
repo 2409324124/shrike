@@ -121,7 +121,7 @@ export function run(): Promise<RunStatus> {
       if (taken) return runner.refuse(`Port ${new URL(taken).port || new URL(taken).host} is already in use by another program, so Shrike can't see your app there. Stop that program, then press Run again.`);
     }
     const { url, token } = await ingest();
-    return runner.start(p, { nodeAgentRegister: paths.nodeAgentRegister, ingestUrl: url, token, serverUrl });
+    return runner.start(p, { nodeAgentRegister: paths.nodeAgentRegister, pythonAgent: paths.pythonAgent, ingestUrl: url, token, serverUrl });
   })().finally(() => (starting = null));
   return starting;
 }
