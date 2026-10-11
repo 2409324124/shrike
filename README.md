@@ -21,6 +21,8 @@
   finds the line, fixes it after you say OK, and clicks again to prove it works.
 </p>
 
+<p align="center"><sub>Works with Node backends (Express, Next.js, NestJS, Hono, Remix) and Vite or Next frontends. Any backend through OpenTelemetry is next.</sub></p>
+
 <p align="center">
   <a href="https://github.com/SumantxD/shrike/releases/latest"><b>Download for Mac</b></a> ·
   <a href="#quick-start"><b>Quick start</b></a> ·
