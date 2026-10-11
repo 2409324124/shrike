@@ -46,6 +46,11 @@ test("killer demo: snaps at the database, chip shows userId undefined, shape db_
   assert.ok(glyphPath(trip).startsWith("M 3 2"));
 });
 
+test("a form submitted with Enter starts at onSubmit, a button at onClick", () => {
+  const root = (trigger: "click" | "submit") => ev({ kind: "user_action", origin: "browser", name: "x", trigger, source: src("web/src/App.tsx", 56) });
+  for (const [trigger, label] of [["submit", "onSubmit"], ["click", "onClick"]] as const) assert.equal(buildTrip(view(root(trigger), [], "ok")).stations[0]?.label, label);
+});
+
 test("repeated queries coil, worked trip, never-left-page trip", () => {
   const root = ev({ kind: "user_action", origin: "browser", name: "Opened /", trigger: "navigation" });
   const q = () => node(ev({ kind: "db_query", origin: "db", name: "SELECT", db: { system: "sqlite", statement: "SELECT * FROM users WHERE id = 3" }, durationMs: 7 }));
@@ -327,6 +332,14 @@ test("a page's call to the project's Python API lands in the API lane, which Shr
   assert.equal(bad.stations.find((s) => s.snap)!.lane, "service:api", "it breaks where it arrived");
   assert.equal(bad.verdict, "The api service said no: Server error (500). Shrike can't see inside it.");
   assert.ok(!buildTrip(view(click, [node(call(200))], "ok")).stations.some((s) => s.opaque), "no known services, no guess");
+});
+
+test("a cross-origin 500 the browser couldn't read (no CORS headers on FastAPI's error) still reads as the server's error", () => {
+  const click = ev({ kind: "user_action", origin: "browser", name: 'Submitted "Place order"', trigger: "submit", source: src("web/src/App.tsx", 56) });
+  const call = ev({ startMs: 10, kind: "http_request", origin: "browser", name: "POST", http: { method: "POST", url: "http://localhost:4511/api/checkout" }, status: "error", error: { type: "TypeError", message: "Failed to fetch" } });
+  const served = ev({ startMs: 11, kind: "http_request", parentId: call.id, name: "POST /api/checkout", http: { method: "POST", url: "/api/checkout", status: 500 }, status: "error" });
+  const trip = buildTrip(view(click, [node(call, [node(served)])], "error"));
+  assert.equal(trip.returned, "Server error (500)");
 });
 
 test("dev-server noise and logger colours stay out of the trip", () => {

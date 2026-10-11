@@ -151,6 +151,15 @@ try {
   }
   out.steps.submit = await evaluate(`window.__shrike.type(${JSON.stringify(ref("Search"))}, "q", true)`);
   if (out.steps.submit) await waitFor(() => ended(out.steps.submit), 5000, "submit end");
+  // Enter in the field: the browser clicks the form's Go button for it; that's still the form's submit.
+  const rootsBefore = out.msgs.length;
+  const s = await evaluate(`(() => { const r = document.querySelector('[aria-label="Search"]').getBoundingClientRect(); return { x: r.left + 5, y: r.top + r.height / 2 }; })()`);
+  for (const type of ["mousePressed", "mouseReleased"]) await cdp("Input.dispatchMouseEvent", { type, x: s.x, y: s.y, button: "left", clickCount: 1 });
+  await sleep(50);
+  await cdp("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, text: "\r" });
+  await cdp("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
+  await sleep(600);
+  out.enterRoots = out.msgs.slice(rootsBefore).flatMap((m) => (m.type === "events" ? m.events : [])).filter((e) => e.kind === "user_action" && e.durationMs === undefined).map((e) => `${e.trigger} ${e.name}`);
   out.steps.missingRef = await evaluate(`window.__shrike.click("nope")`);
 
   // O1 point mode: hover outlines the element, the click goes to Shrike and never reaches the page.

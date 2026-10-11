@@ -120,6 +120,18 @@ test("browser request stacks are resolved before the action completes", async ()
   assert.equal(v?.tree[0]?.event.source?.file, "src/api.ts");
 });
 
+test("a React 19 click's JSX stack resolves to its component's file and survives the closing re-send", async () => {
+  const { store } = make(async () => "export function App() {}\n");
+  const root = ev({ id: "6".repeat(16), kind: "user_action", name: 'Clicked "Add"', trigger: "click", stack: "Error: react-stack-top-frame\n    at exports.jsxDEV (http://localhost:4510/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=1:250:30)\n    at App (http://localhost:4510/src/App.tsx?t=1:72:13)" });
+  store.handle({ type: "events", events: [root] });
+  store.handle({ type: "action_end", actionId: root.id, at: Date.now() });
+  const { stack: _, ...closed } = root;
+  store.handle({ type: "events", events: [{ ...closed, durationMs: 5 }] });
+  const v = await store.waitForAction(root.id, 2000);
+  assert.deepEqual(v?.root.source && { file: v.root.source.file, line: v.root.source.line }, { file: "src/App.tsx", line: 72 });
+  assert.equal(store.getEvent(root.id)?.stack, undefined);
+});
+
 test("traces from Shrike's own requests are dropped", async () => {
   const { store } = make();
   const S = "3".repeat(32);
@@ -212,7 +224,7 @@ test("a cron script's own outgoing call starts its trip; the API's side joins it
   assert.equal(view?.tree[0]?.children[0]?.event.id, api.id);
 });
 
-test("a cross-origin call's server side (and its CORS preflight) joins the click; the page's own database calls keep their lane", async () => {
+test("a cross-origin call's server side joins the click, its answered CORS preflight is dropped and a refused one kept; the page's own database calls keep their lane", async () => {
   const { store } = make();
   store.handle({ type: "hello", source: "browser", url: "http://localhost:13007/todos", at: 1 });
   const root = ev({ id: "a1".repeat(8), kind: "user_action", name: 'Clicked "Add"', trigger: "click" });
@@ -235,12 +247,20 @@ test("a cross-origin call's server side (and its CORS preflight) joins the click
   assert.deepEqual(store.listActions().map((a) => a.label), ['Clicked "Add"'], "no '(from outside the app)' trips");
   const v = store.getAction(root.id)!;
   const fetchNode = v.tree.find((n) => n.event.id === fetchId)!;
-  assert.deepEqual(fetchNode.children.map((c) => c.event.http?.method).sort(), ["OPTIONS", "POST"]);
+  assert.deepEqual(fetchNode.children.map((c) => c.event.http?.method), ["POST"], "the answered preflight is not a station");
+  assert.equal(store.getEvent("a5".repeat(8)), undefined);
   const post = fetchNode.children.find((c) => c.event.http?.method === "POST")!;
   assert.deepEqual(post.children.map((c) => c.event.name).sort(), ["create()", "insert"]);
   assert.equal(store.getEvent("a6".repeat(8))?.traceId, T, "later server events follow the join");
   assert.equal(store.getEvent(data.id)?.place?.id, "data:supabase:localhost:15421");
   assert.equal(store.getEvent(sneaky.id)?.place?.kind, "client");
+  // A refused preflight is the story (the browser never sends the call): it stays on the fetch.
+  const fetch2 = ev({ id: "b2".repeat(8), parentId: root.id, kind: "http_request", name: "POST http://localhost:13006/rpc/todo/create", http: { method: "POST", url: "http://localhost:13006/rpc/todo/create" } });
+  store.handle({ type: "events", events: [fetch2] });
+  const refused = server("b5".repeat(8), "7".repeat(32), "OPTIONS", { "access-control-request-method": "POST" });
+  refused.http!.status = 400;
+  store.handle({ type: "events", events: [refused] });
+  assert.equal(store.getEvent(refused.id)?.traceId, T, "joined to the click");
 });
 
 test("floods stay bounded: a trip keeps MAX_TRIP_EVENTS, a note and later errors; old trips go first, a waited one stays; bodies are cut", async () => {

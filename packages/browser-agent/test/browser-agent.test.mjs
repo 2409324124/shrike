@@ -66,7 +66,7 @@ test("browser-agent end to end in Electron", { timeout: 90_000 }, async () => {
 
   // Idempotent: one user_action per click despite the second injection.
   const roots = events.filter((e) => e.kind === "user_action");
-  assert.equal(new Set(roots.map((e) => e.id)).size, 15, roots.map((e) => e.name).join(", ")); // 11 + 4 from the B1 recording
+  assert.equal(new Set(roots.map((e) => e.id)).size, 16, roots.map((e) => e.name).join(", ")); // 11 + Enter in Search + 4 from the B1 recording
 
   // type() drives a React controlled input.
   assert.equal(out.echo, "buy milk");
@@ -168,6 +168,7 @@ test("browser-agent end to end in Electron", { timeout: 90_000 }, async () => {
   assert.equal(sub.trigger, "submit");
   assert.ok(sub.target && sub.target.viewportWidth > 0, `submit target ${JSON.stringify(sub.target)}`);
   assert.equal(sub.name, 'Submitted "Go"');
+  assert.deepEqual(out.enterRoots, ['submit Submitted "Go"'], "Enter in the field is the form's submit, not a click on Go");
   assert.equal(http(sub.id)[0].http.reqBody, "form");
   assert.equal(out.results.form.body, "form");
   assert.equal(out.steps.missingRef, null);

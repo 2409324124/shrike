@@ -53,7 +53,7 @@ export interface DebugEvent {
   error?: { message: string; type?: string; stack?: string };
   args?: string[]; // util.inspect-style previews, each ≤ 2KB, already redacted
   returned?: string; // preview, ≤ 2KB
-  stack?: string; // raw JS stack captured at call time; browser http_request only; main resolves it into source
+  stack?: string; // raw JS stack captured at call time (browser http_request, or a React 19 user_action's JSX); main resolves it into source
   target?: { x: number; y: number; width: number; height: number; viewportWidth: number; viewportHeight: number }; // user_action click target rect (CSS px)
   place?: Place; // where this event ran; set by agents or main (services, datastores, outside hosts, callers)
   cache?: { op: string; key?: string; hit?: boolean }; // cache_op: op "get" | "set" | "del" | "incr" | ...; hit for reads

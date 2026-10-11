@@ -397,3 +397,25 @@ test("Python backends with no page: FastAPI and Flask commands, ports, routes an
   assert.deepEqual(factory.list, ["api | flask --app web.server run --port 5000 | . | http://localhost:5000"]);
   assert.deepEqual(factory.routes.map((r) => `${r.method} ${r.path}`), ["DELETE /items/:item_id", "GET /items/:item_id"]);
 });
+
+test("React + Python: the Vite proxy target is the API's port; sqlite3 in the Python code is an expected place", async () => {
+  const vite = { scripts: { dev: "vite" }, dependencies: { react: "19" }, devDependencies: { vite: "6" } };
+  const fa = await procs({
+    "web/package.json": JSON.stringify({ name: "web", ...vite }),
+    "web/vite.config.ts": 'export default defineConfig({ server: { port: 4510, proxy: { "/api": "http://localhost:4511" } } });',
+    "api/requirements.txt": "fastapi\nuvicorn\n",
+    "api/main.py": "from fastapi import FastAPI\napp = FastAPI()\n",
+    "api/db.py": "import sqlite3\n",
+  });
+  assert.deepEqual(fa.list, ["web | npm run dev | web | http://localhost:4510", "api | uvicorn main:app --reload --port 4511 | api | http://localhost:4511"]);
+  assert.deepEqual(ids(fa), ["client:http://localhost:4510", "service:api", "data:sqlite"]);
+  const dj = await procs({
+    "package.json": JSON.stringify({ name: "site", ...vite }),
+    "vite.config.ts": 'export default defineConfig({ server: { port: 4520, proxy: { "/api": { target: "http://127.0.0.1:4521", changeOrigin: true } } } });',
+    "backend/requirements.txt": "django>=5\n",
+    "backend/manage.py": "",
+    "backend/config/settings.py": 'DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3"}}\n',
+  });
+  assert.deepEqual(dj.list, ["app | npm run dev | . | http://localhost:4520", "api | python manage.py runserver 4521 | backend | http://localhost:4521"]);
+  assert.ok(ids(dj).includes("data:sqlite"));
+});

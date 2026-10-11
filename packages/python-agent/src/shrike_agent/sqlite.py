@@ -52,8 +52,23 @@ def _end(begun, err):
     trace.emit(event)
 
 
+# Django's own bookkeeping, not the app's queries: connection setup, and DEBUG quoting each query's params with another query.
+_PLUMBING = {"get_new_connection", "_quote_params_for_last_executed_query"}
+
+
+def _plumbing():
+    f = sys._getframe(3)
+    for _ in range(8):
+        if f is None:
+            return False
+        if f.f_code.co_name in _PLUMBING and "django" in f.f_code.co_filename:
+            return True
+        f = f.f_back
+    return False
+
+
 def _run(cursor, sql, params, call):
-    begun = quietly(_build, cursor, sql, params) if cur.get() is not None else None
+    begun = quietly(_build, cursor, sql, params) if cur.get() is not None and not quietly(_plumbing) else None
     if begun is None:
         return call()
     try:
@@ -70,18 +85,29 @@ def patch(sqlite3):
     if getattr(sqlite3, "_shrike", False):
         return
 
-    class Cursor(sqlite3.Cursor):
-        def execute(self, sql, parameters=(), /):
-            return _run(self, sql, parameters, lambda: super(Cursor, self).execute(sql, parameters))
+    # Signatures stay open: a cursor class the app passes as factory= (Django's) has its own.
+    class Recording:
+        def execute(self, sql, *args, **kwargs):
+            params = args[0] if args else next(iter(kwargs.values()), ())
+            return _run(self, sql, params, lambda: super(Recording, self).execute(sql, *args, **kwargs))
 
-        def executemany(self, sql, seq_of_parameters, /):
-            return _run(self, sql, seq_of_parameters, lambda: super(Cursor, self).executemany(sql, seq_of_parameters))
+        def executemany(self, sql, *args, **kwargs):
+            return _run(self, sql, args[0] if args else None, lambda: super(Recording, self).executemany(sql, *args, **kwargs))
 
         def executescript(self, sql_script, /):
-            return _run(self, sql_script, None, lambda: super(Cursor, self).executescript(sql_script))
+            return _run(self, sql_script, None, lambda: super(Recording, self).executescript(sql_script))
+
+    class Cursor(Recording, sqlite3.Cursor):
+        pass
+
+    @functools.cache
+    def recording(factory):
+        return type(factory.__name__, (Recording, factory), {"__module__": factory.__module__})
 
     class Connection(sqlite3.Connection):
         def cursor(self, factory=Cursor):
+            if isinstance(factory, type) and issubclass(factory, sqlite3.Cursor) and not issubclass(factory, Recording):
+                factory = quietly(recording, factory) or factory
             return super().cursor(factory)
 
         def execute(self, sql, parameters=(), /):

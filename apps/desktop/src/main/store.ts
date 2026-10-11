@@ -96,7 +96,7 @@ export class Store {
     const e = redactEvent(clampBodies(raw));
     e.traceId = this.aliases.get(e.traceId) ?? e.traceId;
     if (e.source && (e.origin === "browser" || isAbsolute(e.source.file))) e.source = { ...e.source, file: relativize(e.source.file, this.opts.projectRoot()) }; // OpenTelemetry SDKs send absolute paths
-    if ((e.kind === "http_request" || e.kind === "db_query") && e.origin === "browser" && e.stack) {
+    if ((e.kind === "http_request" || e.kind === "db_query" || e.kind === "user_action") && e.origin === "browser" && e.stack) {
       const stack = e.stack;
       delete e.stack;
       this.resolveStack(e, stack);
@@ -198,6 +198,8 @@ export class Store {
     const host = normHost(h.reqHeaders.host);
     for (const o of this.outbound.values()) {
       if (o.method !== method || o.host !== host || o.path !== h.url || (!preflight && o.claimed) || e.startMs < o.startMs - 1000 || e.startMs > o.startMs + 60_000) continue;
+      // An answered preflight is CORS plumbing: keeping it put an OPTIONS station first and read as the call's answer. A refused one stays.
+      if (preflight && h.status && h.status < 400 && e.traceId !== o.traceId) return this.ignore(this.trace(e.traceId));
       if (!preflight) o.claimed = true;
       this.moveTrace(e.traceId, o.traceId);
       e.traceId = o.traceId;

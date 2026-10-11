@@ -24,7 +24,7 @@ export const lastOpenedId = (): string | null => lastOpened?.root.id ?? null;
 export function openAction(
   trigger: NonNullable<DebugEvent["trigger"]>,
   name: string,
-  source?: SourceLocation,
+  source?: SourceLocation | string, // a string is a raw stack main maps to the source (React 19)
   startMs = Date.now(),
   target?: Element | null,
 ): Action {
@@ -38,7 +38,8 @@ export function openAction(
     status: "ok",
     trigger,
   };
-  if (source) root.source = source;
+  if (typeof source === "string") root.stack = source;
+  else if (source) root.source = source;
   if (target) {
     const r = target.getBoundingClientRect();
     root.target = { x: r.x, y: r.y, width: r.width, height: r.height, viewportWidth: window.innerWidth, viewportHeight: window.innerHeight };
@@ -66,7 +67,7 @@ function closeAction(a: Action): void {
   if (current === a) current = null;
   const at = Date.now();
   send({ type: "action_end", actionId: a.root.id, at });
-  emitEvent({ ...a.root, durationMs: Math.max(0, a.lastActivity - a.root.startMs), status: a.failed ? "error" : "ok" });
+  emitEvent({ ...a.root, stack: undefined, durationMs: Math.max(0, a.lastActivity - a.root.startMs), status: a.failed ? "error" : "ok" });
 }
 
 // Joins the open action, or opens an implicit one. Returns the action and a settle callback (idempotent).

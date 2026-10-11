@@ -108,6 +108,11 @@ class Semantics(unittest.TestCase):
         self.assertEqual(login["args"], ["username='ada'", "password=[redacted]", "api_key=[redacted]", "headers={'Authorization': [redacted], 'accept': '*/*'}", "token=[redacted]"])
         self.assertEqual(login["returned"], "{'user': 'ada', 'session': [redacted]}")
 
+    def test_django_orm_queries_through_its_own_cursor_class_without_its_bookkeeping(self):
+        tid = self.reqs["orm"]["traceId"]
+        queries = [e for e in self.events if e["traceId"] == tid and e["kind"] == "db_query"]
+        self.assertEqual([(q["db"]["statement"], q["db"].get("params"), q["place"]["id"]) for q in queries], [("SELECT %s", "('ada',)", "data:sqlite::memory:")], "no PRAGMA from the connection's setup, no QUOTE(?) from DEBUG")
+
     def test_concurrent_requests_keep_their_own_steps(self):
         for which, n in (("concurrent1", "n=1"), ("concurrent2", "n=2")):
             (work,) = self.steps(which, "work()")

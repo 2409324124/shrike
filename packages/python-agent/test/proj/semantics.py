@@ -165,6 +165,10 @@ async def handler(scope):
         return big(list(range(100_000)), b"x" * 1_000_000, cyclic, Loud(), Chatty(), "y" * 50_000)
     if which == "secrets":
         return login("ada", "hunter2", api_key="sk-1", headers={"Authorization": "Bearer abc", "accept": "*/*"}, token="t0k")
+    if which == "orm":
+        from django import orm
+
+        return orm.query(orm.get_new_connection(":memory:"), "SELECT %s", ("ada",))
     if which.startswith("concurrent"):
         await asyncio.sleep(0)
         return work(int(which[-1]))
@@ -219,7 +223,7 @@ async def call(path):
 
 
 async def main():
-    for path in ["/classes", "/recursion", "/hot", "/errors", "/lookup", "/outgoing", "/generators", "/threads", "/values", "/secrets"]:
+    for path in ["/classes", "/recursion", "/hot", "/errors", "/lookup", "/outgoing", "/generators", "/threads", "/values", "/secrets", "/orm"]:
         await call(path)
     await asyncio.gather(call("/concurrent1"), call("/concurrent2"))
 

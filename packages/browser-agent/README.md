@@ -11,7 +11,7 @@ src/
 ├── network.ts    # fetch + XHR patch, traceparent for same-origin only; cross-origin calls are also sent at start so main can join their server side
 ├── data.ts       # the page's own database calls (Supabase PostgREST/auth, Firestore WebChannel/REST) as db_query on the database's lane
 ├── console.ts    # console, window errors, unhandled rejections
-├── react.ts      # DOM element -> fiber -> _debugSource (React 18 dev)
+├── react.ts      # DOM element -> fiber -> _debugSource (React 18 dev), else _debugStack (React 19 dev, mapped by main)
 ├── names.ts      # accessible names
 ├── record.ts     # B1: while recording, clicks (accessible name) and typing (secrets marked) as flow steps
 ├── point.ts      # O1 point mode: outline what's under the mouse, take the next click for Shrike

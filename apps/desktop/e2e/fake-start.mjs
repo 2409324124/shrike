@@ -54,11 +54,16 @@ if (opt("--resume")) {
 
 const cfgPath = join(process.cwd(), ".shrike", "config.json");
 const cfg = existsSync(cfgPath) ? JSON.parse(readFileSync(cfgPath, "utf8")) : {};
-const all = cfg.processes?.length ? cfg.processes : [{ name: "app", command: cfg.devCommand ?? "npm run dev", url: cfg.appUrl }];
+// FAKE_START_HINTS=1 and no config: run what Shrike's scanner guessed (the system prompt's "- name: `command` in dir at url" lines).
+const system = opt("--append-system-prompt-file") ? readFileSync(opt("--append-system-prompt-file"), "utf8") : "";
+const hinted = process.env.FAKE_START_HINTS === "1" && !cfg.processes?.length && !cfg.devCommand
+  ? [...system.matchAll(/^- ([\w-]+): `([^`]+)`(?: in (\S+))?(?: at (\S+))?$/gm)].map(([, name, command, cwd, url]) => ({ name, command, ...(cwd ? { cwd } : {}), ...(url ? { url } : {}) }))
+  : [];
+const all = cfg.processes?.length ? cfg.processes : hinted.length ? hinted : [{ name: "app", command: cfg.devCommand ?? "npm run dev", url: cfg.appUrl }];
 // A process with no URL next to ones that have one is a job (a nightly script): it runs once the app is up.
 const procs = all.some((p) => p.url) ? all.filter((p) => p.url) : all;
 const jobs = all.filter((p) => !procs.includes(p));
-const page = cfg.appUrl ?? (cfg.processes?.length ? undefined : procs[0].url);
+const page = cfg.appUrl ?? (hinted.length ? /^- page probably at (\S+)$/m.exec(system)?.[1] : cfg.processes?.length ? undefined : procs[0].url);
 const following = /follow the Shrike run skill/.test(goal);
 
 await say(following ? `Following the run skill ${skillId}.` : "Reading how this project starts: .shrike/config.json declares the services.");

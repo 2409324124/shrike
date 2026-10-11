@@ -1,4 +1,6 @@
 import { FlattenMap, GREATEST_LOWER_BOUND, LEAST_UPPER_BOUND, type TraceMap, originalPositionFor } from "@jridgewell/trace-mapping";
+import { existsSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import type { SourceLocation } from "@shrike/schema";
 import { relativize } from "./relativize.ts";
 
@@ -59,6 +61,16 @@ function getMap(url: string, loadText: (url: string) => Promise<string>): Promis
   return map;
 }
 
+// A page served from a top folder (Vite in web/) names its files from there (/src/App.tsx): find which folder holds it.
+// ponytail: one level deep (web/, frontend/); apps/web in a workspace keeps the page's path.
+function inProject(file: string, root: string): string {
+  if (!root || existsSync(join(root, file))) return file;
+  try {
+    for (const d of readdirSync(root, { withFileTypes: true })) if (d.isDirectory() && !d.name.startsWith(".") && d.name !== "node_modules" && existsSync(join(root, d.name, file))) return `${d.name}/${file}`;
+  } catch {}
+  return file;
+}
+
 export async function resolveBrowserStack(
   stack: string,
   projectRoot: string,
@@ -76,11 +88,11 @@ export async function resolveBrowserStack(
         if (pos.source !== null && pos.line !== null) {
           if (/node_modules\/|^turbopack:\/\/\/\[turbopack\]|webpack\/(runtime|bootstrap)/.test(pos.source)) continue;
           const file = relativize(pos.source, projectRoot);
-          if (file) return { file, line: pos.line, column: pos.column + 1, ...fn, precision: "exact" };
+          if (file) return { file: inProject(file, projectRoot), line: pos.line, column: pos.column + 1, ...fn, precision: "exact" };
         }
       }
       const file = relativize(frame.url, projectRoot);
-      return file ? { file, line: frame.line, column: frame.column, ...fn, precision: "approximate" } : undefined;
+      return file ? { file: inProject(file, projectRoot), line: frame.line, column: frame.column, ...fn, precision: "approximate" } : undefined;
     }
     return undefined;
   } catch {

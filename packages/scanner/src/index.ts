@@ -89,8 +89,10 @@ export async function detectProject(root: string, opts: { java?: () => Promise<J
 
   if (!configProcesses(config.processes) && !fallbackDev) {
     const dirs = ["", ...(await subdirs(abs))];
-    const py = await pythonProc(abs, dirs, ctx.hints.api);
+    const proxy = ctx.hints.api ? undefined : (await Promise.all(apps.map((a) => viteConfig(join(abs, a.dir))))).find((c) => c.proxy)?.proxy;
+    const py = await pythonProc(abs, dirs, ctx.hints.api ?? proxy);
     if (py && !processes.some((p) => p.name === py.name)) processes.push(py);
+    if (py) facts.usesSqlite ||= !!(await findPy(join(abs, py.cwd ?? ""), /\bsqlite3\b/)); // sqlite3 or Django's sqlite3 engine
     const fb = await firebaseProc(abs, dirs, facts, deps, name, opts.java ?? findJava, ctx.notes);
     if (fb && !processes.some((p) => p.name === fb.name)) processes.push(fb);
   }
@@ -213,7 +215,7 @@ async function bunToNode(ctx: Ctx, a: App, script: string, body: string): Promis
   return command;
 }
 
-async function viteConfig(dir: string): Promise<{ port?: string; env?: string }> {
+async function viteConfig(dir: string): Promise<{ port?: string; env?: string; proxy?: string }> {
   for (const f of ["vite.config.ts", "vite.config.mts", "vite.config.js", "vite.config.mjs", "vite.config.cjs"]) {
     let text: string;
     try {
@@ -223,7 +225,9 @@ async function viteConfig(dir: string): Promise<{ port?: string; env?: string }>
     }
     // ponytail: the first `port:` in the file (server.port in practice); no config evaluation.
     const m = /\bport\s*:\s*(?:Number\(\s*|parseInt\(\s*|\+\s*)?(?:process\.env\.(\w+)\s*(?:\?\?|\|\|)\s*)?["']?(\d{2,5})?/.exec(text);
-    return { ...(m?.[2] ? { port: m[2] } : {}), ...(m?.[1] ? { env: m[1] } : {}) };
+    // server.proxy's first local target ("/api": "http://localhost:8000" or { target: ... }): where the page expects the API.
+    const proxy = /\bproxy\s*:\s*\{[^]*?["'`]https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0):(\d{2,5})\b/.exec(text)?.[1];
+    return { ...(m?.[2] ? { port: m[2] } : {}), ...(m?.[1] ? { env: m[1] } : {}), ...(proxy ? { proxy } : {}) };
   }
   return {};
 }
