@@ -20,6 +20,8 @@ const copy = (text: string, what: string) =>
     () => toast("Couldn't copy to the clipboard", "error"),
   );
 
+const SHOW_MAX = 256 * 1024; // ponytail: a longer body shows its start, Copy takes all of it. Upgrade: a virtualised viewer.
+
 const tone = (code: number) => (code === 0 || code >= 500 ? "fail" : code >= 400 ? "slow" : "ok");
 
 function Leaf({ v, hit }: { v: unknown; hit: boolean }) {
@@ -124,6 +126,9 @@ export function ResponsePane({ tabId }: { tabId: string }) {
   const res = result?.response;
   const binary = res?.bodyEncoding === "base64";
   const json = useMemo(() => (binary ? undefined : tryJson(res?.body)), [res?.body, binary]);
+  const long = !binary && !!res && res.body.length > SHOW_MAX;
+  const shown = useMemo(() => (long ? res!.body.slice(0, SHOW_MAX) : (res?.body ?? "")), [res?.body, long]);
+  const pretty = useMemo(() => (long || json !== undefined ? shown : prettyBody(shown)), [shown, long, json]);
   const ctype = res?.contentType ?? "";
   const image = binary && ctype.startsWith("image/");
   const cookies = cookiesOf(res?.headers ?? {});
@@ -201,8 +206,9 @@ export function ResponsePane({ tabId }: { tabId: string }) {
       </div>
       <div role="tabpanel" className="ap-res-body">
         {(tab === "pretty" || tab === "raw") && binary && !image && <p className="ap-hint">A binary answer ({ctype || "no content type"}, {formatBytes(res.size)}). Nothing to show as text.</p>}
-        {tab === "pretty" && !binary && (json !== undefined ? <div className="ap-json selectable"><Node v={json} path={[]} depth={0} needle={needle.trim().toLowerCase()} /></div> : res.body ? <CodeBlock className="border-0 bg-transparent p-0">{prettyBody(res.body)}</CodeBlock> : <p className="ap-hint">Empty body.</p>)}
-        {tab === "raw" && !binary && (res.body ? <CodeBlock className="border-0 bg-transparent p-0">{res.body}</CodeBlock> : <p className="ap-hint">Empty body.</p>)}
+        {(tab === "pretty" || tab === "raw") && long && (json === undefined || tab === "raw") && <p className="ap-hint">Showing the first {formatBytes(SHOW_MAX)} here. Copy takes everything Shrike kept.</p>}
+        {tab === "pretty" && !binary && (json !== undefined ? <div className="ap-json selectable"><Node v={json} path={[]} depth={0} needle={needle.trim().toLowerCase()} /></div> : res.body ? <CodeBlock className="border-0 bg-transparent p-0">{pretty}</CodeBlock> : <p className="ap-hint">Empty body.</p>)}
+        {tab === "raw" && !binary && (res.body ? <CodeBlock className="border-0 bg-transparent p-0">{shown}</CodeBlock> : <p className="ap-hint">Empty body.</p>)}
         {(tab === "pretty" || tab === "image") && image && <img className="ap-img" src={`data:${ctype};base64,${res.body}`} alt="The response image" />}
         {tab === "headers" && <Pairs data={res.headers} />}
         {tab === "cookies" &&
