@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { createServer } from "node:http";
 import os from "node:os";
 import path from "node:path";
 import { checkMcpServer, claudeArgs, mcpPromptLine, readMyMcpServers, withMyMcp } from "../src/index.ts";
@@ -85,4 +86,21 @@ test("MCP5/MCP6: a call to the user's own server reads in plain words; the promp
   assert.equal(mcpPromptLine([]), "");
   assert.equal(mcpPromptLine(["chrome-devtools", "github"]).split("\n").length, 1);
   assert.match(mcpPromptLine(["chrome-devtools", "github"]), /chrome-devtools, github/);
+});
+
+test("MCP1: a server that exits, prints plain text, answers garbage or isn't MCP at all says so in plain words", async () => {
+  const run = (env: Record<string, string>) => checkMcpServer({ command: process.execPath, args: [echo], env }, { timeoutMs: 2000 });
+  const noise = await run({ ECHO_MCP_NOISE: "1" });
+  assert.match(noise.error!, /^It printed plain text where MCP messages go/);
+  const bad = await run({ ECHO_MCP_BAD_TOOLS: "1" });
+  assert.equal(bad.ok, false);
+  assert.match(bad.error!, /^It answered, but not the way an MCP server does/);
+  const exits = await checkMcpServer({ command: process.execPath, args: ["-e", "console.error('Error: missing API_KEY'); process.exit(1)"] }, { timeoutMs: 5000 });
+  assert.equal(exits.error, "It stopped as soon as it started. It said: Error: missing API_KEY");
+  const web = createServer((_q, r) => r.writeHead(200, { "content-type": "text/html" }).end("<html></html>")).listen(0, "127.0.0.1");
+  await new Promise((d) => web.once("listening", d));
+  const url = `http://127.0.0.1:${(web.address() as { port: number }).port}/mcp`;
+  const page = await checkMcpServer({ url }, { timeoutMs: 3000 });
+  web.close();
+  assert.equal(page.error, `Something answered at ${url}, but it isn't an MCP server. Check the address.`);
 });
