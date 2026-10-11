@@ -144,7 +144,9 @@ type Patch = {
 
 ## SQLite schema (local)
 
-One database per user in the app data dir: `~/Library/Application Support/Shrike/shrike.db` on macOS. Large payloads (bodies, args, rrweb chunks) live in NDJSON blobs; rows hold a `blob_ref`.
+Planned, not built (`@shrike/store`). Today live trips are in memory (`apps/desktop/src/main/store.ts`) and each project's newest 2000 completed trips are kept in `<userData>/sessions/<hash>.ndjson` (`apps/desktop/src/main/sessions.ts`).
+
+The plan: one database per user in the app data dir: `~/Library/Application Support/Shrike/shrike.db` on macOS. Large payloads (bodies, args, rrweb chunks) live in NDJSON blobs; rows hold a `blob_ref`.
 
 ```sql
 CREATE TABLE projects (

@@ -15,7 +15,7 @@
 │  BrowserCollector   CDP on app pane + injects browser-agent                       │
 │  Ingest             127.0.0.1 HTTP (/ingest, OTLP /v1/traces), per-session token  │
 │  Correlator         adapters → DebugEvent, clock alignment, tree   (@shrike/correlator)│
-│  Store              SQLite + NDJSON blobs                          (@shrike/store) │
+│  Store              in memory + NDJSON per project  (SQLite planned, @shrike/store)│
 │  Redactor           runs on ingest, before store                   (@shrike/redact)│
 │  AgentHost          runs Claude Code / Codex / OpenCode / built-in (@shrike/agent) │
 │  McpServer          Shrike tools + approval gate, for every agent  (@shrike/mcp-server)│
