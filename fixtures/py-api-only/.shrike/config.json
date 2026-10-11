@@ -1,0 +1,3 @@
+{
+  "processes": [{ "name": "api", "command": ".venv/bin/uvicorn main:app --port 4410", "url": "http://localhost:4410/health" }]
+}

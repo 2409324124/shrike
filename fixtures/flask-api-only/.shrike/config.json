@@ -1,0 +1,3 @@
+{
+  "processes": [{ "name": "api", "command": ".venv/bin/python app.py", "url": "http://localhost:4411/health" }]
+}
