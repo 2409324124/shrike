@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 // test-only: esbuild comes from browser-agent's devDependencies
 import { transformSync } from "../../browser-agent/node_modules/esbuild/lib/main.js";
 import { resolveBrowserStack } from "../src/index.ts";
@@ -117,4 +120,14 @@ test("Turbopack dev chunks: index maps are read and library frames inside the ch
   const stack = ["Error", `    at _request (${chunk}:1:5)`, `    at handleLogin (${chunk}:11:3)`].join("\n");
   const loc = await resolveBrowserStack(stack, ROOT, async (u) => files[u] ?? Promise.reject(new Error("404")));
   assert.deepEqual(loc, { file: "components/login-form.tsx", line: 1, column: 1, functionName: "handleLogin", precision: "exact" });
+});
+
+test("a page served from web/ (Vite root in a top folder) resolves to web/src/...", async () => {
+  const root = mkdtempSync(join(tmpdir(), "shrike-src-"));
+  mkdirSync(join(root, "web/src"), { recursive: true });
+  writeFileSync(join(root, "web/src/api.ts"), TS);
+  const c = compile("api.ts", "inline"); // Vite's map names the file relative to its own URL
+  const loc = await resolveBrowserStack(stackAt("http://localhost:4510/src/api.ts", c.line, c.column), root, async () => c.code);
+  assert.deepEqual(loc && { file: loc.file, line: loc.line }, { file: "web/src/api.ts", line: 12 });
+  rmSync(root, { recursive: true, force: true });
 });
