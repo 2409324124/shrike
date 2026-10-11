@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import type { AgentOptions, Flow, GitState } from "@shrike/schema";
-import { branchName, commitMessage, createGit, parseStatus, readGit, type GitDeps } from "./git.ts";
+import { branchName, commitMessage, createGit, gitMissing, parseStatus, readGit, type GitDeps } from "./git.ts";
 import type { ExecResult, Gh } from "./github.ts";
 
 const sh = (cwd: string, ...args: string[]) => execFileSync("git", args, { cwd, encoding: "utf8", env: { ...process.env, GIT_EDITOR: "true" } }).trim();
@@ -90,7 +90,12 @@ test("readGit: a real repo, a folder that isn't one", async () => {
   assert.equal(state.base, "main");
   assert.equal(remote, "origin");
   assert.deepEqual(state.changed, [{ path: "app.ts", status: "M" }]);
-  assert.equal((await readGit(mkdtempSync(join(tmpdir(), "shrike-nogit-")))).state.isRepo, false);
+  const plain = (await readGit(mkdtempSync(join(tmpdir(), "shrike-nogit-")))).state;
+  assert.deepEqual([plain.isRepo, plain.gitMissing], [false, undefined], "git is there; the folder just isn't a repo");
+  // No git at all: spawn ENOENT (127) or macOS's stand-in without the developer tools.
+  assert.equal(gitMissing({ code: 127, stderr: "spawn git ENOENT" }), true);
+  assert.equal(gitMissing({ code: 1, stderr: "xcrun: error: invalid active developer path (/Library/Developer/CommandLineTools)" }), true);
+  assert.equal(gitMissing({ code: 128, stderr: "fatal: not a git repository (or any of the parent directories): .git" }), false);
 });
 
 test("G1 shipFix: branches off main, commits only Shrike's files, pushes after approval, opens the PR with the issue", async () => {

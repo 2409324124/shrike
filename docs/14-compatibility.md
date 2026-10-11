@@ -152,6 +152,34 @@ Status on 2026-10-11 (roadmap Phase 9, Windows and Linux). Everything that diffe
 
 NixOS: run the AppImage with `appimage-run`, or wrap `linux-unpacked` with nixpkgs' `electron`. JDKs are also looked for in `/run/current-system/sw/lib/openjdk` and `~/.nix-profile/lib/openjdk` (after `JAVA_HOME`).
 
+## Missing tools
+
+Shrike itself is Electron, so it always opens. What it runs (the project's dev command, installs, tests, git, gh, Claude) needs tools on the computer. Shrike never installs a runtime. On Run, before Claude starts, it checks what the project needs (`apps/desktop/src/main/start/tools.ts`, from scanner's `setupFiles`): Node and the package manager the lockfile or `packageManager` names, Python (the project's `.venv` first) unless `uv.lock` and uv are there, Docker when there's a Compose file, Nix or Devbox when the project gets its tools from one. What's missing shows in the start quest (R-tools): a plain line, the command to paste (Homebrew when it's there, winget on Windows, `npm install -g` for pnpm and Yarn), the download page, and **Check again**. Missing Node, a package manager, Python or Nix stops Run there; old versions and Docker are notes, and Run goes on. Claude gets the same list in its goal, and a step that hits `command not found` for a runtime adds it to the list and tells Claude not to work around it.
+
+PATH: a GUI app opened from Finder starts with `/usr/bin:/bin:/usr/sbin:/sbin`, and `zsh -lc` reads `~/.zprofile` but not `~/.zshrc`, where nvm, fnm, asdf and pyenv put their PATH lines (checked: a marker in a fake `~/.zshrc` shows under `zsh -ilc`, not `zsh -lc`). At startup, and again on each Run, Shrike asks `$SHELL -ilc` for its PATH (then `-lc`, 4s each) and puts it in front of its own (`platform.ts` `adoptUserPath`), so dev commands, git, gh and `claude` find what the terminal finds. Ceiling: each command still runs in `$SHELL -lc`, whose `path_helper` puts the system folders back in front, so a Homebrew Node can win over nvm's when both exist.
+
+Node versions, checked by running node-agent's `register.mjs` through `NODE_OPTIONS` the way the runner does (official builds, Apple Silicon): 16.20 and 18.17 refuse to start at all (`node: --import= is not allowed in NODE_OPTIONS`, exit 9, `npm` too); 18.20, 20.5, 20.18, 22.12 and 24.9 start and record. Database and cache hooks need `module.registerHooks` (22.15+) and are skipped quietly before that. So the runner adds `--import` only for Node 18.19 or newer (the version first seen from the project folder, per Run).
+
+Status on 2026-10-11, e2e `apps/desktop/e2e/missing-tools.test.ts` with a fake login shell and fake HOME, unit `start/tools.test.ts`, `platform.test.ts`, `git.test.ts`:
+
+| Case | Before | After | Test |
+|---|---|---|---|
+| No `node` on PATH (todo-app) | Claude ran `node -v` (failed), started the dev command anyway, and the quest failed after about 2 minutes with "No answer from http://localhost:5173 after 90s" | Run stops in under 2s: "Your app needs Node.js, and it isn't on this computer." with the download page (or `brew install node`) and Check again; Claude never starts | e2e no Node; unit |
+| Node only in `~/.zshrc` (nvm, opened from Finder) | Not found: every command runs in `-lc` | Found at startup and on Check again; the todo-app runs | e2e no Node (Check again); `platform.test.ts` with a real zsh |
+| Node 16 or 18.17 | Every Node process, the dev server and `npm` itself, exits 9 at once with `--import= is not allowed in NODE_OPTIONS` | The app runs without the recorder; the quest says "Node.js v18.17.1 is older than 18.19, so Shrike can't see inside your server" | e2e old Node (`SHRIKE_E2E_OLD_NODE`); unit |
+| pnpm, Yarn or Bun missing | Claude met `command not found` and tried other ways | Stops with "This project uses pnpm, and it isn't on this computer." and `npm install -g pnpm` (or `brew install pnpm`) | e2e; unit |
+| No `node_modules` (fresh clone) | Claude installs (an allowed category, R6); the old quick start adds "Your project's packages aren't installed" on exit 127 | Unchanged | `start/policy.test.ts`, `runner.test.ts` |
+| No Python, or macOS's `python3` stub without the developer tools | Claude met the error and tried other ways | Stops with "Your app has Python code, and Python isn't on this computer." and `brew install python@3.12` or the download page | e2e; unit |
+| Python older than 3.12 (macOS's 3.9) | python-agent stayed inert with no word in the UI | Runs; "Python 3.9.6 is older than 3.12, so Shrike can't show the steps inside your Python server. Your app still runs, and Shrike records the page and its network calls." python-agent stays inert (by design, it never runs on older Python) | e2e old Python; unit |
+| Python deps not installed, no venv | Claude creates the venv and installs (allowed) | Unchanged; the venv's Python is the one checked once it exists | unit (venv first) |
+| No Docker, Compose file present | Claude tried `docker compose up` and met `command not found` | A note before Run; if a step still needs it, the quest adds Docker with how to get it and Claude is told to stop and tell the user | e2e no Node (note); unit (`missingFrom`) |
+| No `git`, or macOS's `git` stub without the developer tools | Changes and Ship said "This folder isn't saved in git yet. Run git init", which can't work | "Git isn't on this computer." with `xcode-select --install` or git-scm.com | e2e no git; `git.test.ts` |
+| git present, folder not a repo | "This folder isn't saved in git yet" | Unchanged | `git.test.ts` |
+| No `gh`, or gh signed out | Ship's GitHub setup card (`ghProblem`) | Unchanged | `github.test.ts` |
+| No `claude`, or not logged in, no API key | The quest fails at once: "Claude isn't set up yet. Install Claude Code, open a terminal, run claude and type /login. Or set ANTHROPIC_API_KEY." | Unchanged. An npm-installed `claude` under nvm should now be found from Finder too (the PATH fix; not tested end to end) | e2e no Claude |
+
+Not checked: a real Finder launch (simulated with a fake shell and an empty Electron PATH), Linux and Windows machines (the Windows branches are unit tested), an rc file that hangs (the 4s timeout covers it, not exercised), Docker installed but not running (Claude reads the error; no preflight).
+
 ## What was fixed in this phase
 
 At the start every project ran but none had a working database lane, and only one showed any server events. Fixed, by area:

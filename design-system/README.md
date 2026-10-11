@@ -424,6 +424,12 @@ Glyphs: `mcpGlyph` in tokens.ts (12×12, 1.3px round strokes, keys match the cat
 | MCP8 | **[New Tool Unlocked]** | A System window (SL frame, tag, scan line): the server's glyph in teal and its name in 15px ink, one dim line "Your agent used it for the first time, and it worked.", `+20 XP` in signal mono caps. 3.2s, waits for skill windows, a click sends it away, Calm shows it still | Build |
 | MCP9 | **Use from your own Claude Code** | A section in Tools above Add a tool: 12px dim heading, a faint 11px note under it ("Copy and paste. Shrike never edits Claude Code's files."), then three numbered steps in one `hair` 10px-radius box with hairline dividers. Each step: 12.5px ink line, 11.5px dim where it goes, a copy hud-btn (lucide `Copy`, turns `Check` for 1.5s). Step 1 shows the command in a 10.5px dim mono well (wraps anywhere) (`c-well` 25%), the token as `••••` until the eye hud-btn reveals it; a faint mono `--mcp-config` line under it with its own copy. Status row under the box: the 7px `ok` dot and each connected client's name with a faint "2m ago", or an `inkFaint` dot and "Nothing connected yet"; `New token` hud-btn (lucide `RotateCcw`) on the right; after it, one faint line with the `claude mcp remove` step. Clipboard only, never a file write | Build |
 
+#### R · Get it running (the start quest in the app dock)
+
+| ID | Element | Anatomy | Status |
+|---|---|---|---|
+| R-tools | **Missing on this computer** | Inside the start quest, one card per tool, the Your turn card's shape (3px radius, 1px border at 55%, fill at 7%): `fail` for one that stops Run (caps label "Missing on this computer" in `fail-ink`), `slow` for a note (caps label "Runs with less"). Tool name 13px `ink` medium with the version found in mono 11px `inkDim`, one plain line 12px `inkDim`, the command to paste in mono 11px with a faint `$` and a Copy hud-btn, then a quiet hud-btn "Get it from the download page" (lucide `ExternalLink`). Below the cards, when Run stopped: **Check again** (solid hud-btn, lucide `RotateCw`), which runs the check and the start again. Findings in docs/14 "Missing tools" | Built |
+
 #### L · SDLC rail (docs/13 L1–L7)
 
 | ID | Stage | Anatomy | Status |

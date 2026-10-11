@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 import type { ProcessSpec, ProjectInfo, RunStatus } from "@shrike/schema";
 import { readEnv } from "@shrike/scanner";
 import { killTree, spawnShell } from "./platform.ts";
+import { nodeAgentOk } from "./start/tools.ts";
 
 const MAX_LINES = 2000;
 const READY_TIMEOUT_MS = 45_000;
@@ -199,6 +200,7 @@ export class Runner {
     // The project's .env (and the process folder's), as `source .env` would: the shell's own env and Shrike's settings win.
     const rootEnv = await readEnv(project.root, [".env"]);
     const dotenvs = await Promise.all(specs.map(async (s) => (s.cwd ? { ...rootEnv, ...(await readEnv(resolve(project.root, s.cwd), [".env"])) } : rootEnv)));
+    const agentOk = await nodeAgentOk(project.root); // Node older than 18.19 won't start at all with --import in NODE_OPTIONS
     const gen = ++this.gen;
     this.procs = [];
     this.stopping = false;
@@ -219,7 +221,7 @@ export class Runner {
       const url = shiftUrl(spec.url, off);
       const childEnv: NodeJS.ProcessEnv = { ...dotenvs[specs.indexOf(spec)], ...base, SHRIKE_SERVICE: spec.name, ...(portOf(url) ? { PORT: portOf(url) } : {}) };
       if (!plain) {
-        childEnv.NODE_OPTIONS = base.NODE_OPTIONS ? `${base.NODE_OPTIONS} ${ours}` : ours;
+        if (agentOk) childEnv.NODE_OPTIONS = base.NODE_OPTIONS ? `${base.NODE_OPTIONS} ${ours}` : ours;
         addOtelEnv(childEnv, spec.name, env.ingestUrl, env.token);
         addPythonAgent(childEnv, env.pythonAgent);
       }
@@ -390,7 +392,7 @@ export class Runner {
     const outside = Object.entries(project.declaredPlaces ?? {}).some(([k, d]) => d.kind === "outside" && hostOf(shiftUrl(`http://${k}`, this.offsetFor(project.root))) === hostOf(spec.url));
     if (spec.instrument !== false && !outside) {
       const ours = `--import=${pathToFileURL(env.nodeAgentRegister).href} --enable-source-maps`;
-      childEnv.NODE_OPTIONS = base.NODE_OPTIONS ? `${base.NODE_OPTIONS} ${ours}` : ours;
+      if (await nodeAgentOk(project.root)) childEnv.NODE_OPTIONS = base.NODE_OPTIONS ? `${base.NODE_OPTIONS} ${ours}` : ours;
       addOtelEnv(childEnv, spec.name, env.ingestUrl, env.token);
       addPythonAgent(childEnv, env.pythonAgent);
     }

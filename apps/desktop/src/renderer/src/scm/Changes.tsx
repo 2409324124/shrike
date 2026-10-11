@@ -17,10 +17,23 @@ const SHOWN = 8;
 const LETTER_WORD: Record<ScmFile["letter"], string> = { U: "New, not tracked yet", A: "Added", M: "Edited", D: "Deleted", R: "Moved", C: "Copied", "!": "Has conflicts" };
 const LETTER_ICON: Record<ScmFile["letter"], typeof FilePen> = { U: FilePlus, A: FilePlus, M: FilePen, D: FileMinus, R: FileOutput, C: FileOutput, "!": FileWarning };
 
+export const GitMissing = () => (
+  <>
+    Git keeps every version of your code so you can undo anything. On a Mac, open Terminal and run <code className="selectable font-mono text-[12px] whitespace-nowrap text-ink">xcode-select --install</code>. Elsewhere, get it from git-scm.com/downloads. Then come back here.
+  </>
+);
+
 export function ChangesPanel() {
   const state = useScm((s) => s.state);
   const busy = useScm((s) => s.busy);
   if (!state) return <p className="lbl flex items-center gap-2 p-4">{busy === "load" && <Spinner size={11} />} Reading your repo</p>;
+  if (state.gitMissing)
+    return (
+      <div className="p-4 text-[13px] leading-[1.55]">
+        <p className="m-0 text-ink">Git isn't on this computer.</p>
+        <p className="m-0 mt-1.5 text-dim"><GitMissing /></p>
+      </div>
+    );
   if (!state.isRepo)
     return (
       <div className="p-4 text-[13px] leading-[1.55]">

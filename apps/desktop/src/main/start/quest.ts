@@ -40,7 +40,7 @@ export class Quest {
     this.ev.plan(structuredClone(this.plan));
   }
 
-  set(p: Partial<Pick<StartPlan, "runId" | "say" | "recipes" | "source" | "skillId" | "error" | "places">>): void {
+  set(p: Partial<Pick<StartPlan, "runId" | "say" | "recipes" | "source" | "skillId" | "error" | "places" | "tools">>): void {
     Object.assign(this.plan, p);
     this.emit();
   }

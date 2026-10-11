@@ -4,7 +4,7 @@ import { isAbsolute, join, relative, resolve } from "node:path";
 import type { BrainId, ScmCommit, ScmDiff, ScmDiffLine, ScmFile, ScmState, ScmTarget } from "@shrike/schema";
 import { redactText } from "@shrike/redact";
 import { ghError, type Exec } from "./github.ts";
-import { readGit } from "./git.ts";
+import { gitMissing, readGit } from "./git.ts";
 import { resolveRecipe } from "./recipes.ts";
 
 // SC1–SC7: the Changes dock. Local git only (no gh); Electron-free. Commit and undo are a click (local, undoable);
@@ -202,7 +202,7 @@ export function createScm(deps: ScmDeps) {
     const cwd = deps.root();
     if (!cwd) return EMPTY;
     const top = await run(cwd, ["rev-parse", "--show-prefix"]);
-    if (top.code !== 0) return EMPTY;
+    if (top.code !== 0) return gitMissing(top) ? { ...EMPTY, gitMissing: true } : EMPTY;
     const prefix = top.stdout.trim();
     const [{ state: g, remote }, status, unstagedN, stagedN, rebase, head] = await Promise.all([
       readGit(cwd),

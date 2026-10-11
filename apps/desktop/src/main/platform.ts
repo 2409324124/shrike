@@ -1,5 +1,6 @@
 import { execFile, spawn, type ChildProcess, type SpawnOptions } from "node:child_process";
 import { cpSync, symlinkSync } from "node:fs";
+import { delimiter } from "node:path";
 
 // Phase D: the one place that knows macOS, Linux and Windows apart. No Electron imports, so node:test can drive every branch.
 
@@ -21,6 +22,30 @@ export function defaultShell(os: Os = process.platform, env: NodeJS.ProcessEnv =
 export function shellArgs(cmd: string, os: Os = process.platform, env: NodeJS.ProcessEnv = process.env): [string, string[]] {
   // cmd.exe /s strips the outer quotes and runs the rest as typed; Node passes them through with windowsVerbatimArguments.
   return os === "win32" ? [defaultShell(os, env), ["/d", "/s", "/c", `"${cmd}"`]] : [defaultShell(os, env), ["-lc", cmd]];
+}
+
+/**
+ * The PATH the user's terminal has. A login shell (-l) skips ~/.zshrc, where nvm, fnm, asdf and pyenv put theirs, so ask an
+ * interactive login shell (-il) first, then a login shell. Undefined on Windows or when neither answers in time.
+ */
+export function userPath(os: Os = process.platform, env: NodeJS.ProcessEnv = process.env, run: typeof execFile = execFile): Promise<string | undefined> {
+  if (!loginPathNeeded(os)) return Promise.resolve(undefined);
+  const ask = (flags: string) =>
+    new Promise<string | undefined>((done) => {
+      const child = run(defaultShell(os, env), [flags, 'printf "__SHRIKE_PATH__%s__SHRIKE_PATH__" "$PATH"'], { env, timeout: 4000 }, (_err, out) => done(/__SHRIKE_PATH__(.+?)__SHRIKE_PATH__/.exec(String(out ?? ""))?.[1]));
+      child.stdin?.end(); // an rc file that reads from the terminal gets end of input, not a hang
+    });
+  return ask("-ilc").then((p) => p ?? ask("-lc"));
+}
+
+/** `first`'s entries, then the rest of `rest` (no repeats). */
+export const mergePath = (first: string, rest = "", sep = delimiter): string => [...new Set([...first.split(sep), ...rest.split(sep)].filter(Boolean))].join(sep);
+
+/** Every tool Shrike runs (dev commands, git, gh, claude) then finds what the user's terminal finds, even when Shrike was opened from Finder. */
+export async function adoptUserPath(): Promise<void> {
+  const p = await userPath();
+  // ponytail: a login shell later puts the system folders back in front (path_helper), so a Homebrew Node can win over nvm's. Upgrade: run commands with -c and this PATH.
+  if (p) process.env.PATH = mergePath(p, process.env.PATH);
 }
 
 /** Spawns `cmd` in the shell. `detached` makes a process group on macOS and Linux (killTree takes the whole group); on Windows it would open a console, so taskkill /T takes the tree instead. */

@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from "react";
-import { ChevronDown, ChevronRight, Play, Square } from "lucide-react";
-import type { StartAsk, StartPlan, StartStep } from "@shrike/schema";
+import { ChevronDown, ChevronRight, Copy, ExternalLink, Play, RotateCw, Square } from "lucide-react";
+import type { StartAsk, StartPlan, StartStep, ToolNeed } from "@shrike/schema";
+import { call } from "../lib/api.ts";
+import { toast } from "../stores/ui.ts";
 import { cx } from "../components/ui.tsx";
 import { QuestWindow } from "../system/System.tsx";
 import { CATEGORY_LABEL, focusStep, questLive, questTitle, tailLines } from "./logic.ts";
@@ -12,6 +14,7 @@ export function StartQuest({ plan, name, legacy }: { plan: StartPlan | null; nam
   if (!plan) return <NotStarted name={name} legacy={legacy} />;
   const focus = focusStep(plan);
   const live = questLive(plan);
+  const missing = plan.tools?.some((t) => t.blocking);
   return (
     <QuestWindow
       title={questTitle(plan, name)}
@@ -22,18 +25,21 @@ export function StartQuest({ plan, name, legacy }: { plan: StartPlan | null; nam
       className="quest-dock"
       style={{ width: "100%" }}
     >
-      {focus?.ask && live ? <Ask key={focus.ask.id} step={focus} ask={focus.ask} /> : focus?.output ? <StepDetail step={focus} /> : null}
+      {focus?.ask && live ? <Ask key={focus.ask.id} step={focus} ask={focus.ask} /> : focus?.output && !missing ? <StepDetail step={focus} /> : null}
+      {!!plan.tools?.length && <MissingTools tools={plan.tools} />}
       {plan.state === "failed" && (
         <div className="mt-3 flex flex-col gap-2">
-          {plan.error && <p className="m-0 text-[12px] leading-snug text-[var(--fail-ink)]">{plan.error}</p>}
+          {plan.error && !missing && <p className="m-0 text-[12px] leading-snug text-[var(--fail-ink)]">{plan.error}</p>}
           <div className="flex flex-wrap gap-1.5">
             <button type="button" className="hud-btn solid" onClick={() => void startWithClaude()}>
-              <Play size={9} className="fill-current" aria-hidden />
-              Try again with Claude
+              {missing ? <RotateCw size={10} aria-hidden /> : <Play size={9} className="fill-current" aria-hidden />}
+              {missing ? "Check again" : "Try again with Claude"}
             </button>
-            <button type="button" className="hud-btn" onClick={() => void stopStart()}>
-              Stop what started
-            </button>
+            {plan.runId && (
+              <button type="button" className="hud-btn" onClick={() => void stopStart()}>
+                Stop what started
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -147,6 +153,48 @@ function Ask({ step, ask }: { step: StartStep; ask: StartAsk }) {
       </div>
       <span className="sr-only">For the step: {step.title}</span>
     </form>
+  );
+}
+
+/** R-tools: what this computer is missing and how to get it. Shrike never installs it. */
+function MissingTools({ tools }: { tools: ToolNeed[] }) {
+  const copy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast("Copied. Paste it into a terminal.", "ok");
+    } catch {
+      toast("Couldn't copy to the clipboard.", "error");
+    }
+  };
+  return (
+    <ul className="m-0 mt-2.5 flex list-none flex-col gap-2 p-0" aria-label="Missing on this computer">
+      {tools.map((t) => (
+        <li key={t.tool} className={cx("rounded-[3px] border px-2.5 py-2", t.blocking ? "border-[color-mix(in_srgb,var(--fail)_55%,transparent)] bg-[color-mix(in_srgb,var(--fail)_7%,transparent)]" : "border-[color-mix(in_srgb,var(--slow)_55%,transparent)] bg-[color-mix(in_srgb,var(--slow)_7%,transparent)]")}>
+          <p className={cx("micro m-0 text-[9.5px]", t.blocking ? "text-[var(--fail-ink)]" : "text-slow")}>{t.blocking ? "Missing on this computer" : "Runs with less"}</p>
+          <p className="m-0 mt-1 text-[13px] font-medium text-ink">
+            {t.name}
+            {t.found && <span className="ml-1.5 font-mono text-[11px] font-normal text-dim">{t.found}</span>}
+          </p>
+          <p className="m-0 mt-0.5 text-[12px] leading-snug text-dim">{t.message}</p>
+          {t.command && (
+            <div className="mt-1.5 flex min-w-0 items-center gap-1.5">
+              <code className="selectable min-w-0 flex-1 font-mono text-[11px] leading-4 break-all text-ink">
+                <span className="text-faint">$ </span>
+                {t.command}
+              </code>
+              <button type="button" className="hud-btn shrink-0" onClick={() => void copy(t.command!)} aria-label={`Copy ${t.command}`}>
+                <Copy size={10} aria-hidden />
+                Copy
+              </button>
+            </div>
+          )}
+          <button type="button" className="hud-btn -ml-2 mt-1" onClick={() => void call((a) => a.openLink(t.url), "Couldn't open the download page")}>
+            <ExternalLink size={10} aria-hidden />
+            {t.command ? "Or get it from the download page" : "Get it from the download page"}
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }
 

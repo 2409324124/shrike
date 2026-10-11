@@ -8,7 +8,7 @@ import { registerIpc } from "./ipc.ts";
 import { automated, headless } from "./headless.ts";
 import { banner } from "./banner.ts";
 import { placeAppWindow } from "./app-view.ts";
-import { isMac } from "./platform.ts";
+import { adoptUserPath, isMac } from "./platform.ts";
 
 let win: BrowserWindow | undefined;
 let appWin: BrowserWindow | undefined; // the user's app in its own window (detached from the dock)
@@ -141,8 +141,9 @@ for (const sig of ["SIGINT", "SIGTERM"] as const) process.on(sig, () => app.quit
 // ponytail: closing the main window closes the app window too and quits on every platform.
 app.on("window-all-closed", () => app.quit());
 
-void app.whenReady().then(() => {
+void app.whenReady().then(async () => {
   if (process.platform === "darwin" && !headless) app.dock?.setIcon(ICON);
+  await adoptUserPath(); // before anything looks for git, gh, claude or node
   registerIpc(() => win, { get: () => appWin, open: openAppWindow, close: closeAppWindow });
   createWindow();
 });

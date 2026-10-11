@@ -12,6 +12,7 @@ import type { SkillDirs } from "../skills.ts";
 import { killTree, spawnShell } from "../platform.ts";
 import { CATEGORY_WORDS, decide, judge, projectScript, rememberable, type Judgement } from "./policy.ts";
 import { Quest } from "./quest.ts";
+import { missingFrom } from "./tools.ts";
 import type { Recipe } from "./recipes.ts";
 import { proposeLesson, runSkillId, runSkillPath, saveRunSkill, type SaveResult } from "./runskill.ts";
 
@@ -229,7 +230,7 @@ export class StartSession implements StartHost {
     const secs = ((Date.now() - started) / 1000).toFixed(1);
     const why = r.code === 0 ? undefined : r.timedOut ? `Stopped after ${p.timeoutSec ?? 570}s without finishing` : lastLine(r.out) || `Exited with code ${r.code}`;
     this.settle(step, r.code === 0, why, p.fix);
-    return `${r.timedOut ? "Timed out" : `Exit code ${r.code}`} after ${secs}s (step ${step.id} is now ${this.quest.step(step.id).state}).\n${tail(r.out) || "(no output)"}`;
+    return `${r.timedOut ? "Timed out" : `Exit code ${r.code}`} after ${secs}s (step ${step.id} is now ${this.quest.step(step.id).state}).\n${tail(r.out) || "(no output)"}${r.code ? this.missing(r.out) : ""}`;
   }
 
   private exec(command: string, cwd: string, timeoutMs: number, onChunk: (c: string) => void): Promise<{ code: number | null; out: string; timedOut: boolean }> {
@@ -260,6 +261,14 @@ export class StartSession implements StartHost {
         done({ code: timedOut ? null : code, out: out.replace(ANSI, ""), timedOut });
       });
     });
+  }
+
+  /** A runtime the output says isn't installed: the user sees how to get it, Claude is told not to work around it. */
+  private missing(out: string): string {
+    const t = missingFrom(out);
+    if (!t) return "";
+    if (!this.quest.plan.tools?.some((x) => x.tool === t.tool)) this.quest.set({ tools: [...(this.quest.plan.tools ?? []), t] });
+    return `\n\n${t.name} isn't installed on this computer. Shrike never installs tools, and the user now sees how to get it. Don't retry or work around it (no global installs, no other package manager). If the app can't start without it, propose_lesson, then tell the user in one line to install ${t.name} and press Run again, and stop.`;
   }
 
   // ---- services (the runner keeps them after the agent run) ----
@@ -297,7 +306,7 @@ export class StartSession implements StartHost {
     if (s && (s.state === "error" || s.state === "stopped")) {
       const why = s.error?.split("\n")[0] ?? `It stopped with code ${s.exitCode}`;
       this.settle(step, false, s.error?.split("\n").at(-1) || why);
-      return `The "${p.name}" service stopped right away (code ${s.exitCode}).\n${tail(lines) || "(no output)"}`;
+      return `The "${p.name}" service stopped right away (code ${s.exitCode}).\n${tail(lines) || "(no output)"}${this.missing(lines)}`;
     }
     const up = p.url && (await responds(p.url));
     if (up) this.d.runner.markService(p.name, p.url);

@@ -1,4 +1,4 @@
-import type { AgentRunInfo, AgentStep, BrainId, ProjectInfo } from "@shrike/schema";
+import type { AgentRunInfo, AgentStep, BrainId, ProjectInfo, ToolNeed } from "@shrike/schema";
 import { startAgentRun } from "@shrike/agent";
 import type { Recipe } from "./recipes.ts";
 import { runSkillId } from "./runskill.ts";
@@ -45,7 +45,7 @@ export function startVars(o: { project: ProjectInfo; recipes: Recipe[]; lessons:
   };
 }
 
-export function startGoal(project: ProjectInfo, recipes: Recipe[]): string {
+export function startGoal(project: ProjectInfo, recipes: Recipe[], tools: ToolNeed[] = []): string {
   const best = recipes[0];
   const id = runSkillId(project.name);
   const first = best
@@ -53,7 +53,7 @@ export function startGoal(project: ProjectInfo, recipes: Recipe[]): string {
       ? `Start with the skill: follow the Shrike run skill ${best.skillId ?? id} (your playbook above) step by step.`
       : `Start with the skill: your playbook is ${best.name} (${SOURCE_WORDS[best.source]}). Follow it; it's read-only, so what you learn goes into Shrike's own run skill ${id}.`
     : "There's no recipe yet: explore the project first (README, scripts, task runner, compose, flake, CI, env templates), then plan.";
-  return `Get ${project.name} running in Shrike: every service healthy and the page loaded in the app pane.\n${first}\nThen plan_steps, run each step, fix what fails, app_ready, and end with a skill: save_run_skill (${id}) or mark_skill_used, then propose_lesson for generic lessons.`;
+  return `Get ${project.name} running in Shrike: every service healthy and the page loaded in the app pane.\n${first}\nThen plan_steps, run each step, fix what fails, app_ready, and end with a skill: save_run_skill (${id}) or mark_skill_used, then propose_lesson for generic lessons.${tools.length ? `\nShrike checked this computer. The user already sees this, and Shrike never installs tools, so don't install or work around them: ${tools.map((t) => t.message).join(" ")}` : ""}`;
 }
 
 export const LESSON_NUDGE =
@@ -67,6 +67,7 @@ export interface BrainOpts {
   lessons: Recipe[];
   setupFiles: string[];
   portOffset?: number; // W2: a worktree's ports
+  tools?: ToolNeed[]; // what this computer is missing (notes only: a blocking one never gets here)
   mcp: { url: string; token: string };
   promptsDir: string;
   onStep?(step: AgentStep): void; // also shown in the agent column / X-ray, when wired
@@ -113,7 +114,7 @@ export function runStartBrain(o: BrainOpts): { runId: string; stop(): void } {
         else if (next === "stopped") o.session.stop();
       },
     });
-  current = launch(startGoal(o.project, o.recipes));
+  current = launch(startGoal(o.project, o.recipes, o.tools));
   o.session.quest.set({ runId: current.info.id });
   return {
     get runId() {
