@@ -36,6 +36,7 @@ const TABLE: [string, "allow" | "ask" | "never", string?][] = [
   ["uv sync", "allow", "install"],
   ["pip install -r requirements.txt", "allow", "install"],
   ["python3 -m venv .venv", "allow", "install"],
+  [".venv/bin/pip install -r requirements.txt", "allow", "install"],
   ["poetry install", "allow", "install"],
   ["cd apps/backend && uv sync", "allow", "install"],
   ["npx playwright install chromium", "allow", "install"],
@@ -53,6 +54,8 @@ const TABLE: [string, "allow" | "ask" | "never", string?][] = [
   ["cd apps/dashboard && pnpm run dev", "allow", "service"],
   ["uv run uvicorn src.main:app --port 3001", "allow", "service"],
   ["poetry run python manage.py runserver", "allow", "service"],
+  [".venv/bin/uvicorn main:app --port 4410", "allow", "service"],
+  ["venv/bin/flask --app app run", "allow", "service"],
   ["nix develop -c pnpm dev", "allow", "service"],
   // health checks
   ["curl -sf http://localhost:3001/api/health", "allow", "health"],
@@ -134,6 +137,14 @@ test("R6 policy table: allowed, asks first, never", () => {
     if (j.verdict !== verdict || (category && j.category !== category)) wrong.push(`${cmd}\n    want ${verdict}${category ? `/${category}` : ""}, got ${j.verdict}/${j.category} (${j.why})`);
   }
   assert.equal(wrong.length, 0, `\n  ${wrong.join("\n  ")}`);
+});
+
+test("a project inside a Claude Code worktree runs its own files; its .claude folders stay off limits", () => {
+  const wt = { root: "/Users/me/repo/.claude/worktrees/agent-1", cwd: "/Users/me/repo/.claude/worktrees/agent-1" };
+  assert.notEqual(judge(".venv/bin/python app.py > out.log", wt).verdict, "never");
+  assert.notEqual(judge("node server.mjs --port 4410", wt).verdict, "never");
+  assert.equal(judge("echo x > .claude/skills/x.md", wt).verdict, "never");
+  assert.equal(judge("cp a ../../settings.json", wt).verdict, "never");
 });
 
 test("always allow covers a category, never never", () => {

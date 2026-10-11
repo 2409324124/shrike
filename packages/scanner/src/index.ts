@@ -5,8 +5,8 @@ import { homedir } from "node:os";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import type { Place, PlaceKind, ProcessSpec, ProjectInfo, Route } from "@shrike/schema";
 
-const SKIP_DIRS = new Set(["node_modules", "dist", ".git", "build", ".next", ".turbo", ".vercel", "coverage", "out"]);
-const CODE_EXT = /\.(ts|tsx|js|mjs)$/;
+const SKIP_DIRS = new Set(["node_modules", "dist", ".git", "build", ".next", ".turbo", ".vercel", "coverage", "out", "venv", "__pycache__", "site-packages"]);
+const CODE_EXT = /\.(ts|tsx|js|mjs|py)$/;
 const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
 
 async function readJson(file: string): Promise<Record<string, unknown> | undefined> {
@@ -103,7 +103,7 @@ export async function detectProject(root: string, opts: { java?: () => Promise<J
   const frontend = has("@remix-run/react") ? "remix" : has("next") ? "next" : has("vite") && has("react") ? "vite-react" : has("react") ? "react" : has("vite") ? "vite" : undefined;
   const backend =
     has("express") ? "express" : has("fastify") ? "fastify" : has("hono") ? "hono" : has("@nestjs/core") ? "nest" : has("koa") ? "koa"
-    : has("@remix-run/node") ? "remix" : has("next") ? "next" : processes.some((p) => /\b(fastapi|uvicorn)\b/.test(p.command)) ? "fastapi" : processes.some((p) => /manage\.py runserver/.test(p.command)) ? "django" : undefined;
+    : has("@remix-run/node") ? "remix" : has("next") ? "next" : processes.some((p) => /\b(fastapi|uvicorn)\b/.test(p.command)) ? "fastapi" : processes.some((p) => /manage\.py runserver/.test(p.command)) ? "django" : facts.py ?? undefined;
   const appUrl =
     str(config.appUrl) ??
     (frontend ? processes.find((p) => p.url && (ctx.web.has(p.name) || /^(web|app|client|frontend|site|ui)$/.test(p.name) || /\b(vite|next)\b/.test(`${p.command} ${scripts[`dev:${p.name}`] ?? ""}`)))?.url : undefined) ??
@@ -283,21 +283,26 @@ async function findPy(dir: string, re: RegExp, depth = 3): Promise<string | unde
   return undefined;
 }
 
-// FastAPI or Django in the root or a top folder, run from its virtualenv (or uv / poetry).
+// FastAPI, Flask or Django in the root or a top folder, run from its virtualenv (or uv / poetry).
 async function pythonProc(abs: string, dirs: string[], hint?: string): Promise<ProcessSpec | undefined> {
   for (const d of dirs) {
     const dir = join(abs, d);
     const reqs = (await Promise.all(["pyproject.toml", "requirements.txt", "requirements/base.txt"].map((f) => readFile(join(dir, f), "utf8").catch(() => "")))).join("\n");
     const django = existsSync(join(dir, "manage.py")) && /\bdjango\b/i.test(reqs);
     const fastapi = /\bfastapi\b/i.test(reqs) ? await findPy(dir, /^\s*\w+\s*(?::\s*\w+\s*)?=\s*FastAPI\(/m) : undefined;
-    if (!django && !fastapi) continue;
+    const flask = !django && !fastapi && /\bflask\b/i.test(reqs) ? await findPy(dir, /^\s*\w+\s*=\s*Flask\(/m) : undefined;
+    if (!django && !fastapi && !flask) continue;
     const venv = [join(dir, ".venv"), join(dir, "venv"), join(abs, ".venv")].find((v) => existsSync(join(v, "bin", "python")));
     const bin = (tool: string) =>
       venv && existsSync(join(venv, "bin", tool)) ? `${relative(dir, join(venv, "bin", tool)) || tool}` : existsSync(join(dir, "uv.lock")) || existsSync(join(abs, "uv.lock")) ? `uv run ${tool}` : existsSync(join(dir, "poetry.lock")) ? `poetry run ${tool}` : tool;
-    const port = hint ?? "8000";
+    const flaskText = flask ? await readFile(join(dir, flask), "utf8").catch(() => "") : "";
+    const own = /\bport\s*=\s*(\d{2,5})\b|["']PORT["']\s*,\s*["']?(\d{2,5})/.exec(flaskText); // app.run(port=5001), os.environ.get("PORT", 5001)
+    const port = hint ?? (own ? (own[1] ?? own[2])! : flask ? "5000" : "8000");
     const command = django
       ? `${bin("python")} manage.py runserver ${port}`
-      : /fastapi\[standard\]|fastapi-cli/.test(reqs)
+      : flask
+        ? /__main__[\s\S]*\.run\(/.test(flaskText) ? `${bin("python")} ${flask}` : `${bin("flask")} --app ${flask.replace(/\.py$/, "").replace(/\//g, ".")} run --port ${port}`
+        : /fastapi\[standard\]|fastapi-cli/.test(reqs)
         ? `${bin("fastapi")} dev ${fastapi} --port ${port}`
         : `${bin("uvicorn")} ${fastapi!.replace(/\.py$/, "").replace(/\//g, ".")}:${/^\s*(\w+)\s*(?::\s*\w+\s*)?=\s*FastAPI\(/m.exec(await readFile(join(dir, fastapi!), "utf8"))?.[1] ?? "app"} --reload --port ${port}`;
     return { name: "api", command, ...(d ? { cwd: d } : {}), url: `http://localhost:${port}` };
@@ -652,9 +657,23 @@ function nextSegments(segments: string[]): string | undefined {
   return "/" + out.join("/");
 }
 
+// FastAPI and Flask decorators: @app.get("/orders/{id}"), @bp.route("/rooms/<int:id>", methods=["GET", "POST"]).
+// ponytail: APIRouter(prefix=...) and Blueprint url_prefix aren't applied; Django urls.py isn't read. Upgrade: follow include_router / register_blueprint.
+const PY_ROUTE = /^\s*@\w+\.(get|post|put|patch|delete|route)\(\s*(?:"([^"\n]*)"|'([^'\n]*)')([^)\n]*)/gm;
+const pyPath = (p: string) => p.replace(/\{(\w+)(?::\w+)?\}/g, ":$1").replace(/<(?:\w+:)?(\w+)>/g, ":$1");
+
 function routesIn(rel: string, text: string): Route[] {
   const routes: Route[] = [];
   const at = (index: number) => ({ file: rel, line: lineAt(text, index), precision: "exact" as const });
+  if (rel.endsWith(".py")) {
+    for (const m of text.matchAll(PY_ROUTE)) {
+      const path = m[2] ?? m[3] ?? "";
+      if (!path.startsWith("/")) continue;
+      const methods = m[1] === "route" ? (/methods\s*=\s*[[(]([^\])]*)/.exec(m[4]!)?.[1]?.match(/\w+/g) ?? ["GET"]) : [m[1]!];
+      for (const method of methods) routes.push({ method: method.toUpperCase(), path: pyPath(path), handler: at(m.index + m[0].indexOf("@")) });
+    }
+    return routes;
+  }
   for (const m of text.matchAll(EXPRESS)) {
     const path = m[2] ?? m[3] ?? m[4] ?? "";
     if (path.startsWith("/") || path === "*") routes.push({ method: m[1]!.toUpperCase(), path, handler: at(m.index) });
@@ -703,6 +722,7 @@ interface Facts {
   usesSqlite: boolean;
   ports: { file: string; port: string }[]; // `process.env.PORT ?? 3000`, `.listen(3000)`, one per file
   emulatorPorts: Set<string>; // connectFirestoreEmulator(db, host, 8080)
+  py?: "fastapi" | "flask"; // the Python web framework a .py file makes an app with
   firebaseProject?: string;
 }
 
@@ -714,6 +734,7 @@ async function scanCode(abs: string): Promise<Facts> {
   const ports: Facts["ports"] = [];
   const emulatorPorts = new Set<string>();
   let firebaseProject: string | undefined;
+  let py: Facts["py"];
   for (const file of files) {
     let text: string;
     try {
@@ -721,8 +742,9 @@ async function scanCode(abs: string): Promise<Facts> {
     } catch {
       continue;
     }
-    usesSqlite ||= /["']node:sqlite["']/.test(text);
+    usesSqlite ||= /["']node:sqlite["']|^\s*(?:import|from) sqlite3\b/m.test(text);
     const rel = relative(abs, file).split(sep).join("/");
+    if (rel.endsWith(".py")) py ??= /=\s*FastAPI\(/.test(text) ? "fastapi" : /=\s*Flask\(/.test(text) ? "flask" : undefined;
     const port = /process\.env\.PORT\s*(?:\?\?|\|\|)\s*["']?(\d{2,5})|\.listen\(\s*(\d{2,5})\b/.exec(text);
     const app = !/(^|\/)(tests?|__tests__|e2e|cypress|scripts)\/|\.(test|spec)\.\w+$/.test(rel);
     if (port && app) ports.push({ file: rel, port: (port[1] ?? port[2])! });
@@ -734,7 +756,7 @@ async function scanCode(abs: string): Promise<Facts> {
     }
   }
   const routes = [...byKey.values()].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : a.method < b.method ? -1 : a.method > b.method ? 1 : 0));
-  return { routes, usesSqlite, ports, emulatorPorts, ...(firebaseProject ? { firebaseProject } : {}) };
+  return { routes, usesSqlite, ports, emulatorPorts, ...(py ? { py } : {}), ...(firebaseProject ? { firebaseProject } : {}) };
 }
 
 // R2: files that say how a project starts, for the start agent to read first. Hints only: Claude reads them and decides.

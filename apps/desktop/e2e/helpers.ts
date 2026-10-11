@@ -54,7 +54,7 @@ export async function launch(env: Record<string, string> = {}, keep?: string): P
     userData,
     async cleanup() {
       await app.close().catch(() => {});
-      for (const f of ["todo-app", "shop-app", "api-only", "py-app"]) removeRunSkills(join(repo, "fixtures", f));
+      for (const f of ["todo-app", "shop-app", "api-only", "py-app", "py-api-only", "flask-api-only"]) removeRunSkills(join(repo, "fixtures", f));
       if (!keep) rmSync(userData, { recursive: true, force: true });
     },
   };

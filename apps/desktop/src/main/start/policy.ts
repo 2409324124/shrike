@@ -131,6 +131,8 @@ function outsidePath(ctx: Ctx, w: string): boolean {
   });
 }
 const CLAUDE_DIR = /(^|\/)\.claude(\/|$)/;
+// Inside the project only the part under it counts: a project in a Claude Code worktree (.claude/worktrees/x) may run its own files.
+const inClaude = (root: string, abs: string) => CLAUDE_DIR.test(inside(root, abs) ? relative(root, abs) : abs);
 
 function hostsOf(seg: string): string[] {
   return [...seg.matchAll(/\b[a-z][a-z0-9+.-]*:\/\/(?:[^\s/@'"]*@)?(\[[^\]]+\]|[^\s/:'"?#]+)/gi)].map((m) => m[1]!);
@@ -411,6 +413,7 @@ function judgeWords(ws: string[], ctx: Ctx, depth: number): Judgement {
     return allow("service");
   }
   if (BUILDERS.has(a)) return allow("build");
+  if (/^\.?venv\/(bin|Scripts)\/[^/]+$/.test(a) && depth < 4) return judgeWords([a.split("/").pop()!, ...rest], ctx, depth + 1); // the project's virtualenv: .venv/bin/pip is pip
   if (/^\.{0,2}\//.test(a) || a.includes("/")) return byPath(a);
   return ask("other", `Run ${a}, which Shrike doesn't recognise`);
 }
@@ -445,7 +448,7 @@ export function judge(command: string, ctx: Ctx, depth = 0): Judgement {
     for (const r of redirects) {
       const abs = resolve(cwd, expand(r));
       if (!inside(ctx.root, abs) && safe(abs)) continue; // a project under /tmp still counts as the project
-      if (CLAUDE_DIR.test(abs)) out.push(never("Shrike never writes into a .claude folder. Its own skills live in .shrike/skills.", "write"));
+      if (inClaude(ctx.root, abs)) out.push(never("Shrike never writes into a .claude folder. Its own skills live in .shrike/skills.", "write"));
       else if (/(^|\/)\.env($|\.)/.test(r) && !/\.(example|sample|template)$/.test(r)) out.push(ask("env", `Write ${r}`));
       else if (!inside(ctx.root, abs)) out.push(ask("outside", `Write ${r}, outside the project`));
       else out.push(ask("write", `Write ${r}`));
@@ -460,7 +463,7 @@ export function judge(command: string, ctx: Ctx, depth = 0): Judgement {
     let j = judgeWords(ws, here, depth);
     const far = hostsOf(seg).filter((h) => !LOCAL_HOST.test(h.replace(/^\[|\]$/g, "")));
     if (far.length && j.verdict !== "never") j = j.category === "install" ? ask("other", `Install from ${far[0]}, not your usual package registry`) : never(`Shrike only talks to this computer, not ${far[0]}.`, j.category);
-    if (j.verdict !== "never" && !["inspect", "health"].includes(j.category) && ws.slice(1).some((x) => CLAUDE_DIR.test(resolve(cwd, expand(x))))) j = never("Shrike never writes into a .claude folder. Its own skills live in .shrike/skills.", "write");
+    if (j.verdict !== "never" && !["inspect", "health"].includes(j.category) && ws.slice(1).some((x) => inClaude(ctx.root, resolve(cwd, expand(x))))) j = never("Shrike never writes into a .claude folder. Its own skills live in .shrike/skills.", "write");
     // sed/awk/grep's first argument is a script or a pattern (/SERVICE/,$p), not a file
     const script = /^(sed|awk|gawk|grep|egrep|rg|jq|yq)$/.test(real[0] ?? "") && !real.slice(1).some((x) => x === "-e" || x === "-f" || x === "--file") ? ws.indexOf(real.slice(1).find((x) => !x.startsWith("-")) ?? "\0") : -1;
     const away = j.verdict !== "never" && ws.slice(1).find((x, i) => i + 1 !== script && outsidePath(here, x));
