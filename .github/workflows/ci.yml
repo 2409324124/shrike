@@ -30,8 +30,14 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - name: Test
-        if: runner.os != 'Windows'
+        if: runner.os == 'macOS'
         run: pnpm test
+      # Linux: the Electron tests need a display, and Ubuntu 24.04's AppArmor blocks Electron's sandbox without this.
+      - name: Test (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          xvfb-run -a pnpm test
       # Windows: the full suite still assumes a POSIX shell, process groups and "/" paths, so only the platform layer
       # and the pure packages gate the build. The rest runs for information until it is green there.
       - name: Test (Windows gate)
