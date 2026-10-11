@@ -1032,7 +1032,7 @@ const SD={on:false,st:{},detail:{},fixed:false,raced:false,plan:true,think:"norm
   wts:[{name:"main",port:5173,dot:"ok"}],cur:"main"};
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
 // ponytail: the owner's ~/.claude/skills folder names, copied by hand (names only, read-only import). The app reads the folder live.
-const CLAUDE_NAMES=["ai-ugc-cards","aso-appstore-screenshots","bitbucket-pr-proof","daily-brief","dm-message","euler-backend-flows","explain-file-change","find-app-founders","ill-communication","ios-design-critique","navigate-juspay-portal","navigate-xyne-spaces","plantuml-skill","record-portal-walkthrough","remotion-best-practices","run-euler-api-dashboard","run-juspay-portal","saas-seo-advanced","schema-explainer","seed-euler-dashboard","swiftui-design-skill","think-from-first-principles","ticket-title","type-explainer","x-format-scan","xyne-ci-check","xyne-cleanup","xyne-feature-video","xyne-pr-review"];
+const CLAUDE_NAMES=["api-docs","changelog-writer","code-review","daily-brief","db-migrations","deploy-check","e2e-tests","explain-file-change","pr-description","release-notes","schema-explainer","seo-audit","think-from-first-principles","ticket-title","type-explainer","ui-critique"];
 const CLAUDE=CLAUDE_NAMES.map(n=>({id:n,when:"Your Claude Code skill",src:"claude",ro:true}));
 const LIB=[
   {id:"start-todo-app",when:"Bring todo-app up on a free port",src:"project",v:3,uses:9,imp:"2 days ago",steps:["Install if node_modules is missing","Start the server on :3001","Start the page on :5173","Open the app and wait for Todos"]},
