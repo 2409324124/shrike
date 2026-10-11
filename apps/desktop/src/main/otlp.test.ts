@@ -159,14 +159,14 @@ const pyApp = join(import.meta.dirname, "../../../../fixtures/py-app");
 test("fixtures/py-app live: the runner's env makes a real FastAPI app's 500 and its query join the page's click", { skip: !existsSync(join(pyApp, "api/.venv")) && "needs fixtures/py-app/api/.venv (see its README)" }, async () => {
   const store = new Store({ projectRoot: () => pyApp, onUpdate: () => {} });
   const ing = await startIngest((m) => store.handle(m));
-  const api = { ...JSON.parse(readFileSync(join(pyApp, ".shrike/config.json"), "utf8")).processes.find((p: { name: string }) => p.name === "api"), command: ".venv/bin/opentelemetry-instrument .venv/bin/uvicorn main:app --port 8010" };
+  const api = { ...JSON.parse(readFileSync(join(pyApp, ".shrike/config.json"), "utf8")).processes.find((p: { name: string }) => p.name === "api"), command: ".venv/bin/opentelemetry-instrument .venv/bin/uvicorn main:app --port 8018", url: "http://localhost:8018" }; // not 8010: python.test.ts runs that port in parallel
   const runner = new Runner({ onStatus: () => {}, onOutput: () => {} });
   try {
     await runner.start({ root: pyApp, name: "py-app", devCommand: "", routes: [], expectedPlaces: [], processes: [api] }, { nodeAgentRegister: "/none.mjs", ingestUrl: ing.url, token: ing.token });
     while (runner.status.state === "starting") await new Promise((r) => setTimeout(r, 100));
     assert.equal(runner.status.state, "running");
     const B = "8".repeat(32);
-    const url = "http://localhost:8010/api/items/3/unit-price";
+    const url = "http://localhost:8018/api/items/3/unit-price";
     store.handle({ type: "hello", source: "browser", url: "http://localhost:5190/", at: Date.now() });
     const root: DebugEvent = { id: "c1".repeat(8), traceId: B, origin: "browser", kind: "user_action", name: 'Clicked "Unit price of Gift card"', trigger: "click", startMs: Date.now(), status: "ok" };
     store.handle({ type: "events", events: [root, { id: "c2".repeat(8), traceId: B, parentId: root.id, origin: "browser", kind: "http_request", name: `GET ${url}`, startMs: Date.now(), status: "ok", http: { method: "GET", url } }] });
