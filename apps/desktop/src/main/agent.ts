@@ -5,6 +5,7 @@ import { join, relative, sep } from "node:path";
 import type { AgentOptions, AgentRunInfo, AgentStep, BrainId, BrainInfo, ConnectInfo, Finding, ShrikeEvents, Skill } from "@shrike/schema";
 import {
   ASIDE_RULE,
+  bindHost,
   branchFinding,
   branchName,
   branchQuestion,
@@ -25,7 +26,7 @@ import { formatActionTree } from "@shrike/correlator";
 import { redactText } from "@shrike/redact";
 import { listSkills as readSkillList, startMcpServer } from "@shrike/mcp-server";
 import { addCommand, configCommand, denySettings, readSaved, saveConfig } from "./connect.ts";
-import { getMemory, host, rejectWithFeedback, requireProject, runner, store } from "./host.ts";
+import { getMemory, getProject, host, rejectWithFeedback, requireProject, runner, store } from "./host.ts";
 import { noteAgentStep } from "./issue.ts";
 import { notify } from "./notify.ts";
 import { getPatch } from "./patches.ts";
@@ -98,6 +99,16 @@ export async function resetConnectToken(): Promise<ConnectInfo> {
 }
 void app.whenReady().then(() => ensureMcp());
 
+// Shrike's own runs get a server per folder whose tools refuse once another workspace is open (outside clients follow the open one).
+const folderMcp = new Map<string, ReturnType<typeof startMcpServer>>();
+async function runMcp(root: string): Promise<{ url: string; token: string }> {
+  let s = folderMcp.get(root);
+  if (!s) folderMcp.set(root, (s = startMcpServer(bindHost(host, root, () => getProject()?.root), { skillsDir, skills: skillHost })));
+  s.catch(() => folderMcp.delete(root));
+  const { url, internalToken } = await s;
+  return { url, token: internalToken };
+}
+
 function recentActions(): string {
   const views = store.listActions().filter((a) => a.id !== SERVER_OUTPUT_ID).slice(-5);
   return views.map((v) => formatActionTree(v, { includeIds: true }).split("\n").slice(0, 4).join("\n")).join("\n\n");
@@ -137,7 +148,6 @@ export async function startAgent(goal: string, brain: BrainId, emit: Emit, resum
   const { resume, opts = {}, quiet } = extras;
   const isBranch = !!(extras.branch?.parentRunId || extras.branch?.aside);
   const project = requireProject();
-  const server = await ensureMcp();
   const [memory, skills, target] = await Promise.all([memoryText(), skillsText(), opts.worktree ? worktreeTarget(opts.worktree) : undefined]);
   let summary = "";
   const continues = extras.branch?.continues ?? (resume && !extras.fork ? [...registry.values()].findLast((r) => r.session === resume)?.info.id : undefined);
@@ -147,7 +157,7 @@ export async function startAgent(goal: string, brain: BrainId, emit: Emit, resum
     brain,
     cwd,
     effort: effortFor(opts.thinking),
-    mcp: extras.mcp ?? target?.mcp ?? { url: server.url, token: server.internalToken },
+    mcp: extras.mcp ?? target?.mcp ?? (await runMcp(project.root)),
     useMyMcp: opts.useMyMcp, // B4
     ...(myMcp ? { myMcp: () => myMcp!(project.root) } : {}), // MCP6
     resume,
@@ -288,6 +298,7 @@ export async function stopAllAgents(): Promise<void> {
   for (const r of runs.values()) r.stop();
   runs.clear();
   await (await mcp?.catch(() => undefined))?.close();
+  for (const s of folderMcp.values()) await (await s.catch(() => undefined))?.close();
 }
 
 // ---- C: conversation branches (C1 branch, C3 aside, C5 bring back, C6 own worktree), kept per project for relaunch ----

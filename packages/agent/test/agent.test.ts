@@ -6,7 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ActionView, AgentRunInfo, AgentStep, AgentUsage, Finding, ShrikeHost } from "@shrike/schema";
-import { buildSystemPrompt, claudeArgs, createStreamParser, effortFor, fillTemplate, goalWithOptions, PLAN_FIRST, startAgentRun, type AnthropicLike, type UsageInput } from "../src/index.ts";
+import { bindHost, buildSystemPrompt, claudeArgs, createStreamParser, effortFor, fillTemplate, goalWithOptions, PLAN_FIRST, startAgentRun, type AnthropicLike, type UsageInput } from "../src/index.ts";
 import { runClaudeCode } from "../src/claude-code.ts";
 import type { StepInput } from "../src/steps.ts";
 import { startMcpServer } from "../../mcp-server/src/index.ts";
@@ -409,6 +409,26 @@ test("built-in brain: offline, a refused key and a rate limit end the run in pla
       assert.deepEqual(r.statuses, ["running", "failed"]);
       assert.match(r.steps.at(-1)!.text, want);
     }
+  } finally {
+    await server.close();
+  }
+});
+
+test("two workspaces: a run's tools refuse once its folder isn't the open one, instead of reading the other folder", async () => {
+  let open = os.tmpdir();
+  const server = await startMcpServer(bindHost(host, os.tmpdir(), () => open));
+  try {
+    let calls = 0;
+    const reply = () => ({ stop_reason: "tool_use", content: [{ type: "tool_use", id: `u${++calls}`, name: "get_action", input: { actionId: ACTION } }] });
+    const create = () => {
+      if (calls === 1) open = "/elsewhere/other-workspace"; // the user switched workspace mid-run
+      return Promise.resolve((calls < 2 ? reply() : { stop_reason: "end_turn", content: [{ type: "text", text: "ok" }] }) as any);
+    };
+    const r = run({ messages: { create } }, server);
+    await r.done;
+    const results = r.steps.filter((s) => s.kind === "tool_result");
+    assert.doesNotMatch(results[0]!.text, /Problem/);
+    assert.match(results[1]!.detail ?? results[1]!.text, /isn't the open workspace now\. Switch back to it/);
   } finally {
     await server.close();
   }
