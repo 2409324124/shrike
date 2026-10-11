@@ -127,7 +127,7 @@ All channels are typed in `@shrike/schema` and validated with zod in main. The r
 | URL not detected in 30s | Ask for the URL, remember it in `.shrike/config.json` |
 | node-agent crashes on load | Restart once without function hooks (OTel-only), show "Basic tracing" badge |
 | No source maps | Locations marked approximate; banner explains in one line |
-| Event flood (> 50k per session) | Drop `function` events for framework files first, then sample, show "truncated" marker |
+| Event flood (a click with 100k steps, a server polling in a loop) | A trip keeps its first 5,000 steps (errors still get in up to 10,000) and one note in the trip says how many more were skipped; the store keeps the newest 500 trips and 100,000 events, dropping the oldest finished trips first and never one an agent waits on; bodies are cut at 64KB with "…[truncated]" (`apps/desktop/src/main/store.ts`) |
 | Files changed since recording | Banner; editor opens recorded snapshot, never highlights the live file |
 | AI unavailable or no key | All non-AI features work; agent panel shows setup steps |
 
