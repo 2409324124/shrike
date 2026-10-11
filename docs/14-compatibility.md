@@ -143,6 +143,27 @@ Checked with `apps/desktop/src/main/python.test.ts` (real servers through the Ru
 
 ## Tested combinations
 
+Stack combinations run end to end in the built app (headless, Playwright), screenshots looked at. Each tester keeps their rows under their own heading.
+
+### Python backend only
+
+2026-10-12. `fixtures/py-api-only` (FastAPI 0.143 on uvicorn 0.54, sqlite3) and `fixtures/flask-api-only` (Flask 3.1 dev server, sqlite3), no web page, each with a cron-style Python script. Python 3.12 venvs; python-agent suite also on 3.14. Checked by `apps/desktop/e2e/py-api-only.test.ts` (both pass) plus unit tests.
+
+| Combination | What worked | What broke | Fixed? | Test |
+|---|---|---|---|---|
+| Setup on a Python-only folder | "No web page found", one `api` process, SQLITE expected (from `import sqlite3`), port and command right | Without `.shrike/config.json`, a Flask app wasn't detected at all (FastAPI and Django only); `import sqlite3` didn't add the SQLITE place | Yes: Flask detected, `python app.py` when the file runs itself (port from `port=` or the `PORT` default), else `flask --app ... run`; `backend` is `flask` | `scanner.test.ts` "Python backends with no page" |
+| Run (start agent) in a Claude Code worktree | | Any command with a path argument was refused ("never writes into a .claude folder") because the project's own path is under `.claude/worktrees`; Run stopped at Start api | Yes: only the part of a path under the project counts | `policy.test.ts` worktree test; e2e |
+| Run: `.venv/bin/uvicorn`, `.venv/bin/pip install` | `start_service` allowed `.venv/bin/uvicorn` as a project script | `run_command` asked "Run the script .venv/bin/uvicorn", and `.venv/bin/pip install -r requirements.txt` asked instead of being an allowed install | Yes: a venv's `bin/` tool is judged as the tool | `policy.test.ts` table |
+| API client route list | | "Routes in your code" was empty: no Python route scanning | Yes: FastAPI and Flask decorators, params as `:id`, handler file:line (prefixes of `APIRouter`/`Blueprint` not applied, Django `urls.py` not read) | `scanner.test.ts`; e2e asserts the four routes per app |
+| No-page dock, explorer base URL | Dock says "This project has no web page."; `/orders` sent from the explorer goes to `localhost:4410` (the process address, not its `/health` path) | | | e2e |
+| Explorer trip, FastAPI | EXPLORER lane, `create_order(order=OrderIn(...))`, `order_total(lines=[...], coupon='welcome10')`, `coupon_percent(code='welcome10')` returning `None`, both SELECTs in SQLITE, verdict BROKE, 500, caption with the TypeError | The raising line `main.py:66` is only in the step's error stack; the station shows `called at main.py:81`, as Node functions do | No (same as Node; a "failed at" line on the station would be a cross-language UI change) | e2e asserts the stack line |
+| Explorer trip, Flask | `is_free(room='Oak', night='2026-10-21')` returning `True`, `book(...)` returning `None`, the refused INSERT in SQLITE with `UNIQUE constraint failed: bookings.room, bookings.night`, snap there | Query locations are the helper's `conn.execute` line (`app.py:14`, exact); the business line is the `query()` step's `called at app.py:38` | Not a bug | e2e |
+| curl trip | CURL lane and card, same steps and snap | Flask: the card had no `-d` body; python-agent never captured Flask request bodies (werkzeug reads with `readinto`, which bypassed the wrapper) | Yes: `readinto` recorded | `test_agent.py` `test_wsgi_request`; e2e asserts `-d` on the card |
+| Cron script (Python, `SHRIKE_CALLER=cron`) | | Trips were "python-urllib · POST /orders" from outside the app: python-agent recorded no outgoing calls, so `SHRIKE_CALLER` did nothing for a Python script | Yes: in a `SHRIKE_CALLER` process, `http.client` calls (urllib, urllib3, requests) become `external_call` trips with a `traceparent`; trips now "cron · POST /orders", CRON lane, `$ python reorder.py`, the server's steps nested | `test_agent.py` `test_caller_script_calls_start_trips_with_a_traceparent`; e2e |
+| Missing venv | The R-tools check uses the venv's Python, else `python3`; a missing venv is not a missing tool (Claude creates it; `python3 -m venv` and now `.venv/bin/pip install` are allowed) | | By design | `tools.test.ts` (existing) |
+
+Gaps left: a Python server's own outgoing calls inside a request, logs and row changes aren't recorded; route prefixes from `include_router`/`register_blueprint` and Django routes aren't scanned; the cron lane's first station reads "fetch POST /orders" for a Python urllib call (the Thread's generic word for a call).
+
 ### Polyglot and edge Python
 
 Run on 2026-10-12, macOS, Python 3.12.14 and 3.14.6, Node 24.9, Postgres 16 in Docker (OrbStack), `opentelemetry-instrument` 0.66b1. Each row was run through the Runner, ingest and store (`main/polyglot.test.ts`, `main/py-edge.test.ts`) and in the built app headless (`e2e/polyglot.test.ts`, `e2e/py-edge.test.ts`), with screenshots looked at.
@@ -303,26 +324,3 @@ Environment lessons for whoever runs these again:
 - Remove containers with `docker rm -fv`. Anonymous volumes filled the OrbStack disk once and broke database setup.
 - Delete nest's `tsconfig.build.tsbuildinfo` along with `dist`, or tsc emits nothing.
 - Vite's default port 5173 clashes with the fixture regression; run real projects that default to it when fixtures are not running.
-
-## Tested combinations
-
-Stack combinations run end to end in the built app (headless, Playwright), screenshots looked at. Each tester keeps their rows under their own heading.
-
-### Python backend only
-
-2026-10-12. `fixtures/py-api-only` (FastAPI 0.143 on uvicorn 0.54, sqlite3) and `fixtures/flask-api-only` (Flask 3.1 dev server, sqlite3), no web page, each with a cron-style Python script. Python 3.12 venvs; python-agent suite also on 3.14. Checked by `apps/desktop/e2e/py-api-only.test.ts` (both pass) plus unit tests.
-
-| Combination | What worked | What broke | Fixed? | Test |
-|---|---|---|---|---|
-| Setup on a Python-only folder | "No web page found", one `api` process, SQLITE expected (from `import sqlite3`), port and command right | Without `.shrike/config.json`, a Flask app wasn't detected at all (FastAPI and Django only); `import sqlite3` didn't add the SQLITE place | Yes: Flask detected, `python app.py` when the file runs itself (port from `port=` or the `PORT` default), else `flask --app ... run`; `backend` is `flask` | `scanner.test.ts` "Python backends with no page" |
-| Run (start agent) in a Claude Code worktree | | Any command with a path argument was refused ("never writes into a .claude folder") because the project's own path is under `.claude/worktrees`; Run stopped at Start api | Yes: only the part of a path under the project counts | `policy.test.ts` worktree test; e2e |
-| Run: `.venv/bin/uvicorn`, `.venv/bin/pip install` | `start_service` allowed `.venv/bin/uvicorn` as a project script | `run_command` asked "Run the script .venv/bin/uvicorn", and `.venv/bin/pip install -r requirements.txt` asked instead of being an allowed install | Yes: a venv's `bin/` tool is judged as the tool | `policy.test.ts` table |
-| API client route list | | "Routes in your code" was empty: no Python route scanning | Yes: FastAPI and Flask decorators, params as `:id`, handler file:line (prefixes of `APIRouter`/`Blueprint` not applied, Django `urls.py` not read) | `scanner.test.ts`; e2e asserts the four routes per app |
-| No-page dock, explorer base URL | Dock says "This project has no web page."; `/orders` sent from the explorer goes to `localhost:4410` (the process address, not its `/health` path) | | | e2e |
-| Explorer trip, FastAPI | EXPLORER lane, `create_order(order=OrderIn(...))`, `order_total(lines=[...], coupon='welcome10')`, `coupon_percent(code='welcome10')` returning `None`, both SELECTs in SQLITE, verdict BROKE, 500, caption with the TypeError | The raising line `main.py:66` is only in the step's error stack; the station shows `called at main.py:81`, as Node functions do | No (same as Node; a "failed at" line on the station would be a cross-language UI change) | e2e asserts the stack line |
-| Explorer trip, Flask | `is_free(room='Oak', night='2026-10-21')` returning `True`, `book(...)` returning `None`, the refused INSERT in SQLITE with `UNIQUE constraint failed: bookings.room, bookings.night`, snap there | Query locations are the helper's `conn.execute` line (`app.py:14`, exact); the business line is the `query()` step's `called at app.py:38` | Not a bug | e2e |
-| curl trip | CURL lane and card, same steps and snap | Flask: the card had no `-d` body; python-agent never captured Flask request bodies (werkzeug reads with `readinto`, which bypassed the wrapper) | Yes: `readinto` recorded | `test_agent.py` `test_wsgi_request`; e2e asserts `-d` on the card |
-| Cron script (Python, `SHRIKE_CALLER=cron`) | | Trips were "python-urllib · POST /orders" from outside the app: python-agent recorded no outgoing calls, so `SHRIKE_CALLER` did nothing for a Python script | Yes: in a `SHRIKE_CALLER` process, `http.client` calls (urllib, urllib3, requests) become `external_call` trips with a `traceparent`; trips now "cron · POST /orders", CRON lane, `$ python reorder.py`, the server's steps nested | `test_agent.py` `test_caller_script_calls_start_trips_with_a_traceparent`; e2e |
-| Missing venv | The R-tools check uses the venv's Python, else `python3`; a missing venv is not a missing tool (Claude creates it; `python3 -m venv` and now `.venv/bin/pip install` are allowed) | | By design | `tools.test.ts` (existing) |
-
-Gaps left: a Python server's own outgoing calls inside a request, logs and row changes aren't recorded; route prefixes from `include_router`/`register_blueprint` and Django routes aren't scanned; the cron lane's first station reads "fetch POST /orders" for a Python urllib call (the Thread's generic word for a call).
