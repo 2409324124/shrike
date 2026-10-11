@@ -34,11 +34,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/SumantxD/shrike/releases/download/v0.1.0/shrike-launch.mp4">
+  <a href="https://youtu.be/z_9tfvs3_jU">
     <img src="docs/media/shrike-launch-poster.png" alt="Watch the 40 second launch video" width="560">
   </a>
   <br>
-  <sub>Watch the 40 second launch video</sub>
+  <sub>Watch the 40 second launch video on YouTube</sub>
 </p>
 
 ## Why Shrike
