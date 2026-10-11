@@ -198,6 +198,8 @@ export class Store {
     const host = normHost(h.reqHeaders.host);
     for (const o of this.outbound.values()) {
       if (o.method !== method || o.host !== host || o.path !== h.url || (!preflight && o.claimed) || e.startMs < o.startMs - 1000 || e.startMs > o.startMs + 60_000) continue;
+      // An answered preflight is CORS plumbing: keeping it put an OPTIONS station first and read as the call's answer. A refused one stays.
+      if (preflight && h.status && h.status < 400 && e.traceId !== o.traceId) return this.ignore(this.trace(e.traceId));
       if (!preflight) o.claimed = true;
       this.moveTrace(e.traceId, o.traceId);
       e.traceId = o.traceId;
