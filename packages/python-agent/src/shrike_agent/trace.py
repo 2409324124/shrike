@@ -229,7 +229,7 @@ def _begin(code, rel, parent, frame):
     rec.t0 = time.perf_counter()
 
 
-def _end(rec, failed, value):
+def _end(rec, failed, value, frame):
     event = rec.event
     event["durationMs"] = elapsed(rec)
     if failed and isinstance(value, GeneratorExit):
@@ -237,8 +237,9 @@ def _end(rec, failed, value):
     elif failed:
         event["status"] = "error"
         event["error"] = error_info(value)
-        if rec.parent is rec.root:
-            rec.root.error = value  # escaped the app's code: what a 500 from the framework was about
+        back = frame.f_back
+        if back is None or user_file(back.f_code.co_filename) is None:
+            rec.root.error = value  # escaped into the framework: what its 500 was about
     else:
         event["returned"] = preview(value)
     emit(event)
@@ -257,7 +258,7 @@ def _leave(frame, failed, value):
     rec = _frames.pop(frame, None)
     if rec is not None:
         cur.set(rec.saved)
-        quietly(_end, rec, failed, value)
+        quietly(_end, rec, failed, value, frame)
 
 
 def _on_return(code, offset, value):
