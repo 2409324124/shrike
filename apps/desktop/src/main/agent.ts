@@ -85,6 +85,7 @@ export async function connectInfo(): Promise<ConnectInfo> {
     skill: await readFile(join(paths.repo, "prompts/connect/SKILL.md"), "utf8"),
     settings: denySettings(),
     clients: [...clients].map(([name, at]) => ({ name, at })).sort((a, b) => b.at - a.at),
+    ...(s.movedFrom ? { movedFrom: s.movedFrom } : {}),
   };
 }
 
@@ -146,7 +147,7 @@ export async function startAgent(goal: string, brain: BrainId, emit: Emit, resum
     brain,
     cwd,
     effort: effortFor(opts.thinking),
-    mcp: extras.mcp ?? target?.mcp ?? { url: server.url, token: server.token },
+    mcp: extras.mcp ?? target?.mcp ?? { url: server.url, token: server.internalToken },
     useMyMcp: opts.useMyMcp, // B4
     ...(myMcp ? { myMcp: () => myMcp!(project.root) } : {}), // MCP6
     resume,
