@@ -1,0 +1,35 @@
+{
+  "name": "big-app",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npm run dev:web & npm run dev:gateway & npm run dev:auth & npm run dev:catalog & npm run dev:search & npm run dev:cart & npm run dev:orders & npm run dev:recommendations & npm run dev:notifications & npm run dev:queue & npm run dev:stripe & npm run dev:email & npm run dev:cron & wait",
+    "dev:web": "vite --strictPort",
+    "dev:gateway": "node --watch services/gateway/src/index.ts",
+    "dev:auth": "node --watch services/auth/src/index.ts",
+    "dev:catalog": "node --watch services/catalog/src/index.ts",
+    "dev:search": "node --watch services/search/src/index.ts",
+    "dev:cart": "node --watch services/cart/src/index.ts",
+    "dev:orders": "node --watch services/orders/src/index.ts",
+    "dev:recommendations": "node --watch services/recommendations/src/index.ts",
+    "dev:notifications": "node --watch services/notifications/src/index.ts",
+    "dev:queue": "node --watch services/queue/src/index.ts",
+    "dev:stripe": "node --watch doubles/stripe/index.ts",
+    "dev:email": "node --watch doubles/email/index.ts",
+    "dev:cron": "SHRIKE_CALLER=cron node --watch services/cron/src/index.ts"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "@electric-sql/pglite": "^0.3.0",
+    "lru-cache": "^11.0.0"
+  },
+  "devDependencies": {
+    "vite": "^6.3.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "typescript": "^5.9.0"
+  }
+}

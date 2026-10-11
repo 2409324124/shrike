@@ -269,9 +269,10 @@ test("R3 services: added one at a time, one exiting leaves the others, stopServi
   const root = mkdtempSync(join(tmpdir(), "shrike-svc-"));
   writeFileSync(join(root, "a.mjs"), `setInterval(() => {}, 1000); console.log("a up", process.env.SHRIKE_SERVICE, process.env.PC_DISABLE_TUI, process.env.NODE_OPTIONS ?? "plain");`);
   const env = { nodeAgentRegister: join(root, "a.mjs"), ingestUrl: "http://127.0.0.1:1", token: "t" };
-  const project = { root, name: "t", devCommand: "", routes: [], processes: [], expectedPlaces: [] };
+  const project = { root, name: "t", devCommand: "", routes: [], processes: [], expectedPlaces: [], declaredPlaces: { "localhost:9": { kind: "outside" as const, name: "Pay double" } } };
   const r = new Runner({ onStatus: () => {}, onOutput: () => {} });
   const a = await r.startService(project, { name: "a", command: "node a.mjs & node a.mjs; wait", instrument: false }, env);
+  await r.startService(project, { name: "pay", command: "node a.mjs", url: "http://localhost:9/health" }, env); // declared outside: plain
   await r.startService(project, { name: "boom", command: "echo boom-out; exit 4" }, env);
   await assert.rejects(r.startService(project, { name: "a", command: "node a.mjs" }, env), /already running/);
   await assert.rejects(r.startService(project, { name: "x", command: "true", cwd: "../.." }, env), /outside the project/);
@@ -283,6 +284,8 @@ test("R3 services: added one at a time, one exiting leaves the others, stopServi
   assert.equal(r.services().find((s) => s.name === "a")!.state, "starting");
   assert.match(r.services().find((s) => s.name === "boom")!.error ?? "", /exited with code 4\.[\s\S]*boom-out/);
   assert.ok(r.serviceTail("a")!.some((l) => l === "a up a true plain"));
+  await until(() => !!r.serviceTail("pay")?.some((l) => l.startsWith("a up")));
+  assert.ok(r.serviceTail("pay")!.some((l) => l === "a up pay true plain"), r.serviceTail("pay")!.join("\n"));
   r.markRunning("http://127.0.0.1:1/");
   assert.equal(r.status.state, "running");
   assert.equal(await r.stopService("a"), true);

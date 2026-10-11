@@ -1,0 +1,23 @@
+{
+  "appUrl": "http://localhost:5190",
+  "processes": [
+    { "name": "web", "command": "npm run dev:web", "url": "http://localhost:5190" },
+    { "name": "gateway", "command": "npm run dev:gateway", "url": "http://localhost:4400/health" },
+    { "name": "auth", "command": "npm run dev:auth", "url": "http://localhost:4401/health" },
+    { "name": "catalog", "command": "npm run dev:catalog", "url": "http://localhost:4402/health" },
+    { "name": "search", "command": "npm run dev:search", "url": "http://localhost:4403/health" },
+    { "name": "cart", "command": "npm run dev:cart", "url": "http://localhost:4404/health" },
+    { "name": "orders", "command": "npm run dev:orders", "url": "http://localhost:4405/health" },
+    { "name": "recommendations", "command": "npm run dev:recommendations", "url": "http://localhost:4406/health" },
+    { "name": "notifications", "command": "npm run dev:notifications", "url": "http://localhost:4407/health" },
+    { "name": "queue", "command": "npm run dev:queue", "url": "http://localhost:4408/health" },
+    { "name": "stripe", "command": "npm run dev:stripe", "url": "http://localhost:4498/health" },
+    { "name": "email", "command": "npm run dev:email", "url": "http://localhost:4499/health" },
+    { "name": "cron", "command": "npm run dev:cron" }
+  ],
+  "places": {
+    "localhost:4408": { "kind": "queue", "name": "QUEUE · order-events" },
+    "localhost:4498": { "kind": "outside", "name": "Stripe (test double)" },
+    "localhost:4499": { "kind": "outside", "name": "Email (test double)" }
+  }
+}

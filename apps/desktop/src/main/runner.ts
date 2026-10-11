@@ -355,7 +355,9 @@ export class Runner {
     const port = portOf(spec.url);
     // Same port vars as start() (W2), so a project's declared ports and worktree shifts hold for Claude-started services too.
     const childEnv: NodeJS.ProcessEnv = { ...dotenv, ...base, ...portEnv(project, env.serverUrl, this.offsetFor(project.root)), SHRIKE_INGEST_URL: env.ingestUrl, SHRIKE_TOKEN: env.token, SHRIKE_PROJECT_ROOT: project.root, SHRIKE_SERVICE: spec.name, FORCE_COLOR: "1", ...NO_TTY_ENV, ...(port ? { PORT: port } : {}) };
-    if (spec.instrument !== false) {
+    // Same as start(): a service at a host declared "outside" (a test double for a real API) runs without the recorder.
+    const outside = Object.entries(project.declaredPlaces ?? {}).some(([k, d]) => d.kind === "outside" && hostOf(shiftUrl(`http://${k}`, this.offsetFor(project.root))) === hostOf(spec.url));
+    if (spec.instrument !== false && !outside) {
       const ours = `--import=${pathToFileURL(env.nodeAgentRegister).href} --enable-source-maps`;
       childEnv.NODE_OPTIONS = base.NODE_OPTIONS ? `${base.NODE_OPTIONS} ${ours}` : ours;
     }
