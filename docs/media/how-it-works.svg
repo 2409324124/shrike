@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>How Shrike works: two small recorders in your app send events to Shrike, which joins them into one trip per click, strips secrets, stores it in .shrike/ and serves it to you and to your agent over MCP. Code changes go back only as a diff you approve.</title>
+  <defs>
+    <radialGradient id="bg" cx="40%" cy="40%" r="80%"><stop offset="0" stop-color="#0A1633"/><stop offset="1" stop-color="#02040A"/></radialGradient>
+    <linearGradient id="spec" x1="0" x2="1"><stop offset="0" stop-color="#8B5CF6"/><stop offset=".5" stop-color="#2F7BFF"/><stop offset="1" stop-color="#3FE7FF"/></linearGradient>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#3FE7FF"/></marker>
+    <marker id="v" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#C06BFF"/></marker>
+    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#38F2A0"/></marker>
+    <style>
+      .h{font-size:13px;letter-spacing:.18em;fill:#7D8CA8;font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace}
+      .t{font-size:17px;font-weight:600;fill:#EAF2FF}
+      .s{font-size:13.5px;fill:#9AA9C4}
+      .m{font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:12.5px;fill:#3FE7FF}
+      .box{fill:rgba(120,170,255,.06);stroke:rgba(180,215,255,.26);stroke-width:1.2}
+      .card{fill:#060B18;stroke:rgba(160,205,255,.2);stroke-width:1}
+    </style>
+  </defs>
+  <rect width="1200" height="600" rx="22" fill="url(#bg)"/>
+  <rect x="0.5" y="0.5" width="1199" height="599" rx="22" fill="none" stroke="rgba(160,205,255,.16)"/>
+
+  <!-- your app -->
+  <text class="h" x="40" y="52">YOUR APP · npm run dev</text>
+  <rect class="box" x="40" y="68" width="300" height="400" rx="16"/>
+  <rect class="card" x="60" y="92" width="260" height="160" rx="12"/>
+  <text class="t" x="80" y="124">Browser</text>
+  <text class="m" x="80" y="148">browser-agent</text>
+  <text class="s" x="80" y="176">clicks, fetches, React</text>
+  <text class="s" x="80" y="196">components and the source</text>
+  <text class="s" x="80" y="216">line each one came from</text>
+  <rect class="card" x="60" y="282" width="260" height="164" rx="12"/>
+  <text class="t" x="80" y="314">Server</text>
+  <text class="m" x="80" y="338">node-agent · node --import</text>
+  <text class="s" x="80" y="366">functions with their values,</text>
+  <text class="s" x="80" y="386">queries, cache calls, queues,</text>
+  <text class="s" x="80" y="406">logs and errors, tied to the</text>
+  <text class="s" x="80" y="426">request that caused them</text>
+
+  <!-- arrows into shrike -->
+  <path d="M320 160 C 370 160, 370 156, 416 156" fill="none" stroke="#3FE7FF" stroke-width="2" marker-end="url(#a)"/>
+  <path d="M320 364 C 380 364, 370 168, 416 166" fill="none" stroke="#3FE7FF" stroke-width="2" marker-end="url(#a)"/>
+  <text class="m" x="336" y="146">events</text>
+
+  <!-- shrike -->
+  <text class="h" x="400" y="52">SHRIKE · ON YOUR MAC</text>
+  <rect class="box" x="400" y="68" width="440" height="400" rx="16"/>
+  <rect x="420" y="92" width="400" height="4" rx="2" fill="url(#spec)"/>
+  <rect class="card" x="420" y="112" width="190" height="96" rx="12"/>
+  <text class="t" x="438" y="142">Correlator</text>
+  <text class="s" x="438" y="166">joins both sides into</text>
+  <text class="s" x="438" y="186">one trip per click</text>
+  <rect class="card" x="630" y="112" width="190" height="96" rx="12"/>
+  <text class="t" x="648" y="142">Redact</text>
+  <text class="s" x="648" y="166">secrets out before</text>
+  <text class="s" x="648" y="186">anything is stored</text>
+  <path d="M610 160 H626" stroke="#3FE7FF" stroke-width="2" marker-end="url(#a)"/>
+  <rect class="card" x="420" y="226" width="400" height="70" rx="12"/>
+  <text class="t" x="438" y="256">Store</text>
+  <text class="m" x="500" y="256">.shrike/ · SQLite + NDJSON</text>
+  <text class="s" x="438" y="280">recordings stay in your project folder</text>
+  <path d="M725 208 V222" stroke="#3FE7FF" stroke-width="2" marker-end="url(#a)"/>
+  <rect class="card" x="420" y="314" width="190" height="134" rx="12"/>
+  <text class="t" x="438" y="344">What you see</text>
+  <text class="s" x="438" y="370">the Thread</text>
+  <text class="s" x="438" y="390">Files view</text>
+  <text class="s" x="438" y="410">API client, PR and CI</text>
+  <text class="s" x="438" y="430">database inspector</text>
+  <rect class="card" x="630" y="314" width="190" height="134" rx="12" stroke="rgba(192,107,255,.55)"/>
+  <text class="t" x="648" y="344">MCP server</text>
+  <text class="s" x="648" y="370">trips, steps, values,</text>
+  <text class="s" x="648" y="390">replays and API calls</text>
+  <text class="s" x="648" y="410">as tools for agents</text>
+  <text class="m" x="648" y="432" style="fill:#C06BFF">propose_patch</text>
+  <path d="M520 296 V310" stroke="#3FE7FF" stroke-width="2" marker-end="url(#a)"/>
+  <path d="M725 296 V310" stroke="#3FE7FF" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- agent -->
+  <text class="h" x="900" y="52">YOUR AGENT</text>
+  <rect class="box" x="900" y="68" width="260" height="400" rx="16" style="stroke:rgba(192,107,255,.45)"/>
+  <text class="t" x="920" y="110">Claude Code</text>
+  <text class="s" x="920" y="134">on your own subscription</text>
+  <text class="t" x="920" y="176">Built-in agent</text>
+  <text class="s" x="920" y="200">on your own API key</text>
+  <text class="t" x="920" y="242">Any MCP client</text>
+  <text class="s" x="920" y="266">Cursor, Claude Code in a</text>
+  <text class="s" x="920" y="286">terminal, your own tools</text>
+  <path d="M836 360 H896" stroke="#C06BFF" stroke-width="2" marker-end="url(#v)"/>
+  <path d="M900 396 H840" stroke="#C06BFF" stroke-width="2" marker-end="url(#v)"/>
+  <text class="m" x="920" y="360" style="fill:#C06BFF">reads the trip</text>
+  <text class="m" x="920" y="400" style="fill:#C06BFF">proposes a diff</text>
+
+  <!-- approval loop -->
+  <rect x="40" y="500" width="1120" height="68" rx="14" fill="rgba(56,242,160,.06)" stroke="rgba(56,242,160,.4)"/>
+  <circle cx="72" cy="534" r="7" fill="none" stroke="#38F2A0" stroke-width="2.5"/>
+  <text class="t" x="92" y="530">You approve every change</text>
+  <text class="s" x="92" y="552">Agents never write files. A diff waits for your click, then Shrike applies it and replays the click to prove the fix.</text>
+  <path d="M1030 468 V496" stroke="#38F2A0" stroke-width="2" marker-end="url(#g)"/>
+  <path d="M190 496 V472" stroke="#38F2A0" stroke-width="2" marker-end="url(#g)"/>
+</svg>
