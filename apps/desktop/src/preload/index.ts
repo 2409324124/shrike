@@ -59,7 +59,7 @@ const voiceMethods = ["voiceSend", "voiceDecide", "openVoiceSettings", "setWindo
 for (const m of voiceMethods) api[m] = (...args: unknown[]) => ipcRenderer.invoke(`shrike:${m}`, ...args);
 
 // branches: C1 branch, C2 map, C3 aside, C5 bring back
-const branchMethods = ["listRuns", "getRunSteps", "branchRun", "askAside", "keepAside", "bringBack"] as const satisfies readonly Exclude<keyof ShrikeApi, "on">[];
+const branchMethods = ["listRuns", "getRunSteps", "retryRun", "branchRun", "askAside", "keepAside", "bringBack"] as const satisfies readonly Exclude<keyof ShrikeApi, "on">[];
 for (const m of branchMethods) api[m] = (...args: unknown[]) => ipcRenderer.invoke(`shrike:${m}`, ...args);
 
 // xray: X5 context map

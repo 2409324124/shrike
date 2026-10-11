@@ -307,6 +307,7 @@ Labels on discovered lanes sit opposite the incoming line: right of the station 
 | A16 | Share card | Via O6 | Build (via O6) |
 | A17 | **Telemetry strip** | Top bar, right: `3 trips · 1 broke · agent idle`, 10px caps mono in `inkFaint`, numbers in `inkDim`, broke count red when > 0, agent state violet when busy. Short of room, whole facts drop off the end (never a word cut in half); the full line is its tooltip | Build |
 | A18 | Looked-up chip | Chip in the agent column with the source title | Design |
+| A19 | **Run failed** | In the agent status pill, under its header, while the newest run on main has failed: the reason in one plain 12px `fail` sentence (`role=alert`) and a `Try again` hud-btn on its right. The pill stays fully on show (no fade) until a new run starts; the caption says the same reason for 8s. Try again starts the same ask; a follow-up resumes its conversation | Build |
 
 ### Orca → Shrike (O1–O14)
 

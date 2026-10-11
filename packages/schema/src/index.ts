@@ -1384,6 +1384,7 @@ export interface ShrikeApi {
   // C: conversation branches
   listRuns(): Promise<AgentRunInfo[]>;
   getRunSteps(runId: string): Promise<AgentStep[]>;
+  retryRun(runId: string): Promise<AgentRunInfo>; // a failed or stopped run again (a follow-up resumes its conversation)
   branchRun(runId: string, fromStepId: string, question: string, opts?: { name?: string }): Promise<AgentRunInfo>; // C1
   askAside(runId: string, question: string): Promise<AgentRunInfo>; // C3: answer arrives as steps of an aside run
   keepAside(asideRunId: string, name?: string): Promise<AgentRunInfo>; // C3 → branch

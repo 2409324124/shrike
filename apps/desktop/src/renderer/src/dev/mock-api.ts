@@ -1277,6 +1277,10 @@ export const mockApi: ShrikeApi = {
   async getRunSteps(runId) {
     return mockRuns.get(runId)?.steps ?? [];
   },
+  async retryRun() {
+    if (!agentRun) throw new Error("That agent run isn't in this session anymore.");
+    return this.startAgent(agentRun.goal, agentRun.brain);
+  },
   async branchRun(runId, fromStepId, question, opts) {
     return mockBranch(runId, fromStepId, question, opts?.name, false);
   },

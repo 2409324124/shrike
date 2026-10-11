@@ -419,6 +419,13 @@ export async function getRunSteps(runId: string): Promise<AgentStep[]> {
   return (await recOf(runId)).steps;
 }
 
+/** A failed or stopped run again: a follow-up resumes the conversation it continued, anything else starts over with the same ask. */
+export async function retryRun(runId: string, emit: Emit): Promise<AgentRunInfo> {
+  const r = await recOf(runId);
+  if (runs.has(runId)) throw new Error("Your agent is still working.");
+  return r.info.continues ? continueRun(runId, r.info.goal, emit) : startAgent(r.info.goal, r.info.brain, emit);
+}
+
 /** C1/C3: a new run from a step of another; the parent run and its session are never changed. */
 export async function branchRun(runId: string, fromStepId: string, question: string, emit: Emit, o: { name?: string; aside?: boolean } = {}): Promise<AgentRunInfo> {
   const parent = await recOf(runId);

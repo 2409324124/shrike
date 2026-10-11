@@ -48,6 +48,17 @@ const promptFile = opt("--append-system-prompt-file");
 const toolsLine = promptFile && existsSync(promptFile) ? (/^Your own tools this run.*$/m.exec(readFileSync(promptFile, "utf8"))?.[0] ?? null) : null;
 appendFileSync(join(dir, "calls.jsonl"), `${JSON.stringify({ kind, session, resume, fork, goal: goal.slice(0, 400), disallowed: opt("--disallowedTools"), cwd: process.cwd(), mine, allowed: opt("--allowedTools"), toolsLine })}\n`);
 appendFileSync(file, `${JSON.stringify({ type: "user", text: goal.slice(0, 400) })}\n`);
+// FAKE_CLAUDE_AUTH_FAIL_ONCE: the first main run fails sign-in like Claude Code 2.1 (it retries the 401 for minutes), until stopped.
+if (kind === "main" && process.env.FAKE_CLAUDE_AUTH_FAIL_ONCE && !existsSync(join(dir, "auth-failed"))) {
+  writeFileSync(join(dir, "auth-failed"), String(process.pid));
+  const out = (o) => process.stdout.write(`${JSON.stringify({ ...o, session_id: session })}\n`);
+  out({ type: "system", subtype: "init", cwd: process.cwd(), tools: [], mcp_servers: [{ name: "shrike", status: "connected" }], model: "claude-opus-5-5[1m]" });
+  for (const attempt of [1, 2]) {
+    await new Promise((r) => setTimeout(r, 400));
+    out({ type: "system", subtype: "api_retry", attempt, max_retries: 10, retry_delay_ms: 600, error_status: 401, error: "authentication_failed" });
+  }
+  await new Promise(() => {});
+}
 
 const MODEL = "claude-opus-5-5[1m]";
 let msg = 0;

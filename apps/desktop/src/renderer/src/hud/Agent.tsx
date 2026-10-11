@@ -66,6 +66,7 @@ export function AgentStream() {
 
   if (!run || (((shown.length === 0 && !hasBranches && !aside) || (!live && !hasBranches)) && !queued)) return null;
   const busy = run.status === "running";
+  const failed = run.status === "failed" && !viewing ? steps.findLast((s) => s.kind === "error") : undefined; // the reason and Try again stay on show
   const skill = skills.find((k) => k.id === loaded);
   const state = asking ? "Agent waiting for you" : busy ? "Agent working" : run.status === "done" ? "Agent done" : run.status === "failed" ? "Agent failed" : "Agent stopped";
   const tone = viewing ? branchTone(run) : color.violet;
@@ -76,7 +77,7 @@ export function AgentStream() {
       tabIndex={0}
       className={cx(
         "glass solid absolute top-14 right-4 flex max-w-[300px] flex-col gap-2 rounded-[var(--r-card)] px-2.5 py-1.5 transition-opacity duration-700 outline-none",
-        (awake && !dived) || open || aside || queued ? "opacity-100" : "opacity-0 hover:opacity-100",
+        (awake && !dived) || open || aside || queued || failed ? "opacity-100" : "opacity-0 hover:opacity-100",
         (hasBranches || queued) && "w-[300px]",
         open ? "z-30" : "z-10", // open, it sits over the FOUND IT card
       )}
@@ -108,6 +109,16 @@ export function AgentStream() {
         )}
       </div>
       <AsideBubble />
+      {failed && (
+        <div data-id="A19" className="flex items-start gap-2">
+          <p role="alert" className="flex-1 text-[12px] leading-snug text-fail">
+            {sentence(failed.text)}
+          </p>
+          <button type="button" className="hud-btn h-5 shrink-0 px-1.5 text-[9.5px]" onClick={() => void useAgent.getState().retry()}>
+            Try again
+          </button>
+        </div>
+      )}
       {busy && <ActivityLine steps={steps} running={steps.at(-1)?.kind !== "done"} quiet={open} />}
       {!viewing && <UpNextStack />}
       {open && (
@@ -121,8 +132,8 @@ export function AgentStream() {
           {!viewing && !loaded && <Skills loaded={loaded} />}
           {!viewing && <PlanList />}
           <ol aria-live="polite" className="flex flex-col gap-1.5 border-l pl-2.5" style={{ borderColor: `color-mix(in srgb, ${tone} 40%, transparent)` }}>
-            {shown.map((s, i) => (
-              <li key={s.id} className={cx("group fade-in relative pr-5 text-[12px] leading-snug", s.kind === "error" ? "text-fail" : s.kind === "done" ? "text-ok" : i === shown.length - 1 ? "text-ink" : "text-dim")}>
+            {shown.filter((s) => s.id !== failed?.id).map((s, i, all) => (
+              <li key={s.id} className={cx("group fade-in relative pr-5 text-[12px] leading-snug", s.kind === "error" ? "text-fail" : s.kind === "done" ? "text-ok" : i === all.length - 1 ? "text-ink" : "text-dim")}>
                 <McpMark steps={steps} step={s} />
                 {s.kind === "done" ? sentence(s.summary ?? s.text) : sentence(s.text)}
                 <TokensBadge steps={steps} stepId={s.id} className="ml-1.5" />
