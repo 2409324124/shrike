@@ -1,9 +1,10 @@
 import { app, dialog, type BrowserWindow } from "electron";
-import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { join } from "node:path";
 import type { ProcessSpec, ProjectInfo } from "@shrike/schema";
 import { detectProject, plannedPlaces } from "@shrike/scanner";
 import { runSkillId, runSkillPath } from "./start/runskill.ts";
+import { writeAtomicSync } from "./state-file.ts";
 
 // ponytail: remembered only; not auto-reopened, so launch always starts on the welcome screen.
 const stateFile = () => join(app.getPath("userData"), "state.json");
@@ -23,7 +24,7 @@ export async function loadProject(root: string): Promise<{ info: ProjectInfo; se
     if (places.length) (info.expectedPlaces = places), (info.placesFrom = "skill");
   } catch {}
   try {
-    writeFileSync(stateFile(), JSON.stringify({ lastProject: info.root }));
+    writeAtomicSync(stateFile(), JSON.stringify({ lastProject: info.root }));
   } catch {}
   // A project with no web page sends explorer requests straight to its first process that listens.
   const serverUrl = readConfig(info.root).serverUrl;
@@ -41,9 +42,7 @@ function readConfig(root: string): Record<string, unknown> {
 
 /** D12: write `processes` into .shrike/config.json, keeping every other key. */
 export function saveProcesses(root: string, processes: ProcessSpec[]): void {
-  const dir = join(root, ".shrike");
-  mkdirSync(dir, { recursive: true });
-  const file = join(dir, "config.json");
+  const file = join(root, ".shrike", "config.json");
   let config: Record<string, unknown> = {};
   if (existsSync(file)) {
     const v: unknown = (() => {
@@ -56,9 +55,7 @@ export function saveProcesses(root: string, processes: ProcessSpec[]): void {
     if (!v || typeof v !== "object" || Array.isArray(v)) throw new Error("Shrike can't read .shrike/config.json, so it didn't change it. Fix that file, then try again.");
     config = v as Record<string, unknown>;
   }
-  const tmp = `${file}.${process.pid}.tmp`;
-  writeFileSync(tmp, JSON.stringify({ ...config, processes }, null, 2) + "\n");
-  renameSync(tmp, file);
+  writeAtomicSync(file, JSON.stringify({ ...config, processes }, null, 2) + "\n");
 }
 
 export async function pickFolder(win: BrowserWindow | undefined): Promise<string | undefined> {

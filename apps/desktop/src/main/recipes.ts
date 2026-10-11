@@ -1,6 +1,6 @@
-import { randomBytes } from "node:crypto";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { writeAtomic } from "./state-file.ts";
 import { z } from "zod";
 import type { ActionRecipe, BrainId, RecipeAgent, RecipeSettings } from "@shrike/schema";
 import { ACTIONS, changedFrom, merged, parseArgs, renderTemplate, runSkillFor, type Var } from "../renderer/src/recipes/catalog.ts";
@@ -50,10 +50,7 @@ async function update(path: string, fn: (s: Saved) => void): Promise<void> {
   await serial(async () => {
     const s = (await readSaved(path)) ?? {};
     fn(s);
-    await mkdir(dirname(path), { recursive: true });
-    const tmp = `${path}.${randomBytes(4).toString("hex")}.tmp`;
-    await writeFile(tmp, `${JSON.stringify({ recipes: s }, null, 2)}\n`);
-    await rename(tmp, path);
+    await writeAtomic(path, `${JSON.stringify({ recipes: s }, null, 2)}\n`);
   });
 }
 

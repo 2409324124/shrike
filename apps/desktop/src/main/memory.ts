@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { writeAtomic } from "./state-file.ts";
 import type { MemoryNote } from "@shrike/schema";
 
 // A5: .shrike/memory.md, a plain list people can read and edit. One note per "- " line:
@@ -66,12 +67,7 @@ const readText = async (root: string): Promise<string> => {
 export const loadMemory = async (root: string): Promise<MemoryNote[]> => parseMemory(await readText(root));
 
 // Writes go through a temp file so a crash never leaves half a list.
-async function save(root: string, text: string): Promise<void> {
-  await mkdir(join(root, ".shrike"), { recursive: true });
-  const tmp = `${memoryPath(root)}.${randomBytes(4).toString("hex")}.tmp`;
-  await writeFile(tmp, text);
-  await rename(tmp, memoryPath(root));
-}
+const save = (root: string, text: string) => writeAtomic(memoryPath(root), text);
 
 let chain: Promise<unknown> = Promise.resolve(); // serialize read-modify-write
 const serial = <T>(fn: () => Promise<T>): Promise<T> => {
