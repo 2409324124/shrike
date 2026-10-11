@@ -12,9 +12,11 @@ import { inspector } from "../inspector.ts";
 import { notify } from "../notify.ts";
 import { paths } from "../paths.ts";
 import * as skills from "../skills.ts";
+import { adoptUserPath } from "../platform.ts";
 import { runStartBrain } from "./brain.ts";
 import { discoverRecipes } from "./recipes.ts";
 import { StartSession, type StartAnswer } from "./session.ts";
+import { checkTools } from "./tools.ts";
 
 // R: Run is Claude-driven from the first click. ipc.ts registers getStartPlan / startApp / stopApp / answerStart.
 
@@ -132,6 +134,15 @@ async function begin(): Promise<StartPlan> {
     outcome: (o) => skills.settleNow({ ...o, expect: "run" }, { ...skills.services.dirs(), project: project.root }),
   });
   session = s;
+  await adoptUserPath(); // Check again: a tool installed since Shrike opened counts
+  const tools = await checkTools(project.root, files);
+  if (tools.length) s.quest.set({ tools });
+  const blocking = tools.filter((t) => t.blocking);
+  if (blocking.length) {
+    s.quest.update(s.recipeStep, { detail: "Waits for what's missing below" });
+    s.finishFailed(blocking.length === 1 ? `${blocking[0]!.message} Install it, then press Check again.` : `Your app needs ${blocking.map((t) => t.name).join(" and ")}, and they aren't on this computer. Install them, then press Check again.`);
+    return getStartPlan()!;
+  }
   const pick = brains.find((b) => b.id === "claude-code" && b.available) ?? brains.find((b) => b.available);
   if (!pick) {
     s.finishFailed("Shrike starts your app with Claude, and Claude isn't set up yet. Install Claude Code, open a terminal, run claude and type /login. Or set ANTHROPIC_API_KEY.");
@@ -148,6 +159,7 @@ async function begin(): Promise<StartPlan> {
       lessons,
       setupFiles: files,
       portOffset: runner.offsetFor(project.root),
+      tools,
       mcp: { url: mcp.url, token: mcp.token },
       promptsDir: paths.promptsDir,
       // SL: the System sees the start run like any agent run (credit, Save as skill)

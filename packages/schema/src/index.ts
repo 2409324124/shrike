@@ -249,6 +249,7 @@ export interface GitState { // G*
   operation?: "rebase" | "merge"; // a sync stopped part way (conflicts)
   incoming?: { sha: string; subject: string }[]; // commits on origin/<base> not in this branch, as of the last fetch (G6 preview)
   ghProblem?: "missing" | "signed-out"; // why ghReady is false
+  gitMissing?: boolean; // git itself isn't on this computer (not "this folder isn't a repo")
   onBranch?: number; // commits on this branch that its base doesn't have (Ship opens a PR for them)
 }
 
@@ -281,6 +282,7 @@ export interface ScmCommit {
 }
 export interface ScmState {
   isRepo: boolean;
+  gitMissing?: boolean; // git itself isn't on this computer
   branch?: string;
   upstream?: string; // "origin/fix-x"
   ahead: number; // vs upstream
@@ -1089,6 +1091,18 @@ export interface StartPlan {
   recipes?: { id: string; name: string; source: StartPlan["source"] | "lessons"; path: string }[]; // R1: what was found, best first
   places?: Place[]; // the lanes this plan expects: its services plus the stores it names (lanes-from-plan)
   rewards?: StartReward[];
+  tools?: ToolNeed[]; // what this computer is missing for this project (docs/14 "Missing tools")
+}
+
+// A tool the project needs that isn't on this computer, or is too old. Shrike never installs it; it says how.
+export interface ToolNeed {
+  tool: "node" | "npm" | "pnpm" | "yarn" | "bun" | "python" | "uv" | "docker" | "nix" | "devbox" | "git";
+  name: string; // "Node.js"
+  found?: string; // the version here, when it's too old
+  blocking: boolean; // false: the app still runs, with less (no steps inside the server, no containers)
+  message: string; // plain words
+  command?: string; // what to paste in a terminal ("brew install node")
+  url: string; // the official download page
 }
 
 // P: prompt chains (up next, schedules, conditional chains)
