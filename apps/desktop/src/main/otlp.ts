@@ -225,6 +225,7 @@ function toEvent(span: Span, service: Place): DebugEvent | undefined {
     durationMs: Math.max(0, Math.round((ms(span.endTimeUnixNano) - startMs) * 100) / 100),
     status: "ok",
     place: service,
+    otel: true,
   };
   if (span.parentSpanId && !/^0+$/.test(span.parentSpanId)) e.parentId = span.parentSpanId.toLowerCase();
 

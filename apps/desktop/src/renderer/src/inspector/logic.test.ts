@@ -106,6 +106,7 @@ test("fastapi: a click through a Python API Shrike can't see inside never claims
   assert.equal(unseenWriter(view([ev({ ...post, http: { ...post.http!, url: "http://127.0.0.1:18000/x" } })]), PG.id), "localhost:18000");
   const seen = { ...view([]), tree: [{ event: post, children: [{ event: ev({ kind: "http_request", name: "POST /api/v1/items/" }), children: [] }] }] };
   assert.equal(unseenWriter(seen, PG.id), undefined, "the server side was recorded");
+  assert.equal(unseenWriter(view([post, ev({ kind: "db_query", place: PG, otel: true, db: { system: "postgres", statement: "INSERT INTO t" } })]), PG.id), "localhost:18000", "OpenTelemetry queries carry no row changes");
   assert.equal(unseenWriter(view([post, ev({ kind: "db_query", place: PG, db: { system: "postgres", statement: "SELECT 1" } })]), PG.id), undefined, "queries reached this database");
   assert.equal(unseenWriter(view([ev({ ...post, http: { ...post.http!, url: "https://api.stripe.com/v1/charges" } })]), PG.id), undefined, "an outside API is not our database's writer");
 });

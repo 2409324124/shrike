@@ -37,6 +37,7 @@ export interface DebugEvent {
   source?: SourceLocation; // where this thing is defined / happened
   callSite?: SourceLocation; // for function events: the line that called it
   framework?: boolean;
+  otel?: true; // recorded through OpenTelemetry: steps, but no values or row changes
   trigger?: "click" | "submit" | "navigation" | "explorer" | "agent" | "server"; // user_action only
   http?: {
     method: string;

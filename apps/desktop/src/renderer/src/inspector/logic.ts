@@ -96,14 +96,14 @@ export function dataChanges(view: ActionView | undefined, placeId: string): Chan
   return [...groups.values()];
 }
 
-/** A local server this trip called that Shrike can't see inside (a Python API): it may have written here unseen. Its host, else undefined. */
+/** A local server this trip called that Shrike can't see row changes in (unrecorded, or only through OpenTelemetry): it may have written here unseen. Its host, else undefined. */
 export function unseenWriter(view: ActionView | undefined, placeId: string): string | undefined {
-  if (!view || allEvents(view).some((e) => e.kind === "db_query" && e.place?.id === placeId)) return undefined;
+  if (!view || allEvents(view).some((e) => e.kind === "db_query" && !e.otel && e.place?.id === placeId)) return undefined;
   const find = (nodes: TimelineNode[]): string | undefined => {
     for (const n of nodes) {
       const e = n.event;
       const call = (e.kind === "http_request" && e.origin === "browser") || (e.kind === "external_call" && e.place?.kind !== "outside");
-      if (call && !n.children.some((c) => c.event.origin === "server")) {
+      if (call && !n.children.some((c) => c.event.origin === "server" && !c.event.otel)) {
         const url = /^https?:\/\//i.test(e.http?.url ?? "") ? new URL(e.http!.url) : undefined;
         if (!url) return "your server";
         if (/^(localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0)$/.test(url.hostname)) return url.host.replace(/^(127\.0\.0\.1|\[::1\]|0\.0\.0\.0)/, "localhost");

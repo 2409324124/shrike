@@ -137,7 +137,7 @@ export function DataView({ placeId, view, stationIds, tick }: { placeId: string;
 
 function Changes({ view, groups, unseen }: { view?: ActionView; groups: ReturnType<typeof dataChanges>; unseen?: string }) {
   if (!view) return <Quiet text="Click something in your app, then come back to see what it changed here." />;
-  if (!groups.length && unseen) return <Quiet text={`This click went through ${unseen}, which Shrike can't see inside, so it can't tell what changed in the database.`} sub={view.label} />;
+  if (!groups.length && unseen) return <Quiet text={`This click went through ${unseen}, where Shrike can't see row changes, so it can't tell what changed in the database.`} sub={view.label} />;
   if (!groups.length) return <Quiet text="Nothing changed in the database during this click." sub={view.label} />;
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-2.5" aria-label="What this click changed">
