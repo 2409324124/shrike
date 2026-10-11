@@ -168,6 +168,31 @@
   border-color: var(--signal);
 }
 
+/* MCP9 use from your own Claude Code */
+.mc-connect {
+  border: 1px solid var(--hair);
+  border-radius: 10px;
+}
+.mc-step {
+  padding: 8px 10px;
+}
+.mc-step + .mc-step {
+  border-top: 1px solid var(--hair);
+}
+.mc-well {
+  margin: 6px 0 0;
+  border: 1px solid var(--hair);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--c-well) 25%, transparent);
+  padding: 5px 7px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--ink-dim);
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
 /* MCP6: the agent's calls to your servers, in the X-ray */
 .mc-used {
   display: inline-flex;

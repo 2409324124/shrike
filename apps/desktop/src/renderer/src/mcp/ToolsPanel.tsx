@@ -1,12 +1,14 @@
 import "./mcp.css";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronRight, Plus, RefreshCw, Trash2, Wrench, X } from "lucide-react";
-import type { McpCatalogEntry, McpServerView, McpSource } from "@shrike/schema";
+import { Check, ChevronRight, Copy, Eye, EyeOff, Plus, RefreshCw, RotateCcw, Trash2, Wrench, X } from "lucide-react";
+import type { ConnectInfo, McpCatalogEntry, McpServerView, McpSource } from "@shrike/schema";
 import { cssColor, mcp, mcpGlyph } from "@shrike/design";
 import { cx, Spinner } from "../components/ui.tsx";
 import { Elapsed } from "../components/Activity.tsx";
+import { api, call } from "../lib/api.ts";
+import { ago } from "../scm/logic.ts";
 import { useAgent } from "../stores/agent.ts";
-import { useUi } from "../stores/ui.ts";
+import { toast, useUi } from "../stores/ui.ts";
 import { SystemFrame, SystemTag, useCalm } from "../system/System.tsx";
 import { useSystem } from "../system/store.ts";
 import { useMcp, useMcpBridge } from "./store.ts";
@@ -94,8 +96,105 @@ export function ToolsPanel() {
         );
       })}
 
+      <Connect />
       <AddTools />
     </div>
+  );
+}
+
+/** MCP9: use Shrike from your own Claude Code. Clipboard only; Shrike never writes Claude Code's files. */
+function Connect() {
+  const [info, setInfo] = useState<ConnectInfo | null>(null);
+  const [shown, setShown] = useState(false);
+  const [rotated, setRotated] = useState(false);
+  useEffect(() => {
+    void call((a) => a.connectInfo(), "Couldn't load the connection").then((c) => c && setInfo(c));
+    return api().on("connect:update", (c) => c && typeof c.token === "string" && setInfo(c));
+  }, []);
+  if (!info) return null;
+  const reset = async () => {
+    const c = await call((a) => a.connectResetToken(), "Couldn't make a new token");
+    if (c) (setInfo(c), setRotated(true));
+  };
+  return (
+    <section aria-label="Use from your own Claude Code" className="mt-4">
+      <h4 className="m-0 text-[12px] font-medium text-dim">Use from your own Claude Code</h4>
+      <p className="m-0 mb-1.5 text-[11px] text-faint">Copy and paste. Shrike never edits Claude Code's files.</p>
+      <ol className="mc-connect m-0 list-none p-0">
+        <li className="mc-step">
+          <div className="flex items-center gap-2">
+            <span className="min-w-0 flex-1 text-[12.5px] text-ink">1. Add Shrike to Claude Code</span>
+            <button type="button" className="hud-btn px-1.5" aria-label={shown ? "Hide the token" : "Show the token"} title={shown ? "Hide the token" : "Show the token"} onClick={() => setShown(!shown)}>
+              {shown ? <EyeOff size={10} aria-hidden /> : <Eye size={10} aria-hidden />}
+            </button>
+            <CopyButton text={info.command} what="the command" />
+          </div>
+          <p className="m-0 mt-0.5 text-[11.5px] leading-snug text-dim">Paste it in your terminal once. It keeps working after Shrike restarts.</p>
+          <p className="mc-well" aria-label="The command">{shown ? info.command : info.command.replace(info.token, "••••••••")}</p>
+          <div className="mt-1 flex items-center gap-2">
+            <span className="min-w-0 flex-1 truncate font-mono text-[10.5px] text-faint" title={info.configCommand}>
+              Or for one session: {info.configCommand}
+            </span>
+            <CopyButton text={info.configCommand} what="the one-session command" small />
+          </div>
+        </li>
+        <li className="mc-step">
+          <div className="flex items-center gap-2">
+            <span className="min-w-0 flex-1 text-[12.5px] text-ink">2. Teach it how to debug with Shrike</span>
+            <CopyButton text={info.skill} what="the skill" />
+          </div>
+          <p className="m-0 mt-0.5 text-[11.5px] leading-snug text-dim">
+            Save it as <span className="font-mono text-[10.5px] text-ink">~/.claude/skills/shrike/SKILL.md</span>
+          </p>
+        </li>
+        <li className="mc-step">
+          <div className="flex items-center gap-2">
+            <span className="min-w-0 flex-1 text-[12.5px] text-ink">3. Keep code changes behind your click</span>
+            <CopyButton text={info.settings} what="the settings" />
+          </div>
+          <p className="m-0 mt-0.5 text-[11.5px] leading-snug text-dim">
+            Add it to <span className="font-mono text-[10.5px] text-ink">.claude/settings.local.json</span> in your project. Claude Code then can't edit files or run commands itself, so every change comes to Shrike for you to apply.
+          </p>
+        </li>
+      </ol>
+      <div className="mt-2 flex items-center gap-2" role="status">
+        <i aria-hidden className="mc-dot" style={{ background: info.clients.length ? cssColor.ok : cssColor.inkFaint }} />
+        <span className="min-w-0 flex-1 truncate text-[11.5px] text-dim">
+          {info.clients.length
+            ? info.clients.map((c, i) => (
+                <span key={c.name}>
+                  {i > 0 && ", "}
+                  <span className="text-ink">{c.name}</span> <span className="text-faint">{ago(c.at)}</span>
+                </span>
+              ))
+            : "Nothing connected yet"}
+        </span>
+        <button type="button" className="hud-btn" title="Anything using the old token is cut off" onClick={() => void reset()}>
+          <RotateCcw size={10} aria-hidden />
+          New token
+        </button>
+      </div>
+      {rotated && (
+        <p className="m-0 mt-1 text-[11px] leading-snug text-faint">
+          New token made. In your terminal run <span className="font-mono text-dim">claude mcp remove shrike -s user</span>, then paste step 1 again.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function CopyButton({ text, what, small }: { text: string; what: string; small?: boolean }) {
+  const [done, setDone] = useState(false);
+  const copy = () =>
+    navigator.clipboard.writeText(text).then(
+      () => (setDone(true), setTimeout(() => setDone(false), 1500)),
+      () => toast(`Couldn't copy ${what}.`, "error"),
+    );
+  return (
+    <button type="button" className={cx("hud-btn", small && "px-1.5")} aria-label={`Copy ${what}`} title={`Copy ${what}`} onClick={() => void copy()}>
+      {done ? <Check size={10} aria-hidden /> : <Copy size={10} aria-hidden />}
+      {!small && (done ? "Copied" : "Copy")}
+    </button>
   );
 }
 

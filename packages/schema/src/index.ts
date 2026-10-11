@@ -760,6 +760,16 @@ export interface McpHubState {
 export type McpAddRequest =
   | { kind: "catalog"; id: string; scope: "personal" | "project"; values: Record<string, string> }
   | { kind: "paste"; text: string; scope: "personal" | "project"; name?: string; values: Record<string, string> };
+/** MCP9: what the user copies to use Shrike from their own Claude Code. Shrike never writes these anywhere itself. */
+export interface ConnectInfo {
+  url: string;
+  token: string;
+  command: string; // claude mcp add --transport http ...
+  configCommand: string; // claude --mcp-config '<userData>/mcp.json'
+  skill: string; // SKILL.md text for ~/.claude/skills/shrike/
+  settings: string; // permissions.deny for Claude Code's own edit and shell tools
+  clients: { name: string; at: number }[]; // outside clients since Shrike opened, last call time, newest first
+}
 
 export interface AgentUsage {
   runId: string;
@@ -959,6 +969,7 @@ export interface ApprovalRequest {
   patch?: Patch;
   request?: HttpRequestSpec;
   quest?: string; // QB3: the quest whose plan this approves (quests)
+  from?: string; // who proposed a patch: an outside MCP client's name, or "Shrike agent"
 }
 
 export type BrainId = "claude-code" | "builtin";
@@ -1301,6 +1312,8 @@ export interface ShrikeApi {
   mcpRemove(name: string): Promise<McpHubState>; // Shrike's own config only
   mcpFix(name: string): Promise<AgentRunInfo>; // "Fix it": asks your agent with the error in plain words
   mcpDismiss(id: string): Promise<McpHubState>; // a recommendation, for this project
+  connectInfo(): Promise<ConnectInfo>; // MCP9: use Shrike from your own Claude Code
+  connectResetToken(): Promise<ConnectInfo>; // a new token; anything connected with the old one is cut off
   // AP: the API client (main/api)
   apiCollections(): Promise<ApiCollection[]>; // the project's own (.shrike/api/*) plus linked Bruno folders
   apiCreateCollection(name: string): Promise<ApiCollection>; // <project>/.shrike/api/<name>/, Bruno format
@@ -1581,6 +1594,7 @@ export interface ShrikeEvents {
   "quests:update": Quest[]; // QB
   "mcp:update": McpHubState; // MCP
   "mcp:unlocked": { server: string; glyph: string; xp: number }; // MCP8 [New Tool Unlocked]
+  "connect:update": ConnectInfo; // MCP9: an outside client connected, or the token changed
 }
 
 // What the MCP server needs from the desktop main process
@@ -1604,6 +1618,7 @@ export interface ShrikeHost {
   proposePatch(
     files: { path: string; edits: { oldText: string; newText: string }[] }[],
     rationale: string,
+    from?: string, // shown on the approval card
   ): Promise<{ patchId: string; status: "applied" | "rejected"; feedback?: string }>; // feedback: A13 diff comments sent with a rejection
   revertPatch(patchId: string): Promise<void>;
   reportFindings(findings: Finding[], summary: string): void;

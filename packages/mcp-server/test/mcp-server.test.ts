@@ -81,7 +81,7 @@ const host: ShrikeHost = {
   appNavigate: async () => ({ actionId: AFTER_ID }),
   waitForAction: async (id) => actions.get(id),
   requestApproval: async (req) => (calls.approvals.push(req), approve),
-  proposePatch: async (files, rationale) => (calls.patches.push({ files, rationale }), { patchId: "p1", status: patchDecision, ...(feedback ? { feedback } : {}) }),
+  proposePatch: async (files, rationale, from) => (calls.patches.push({ files, rationale, from }), { patchId: "p1", status: patchDecision, ...(feedback ? { feedback } : {}) }),
   revertPatch: async () => {},
   reportFindings: (f) => void calls.findings.push(f),
   remember: async (n) => {
@@ -326,7 +326,7 @@ test("propose_patch and report_findings go through the host", async () => {
   const files = [{ path: "server/todos.controller.ts", edits: [{ oldText: "req.body.user", newText: "req.body.userId" }] }];
   const ok = await call("propose_patch", { files, rationale: "Read the field the frontend sends." });
   assert.match(ok.text, /Patch p1 applied.*run_scenario/);
-  assert.deepEqual(calls.patches.at(-1), { files, rationale: "Read the field the frontend sends." });
+  assert.deepEqual(calls.patches.at(-1), { files, rationale: "Read the field the frontend sends.", from: "Shrike agent" });
 
   patchDecision = "rejected";
   assert.match((await call("propose_patch", { files, rationale: "x" })).text, /Patch p1 rejected/);
@@ -443,4 +443,48 @@ test("self_review (RL5): no results returns the checklist, results go to the hos
   assert.doesNotMatch(r.where, /abcdefghijklmnopqrstuvwxyz/);
   await c.close();
   await s.close();
+});
+
+test("an outside client's patch names it; Shrike's own says Shrike agent", async () => {
+  patchDecision = "applied";
+  const ext = await connect("Cursor", false);
+  try {
+    await ext.callTool({ name: "propose_patch", arguments: { files: [{ path: "server/todos.controller.ts", edits: [{ oldText: "a", newText: "b" }] }], rationale: "x" } });
+    assert.equal((calls.patches.at(-1) as { from: string }).from, "Cursor");
+  } finally {
+    await ext.close();
+  }
+});
+
+test("a saved port and token are reused; a taken port falls back; rotating cuts the old token", async () => {
+  const first = await startMcpServer(host);
+  const port = Number(new URL(first.url).port);
+  const token = first.token;
+  await first.close();
+
+  const again = await startMcpServer(host, { port, token });
+  assert.equal(again.url, `http://127.0.0.1:${port}/mcp`);
+  assert.equal(again.token, token);
+  const taken = await startMcpServer(host, { port, token });
+  assert.notEqual(taken.url, again.url, "the port is in use, so a random one");
+  assert.equal(taken.token, token);
+  await taken.close();
+  await again.close();
+
+  const seen: string[] = [];
+  const live = await startMcpServer(host, { token, onClient: (n) => seen.push(n) });
+  const c = new Client({ name: "claude-code", version: "0" });
+  await c.connect(new StreamableHTTPClientTransport(new URL(live.url), { requestInit: { headers: { Authorization: `Bearer ${token}` } } }));
+  await c.listTools();
+  assert.ok(seen.length >= 2 && seen.every((n) => n === "claude-code"), seen.join());
+
+  const fresh = await live.rotateToken();
+  assert.notEqual(fresh, token);
+  assert.equal(live.token, fresh);
+  const init = { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "x", version: "0" } } };
+  const post = (t: string) => fetch(live.url, { method: "POST", headers: { "content-type": "application/json", accept: "application/json, text/event-stream", authorization: `Bearer ${t}` }, body: JSON.stringify(init) });
+  assert.equal((await post(token)).status, 401);
+  assert.equal((await post(fresh)).status, 200);
+  await c.close().catch(() => {});
+  await live.close();
 });

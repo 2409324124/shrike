@@ -19,10 +19,29 @@ export const INTERNAL_HEADER = "x-shrike-internal";
 
 const MAX_BODY = 4 * 1024 * 1024;
 
-export async function startMcpServer(host: ShrikeHost, opts: { skillsDir?: string; skills?: SkillHost; start?: StartHost } = {}): Promise<{ url: string; token: string; close(): Promise<void> }> {
-  const token = randomBytes(32).toString("hex");
-  const expected = Buffer.from(`Bearer ${token}`);
+export interface McpServerOptions {
+  skillsDir?: string;
+  skills?: SkillHost;
+  start?: StartHost;
+  port?: number; // tried first; taken, a random one
+  token?: string;
+  onClient?(name: string): void; // an outside client connected or made a call
+}
+
+export interface RunningMcpServer {
+  url: string;
+  readonly token: string;
+  rotateToken(): Promise<string>; // a fresh token; every open session is closed
+  close(): Promise<void>;
+}
+
+export const newToken = (): string => randomBytes(32).toString("hex");
+
+export async function startMcpServer(host: ShrikeHost, opts: McpServerOptions = {}): Promise<RunningMcpServer> {
+  let token = opts.token ?? newToken();
+  let expected = Buffer.from(`Bearer ${token}`);
   const sessions = new Map<string, StreamableHTTPServerTransport>();
+  const clientOf = new Map<string, string>(); // session id -> outside client name
 
   const authorized = (req: http.IncomingMessage) => {
     const got = Buffer.from(req.headers.authorization ?? "");
@@ -50,6 +69,8 @@ export async function startMcpServer(host: ShrikeHost, opts: { skillsDir?: strin
         const transport = sessions.get(sid);
         // 404 tells the client to start a new session (reconnect after a restart).
         if (!transport) return rpcError(res, 404, -32001, "Session not found");
+        const name = clientOf.get(sid);
+        if (name) opts.onClient?.(name);
         return await transport.handleRequest(req, res, body);
       }
       if (req.method !== "POST" || !isInitializeRequest(body)) {
@@ -58,15 +79,21 @@ export async function startMcpServer(host: ShrikeHost, opts: { skillsDir?: strin
 
       const transport: StreamableHTTPServerTransport = new StreamableHTTPServerTransport({
         sessionIdGenerator: randomUUID,
-        onsessioninitialized: (id) => void sessions.set(id, transport),
+        onsessioninitialized: (id) => {
+          sessions.set(id, transport);
+          if (client) clientOf.set(id, client);
+        },
       });
       transport.onclose = () => {
-        if (transport.sessionId) sessions.delete(transport.sessionId);
+        if (!transport.sessionId) return;
+        sessions.delete(transport.sessionId);
+        clientOf.delete(transport.sessionId);
       };
       const mcp = new McpServer({ name: "shrike", version: "0.1.0" });
       const internal = req.headers[INTERNAL_HEADER] === "1";
       const info = (body as { params?: { clientInfo?: { name?: unknown } } }).params?.clientInfo;
       const client = internal ? undefined : String(info?.name || "An MCP client").replace(/[^\w .@-]/g, "").slice(0, 40) || "An MCP client";
+      if (client) opts.onClient?.(client);
       registerTools(mcp, host, { client, skillsDir: opts.skillsDir, skills: opts.skills });
       if (opts.start && internal) registerStartTools(mcp, opts.start); // only Shrike's own start agent
       await mcp.connect(transport);
@@ -77,18 +104,32 @@ export async function startMcpServer(host: ShrikeHost, opts: { skillsDir?: strin
     }
   });
 
-  await new Promise<void>((resolve, reject) => {
-    server.once("error", reject);
-    server.listen(0, "127.0.0.1", () => resolve());
-  });
+  const listen = (port: number) =>
+    new Promise<void>((resolve, reject) => {
+      server.once("error", reject);
+      server.listen(port, "127.0.0.1", () => (server.off("error", reject), resolve()));
+    });
+  await (opts.port ? listen(opts.port).catch(() => listen(0)) : listen(0));
   const { port } = server.address() as AddressInfo;
+  const closeSessions = async () => {
+    await Promise.allSettled([...sessions.values()].map((t) => t.close()));
+    sessions.clear();
+    clientOf.clear();
+  };
 
   return {
     url: `http://127.0.0.1:${port}/mcp`,
-    token,
+    get token() {
+      return token;
+    },
+    async rotateToken() {
+      token = newToken();
+      expected = Buffer.from(`Bearer ${token}`);
+      await closeSessions();
+      return token;
+    },
     async close() {
-      await Promise.allSettled([...sessions.values()].map((t) => t.close()));
-      sessions.clear();
+      await closeSessions();
       server.closeAllConnections();
       await new Promise<void>((resolve) => server.close(() => resolve()));
     },

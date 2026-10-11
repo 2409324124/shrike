@@ -71,6 +71,7 @@ export async function proposePatch(
   deps: PatchDeps,
   files: { path: string; edits: Edit[] }[],
   rationale: string,
+  from?: string,
 ): Promise<{ patchId: string; status: "applied" | "rejected" }> {
   if (!files.length) throw new Error("The patch has no files.");
   const seen = new Set<string>();
@@ -94,7 +95,7 @@ export async function proposePatch(
   update(deps, patch);
 
   const names = changes.map((c) => c.path).join(", ");
-  const approved = await deps.requestApproval({ kind: "patch", title: `Apply this change to ${names}?`, reason: rationale, patch });
+  const approved = await deps.requestApproval({ kind: "patch", title: `Apply this change to ${names}?`, reason: rationale, patch, ...(from ? { from } : {}) });
   if (!approved) return finish(deps, patch, "rejected");
 
   for (const c of changes) {

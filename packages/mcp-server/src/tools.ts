@@ -515,7 +515,7 @@ export function registerTools(mcp: McpServer, host: ShrikeHost, ctx: ToolContext
         if (LOCKFILES.has(path.posix.basename(rel))) throw new ToolError(`"${rel}" is a lockfile and can't be patched.`);
         checked.push({ path: rel, edits: f.edits });
       }
-      const { patchId, status, feedback } = await host.proposePatch(checked, rationale);
+      const { patchId, status, feedback } = await host.proposePatch(checked, rationale, ctx.client ?? "Shrike agent");
       if (status === "applied") {
         return `Patch ${patchId} applied. The app is reloading. Re-run the same steps with run_scenario to verify the fix, then compare_actions with the earlier Action and say plainly whether it is fixed.`;
       }

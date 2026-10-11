@@ -299,7 +299,7 @@ export const host: ShrikeHost = {
   },
   waitForAction: (id, timeoutMs) => store.waitForAction(id, timeoutMs),
   requestApproval,
-  proposePatch: (files, rationale) => patches.proposePatch(patchDeps(), files, rationale),
+  proposePatch: (files, rationale, from) => patches.proposePatch(patchDeps(), files, rationale, from),
   revertPatch,
   // ponytail: the agent package turns report_findings calls into "findings" steps itself, so nothing to do here.
   reportFindings: () => {},

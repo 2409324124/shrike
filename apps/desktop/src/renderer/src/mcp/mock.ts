@@ -1,4 +1,4 @@
-import type { AgentRunInfo, McpCatalogEntry, McpHubState, McpServerView, ShrikeApi } from "@shrike/schema";
+import type { AgentRunInfo, ConnectInfo, McpCatalogEntry, McpHubState, McpServerView, ShrikeApi } from "@shrike/schema";
 import catalog from "../../../main/mcp-catalog.json";
 
 // MCP in the dev mock (renderer only): one of Claude Code's servers working, one of Shrike's needing a token, one from the repo to trust.
@@ -15,7 +15,7 @@ export const onMockMcp = (fn: (s: McpHubState) => void): void => void (listener 
 const state = (): McpHubState => ({ servers, catalog: catalog as McpCatalogEntry[], recommended: [{ id: "stripe", why: "Your app uses Stripe." }, { id: "sqlite", why: "Your app uses a SQLite database." }].filter((r) => !dismissed.includes(r.id) && !servers.some((s) => s.name === r.id)), project: "/mock/todo-app" });
 const put = (fn: (s: McpServerView[]) => McpServerView[]) => ((servers = fn(servers)), listener(state()), state());
 
-export const mcpMock: Pick<ShrikeApi, "mcpState" | "mcpCheck" | "mcpSetEnabled" | "mcpTrust" | "mcpAdd" | "mcpRemove" | "mcpFix" | "mcpDismiss"> = {
+export const mcpMock: Pick<ShrikeApi, "mcpState" | "mcpCheck" | "mcpSetEnabled" | "mcpTrust" | "mcpAdd" | "mcpRemove" | "mcpFix" | "mcpDismiss" | "connectInfo" | "connectResetToken"> = {
   async mcpState() {
     return state();
   },
@@ -43,4 +43,22 @@ export const mcpMock: Pick<ShrikeApi, "mcpState" | "mcpCheck" | "mcpSetEnabled" 
     dismissed = [...dismissed, id];
     return state();
   },
+  async connectInfo() {
+    return connect;
+  },
+  async connectResetToken() {
+    connect = connectOf("b".repeat(64), []);
+    return connect;
+  },
 };
+
+const connectOf = (token: string, clients: ConnectInfo["clients"]): ConnectInfo => ({
+  url: "http://127.0.0.1:47400/mcp",
+  token,
+  command: `claude mcp add --transport http --scope user shrike http://127.0.0.1:47400/mcp --header "Authorization: Bearer ${token}"`,
+  configCommand: "claude --mcp-config '/Users/you/Library/Application Support/Shrike/mcp.json'",
+  skill: "---\nname: shrike\ndescription: Debug a web app with Shrike's recordings.\n---\n",
+  settings: JSON.stringify({ permissions: { deny: ["Edit", "Write", "MultiEdit", "NotebookEdit", "Bash"] } }, null, 2),
+  clients,
+});
+let connect = connectOf("a".repeat(64), [{ name: "claude-code", at: now - 90_000 }]);
