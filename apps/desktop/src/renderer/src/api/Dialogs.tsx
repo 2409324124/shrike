@@ -7,6 +7,7 @@ import { toast } from "../stores/ui.ts";
 import { blankReq, looksLikeCurl, row, tryJson, type Row } from "./model.ts";
 import { KvTable } from "./parts.tsx";
 import { appAddress, colFor, scopeFor, useApi } from "./store.ts";
+import { keys } from "../lib/platform.ts";
 
 // AP-env editor, AP12 import and AP13 code: centred solid glass cards over the client.
 
@@ -64,7 +65,7 @@ export function EnvDialog() {
   if (!col)
     return (
       <Card title="Environments" onClose={close}>
-        <p className="ap-hint">Environments live in a collection. Save a request first (⌘S) and Shrike makes one in .shrike/api/.</p>
+        <p className="ap-hint">Environments live in a collection. Save a request first ({keys("⌘S")}) and Shrike makes one in .shrike/api/.</p>
       </Card>
     );
   const names = [...col.environments, ...(fresh && !col.environments.includes(fresh) ? [fresh] : [])];

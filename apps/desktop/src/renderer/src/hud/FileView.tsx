@@ -8,6 +8,7 @@ import { VARS } from "../thread/Thread.tsx";
 import { IMAGE_EXT, isMarkdown } from "./logic.ts";
 import { Markdown } from "../components/Markdown.tsx";
 import { useMemoryFor } from "../stores/agent.ts";
+import { keys } from "../lib/platform.ts";
 
 // The in-app file view: the whole file with the step's line lit and the trip's values inline. Edit + ⌘S saves.
 // Markdown renders as formatted text and images as images (O13); Edit shows Markdown's source.
@@ -116,7 +117,7 @@ export function FileView() {
       const typing = e.target instanceof HTMLElement && ["INPUT", "TEXTAREA"].includes(e.target.tagName);
       if (typing) return;
       if (e.key === "e" && !e.metaKey && !e.ctrlKey && !IMAGE_EXT.test(path)) { e.preventDefault(); e.stopImmediatePropagation(); editRef.current(); return; }
-      if (!e.metaKey) e.stopImmediatePropagation(); // ponytail: Thread keys pause while a file is open
+      if (!(e.metaKey || e.ctrlKey)) e.stopImmediatePropagation(); // ponytail: Thread keys pause while a file is open
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
@@ -146,7 +147,7 @@ export function FileView() {
         <span className="flex-1" />
         {editing ? (
           <>
-            <button type="button" className="fv-btn on" onClick={() => void save()} disabled={!dirty || saving}>{saving ? "Saving…" : "Save ⌘S"}</button>
+            <button type="button" className="fv-btn on" onClick={() => void save()} disabled={!dirty || saving}>{saving ? "Saving…" : keys("Save ⌘S")}</button>
             <button type="button" className="fv-btn" onClick={leave}>Done</button>
           </>
         ) : kind !== "image" && (

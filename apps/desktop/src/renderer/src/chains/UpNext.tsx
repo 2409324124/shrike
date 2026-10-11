@@ -6,6 +6,7 @@ import { cx } from "../components/ui.tsx";
 import { useAgent } from "../stores/agent.ts";
 import { atClock, blankChain, inMinutes, isOpenItem, missedWhy, whenLabel, WHEN_CHOICES } from "./logic.ts";
 import { useChains } from "./store.ts";
+import { keys } from "../lib/platform.ts";
 
 // P-chain1 up next stack, P-chain2 the "when" chip. The stack sits under the agent pill's header; the chip is a native select.
 
@@ -194,7 +195,7 @@ export function AskChainRow({ goal, busy, onQueue }: { goal: string; busy: boole
         <>
           <WhenChip value={when} label="When the queued prompt runs" onChange={(askWhen) => useChains.setState({ askWhen })} />
           <button type="button" className="hud-btn solid h-6 px-2 text-[10px]" disabled={!goal.trim()} onClick={onQueue}>
-            {scheduled && !busy ? "Schedule" : "Add to up next"} <span className="text-faint">⌘⇧↵</span>
+            {scheduled && !busy ? "Schedule" : "Add to up next"} <span className="text-faint">{keys("⌘⇧↵")}</span>
           </button>
         </>
       )}

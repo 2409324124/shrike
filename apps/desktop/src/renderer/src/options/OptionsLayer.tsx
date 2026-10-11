@@ -8,6 +8,7 @@ import { useAgent } from "../stores/agent.ts";
 import { useUi } from "../stores/ui.ts";
 import { approvedCards, approvedOf, fitScale, joinCards, MOCKUP_SANDBOX, mockupDoc, stepIndex, trail, VIEW_WIDTH, workingLine } from "./logic.ts";
 import { liveSession, useOptions, useOptionsBridge, type View } from "./store.ts";
+import { keys } from "../lib/platform.ts";
 
 // M2–M4: the options board. One question at a time over the stage; cards with live mockups in sandboxed iframes,
 // More like this / Change it / Pin / Add to combine / Approve, the history trail, and the tree's glowing connectors.
@@ -274,7 +275,7 @@ function Foot({ s, count }: { s: OptionsSession; count: number }) {
   const [take, setTake] = useState("");
   const [words, setWords] = useState("");
   const send = useOptions.getState().send;
-  const hint = `← → move · ${count > 1 ? `1–${Math.min(9, count)} pick · ` : ""}Enter enlarge · ⌘↵ approve · Esc put away`;
+  const hint = `← → move · ${count > 1 ? `1–${Math.min(9, count)} pick · ` : ""}Enter enlarge · ${keys("⌘↵")} approve · Esc put away`;
   const jump = (card: string) => (useOptions.getState().setRound(s.id, s.cards[card]!.round), useOptions.getState().setFocus(card));
   return (
     <div className="opt-foot">

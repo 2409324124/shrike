@@ -9,6 +9,7 @@ import { useProject } from "../stores/project.ts";
 import { toast } from "../stores/ui.ts";
 import { blankReq, routePattern, toApi } from "./model.ts";
 import { appAddress, capturedCalls, openHistory, openRoute, useApi } from "./store.ts";
+import { keys } from "../lib/platform.ts";
 
 // AP-tree: the project's collections (main reads them from disk), the scanner's routes and history. Requests drag to reorder or move.
 
@@ -274,7 +275,7 @@ function Collection({ col, needle, drop, setDrop }: { col: ApiCollection; needle
           {col.warnings.length > 1 ? ` (+${col.warnings.length - 1} more)` : ""}
         </p>
       )}
-      {!shut && (col.tree.length ? render(col.tree, 1) : <p className="ap-hint">Empty. Save a request here with ⌘S.</p>)}
+      {!shut && (col.tree.length ? render(col.tree, 1) : <p className="ap-hint">Empty. Save a request here with {keys("⌘S")}.</p>)}
     </div>
   );
 }
@@ -338,7 +339,7 @@ export function Tree({ onPicked }: { onPicked?(): void }) {
           cols.map((c) => <Collection key={c.id} col={c} needle={needle} drop={drop} setDrop={setDrop} />)
         ) : (
           <p className="ap-hint">
-            Nothing saved yet. Press <b>⌘S</b> on a request to keep it in <code>.shrike/api/</code>, or{" "}
+            Nothing saved yet. Press <b>{keys("⌘S")}</b> on a request to keep it in <code>.shrike/api/</code>, or{" "}
             <button type="button" className="ap-link" onClick={() => useApi.setState({ dialog: "import" })}>
               import
             </button>{" "}

@@ -122,7 +122,7 @@ import { codeLangZ, envZ, idZ, importKindZ, relZ, requestZ, sendOptsZ } from "./
 let mcpObserve: ((step: AgentStep) => void) | undefined;
 let mcpHub: ReturnType<typeof createMcpHub> | undefined;
 
-type Methods = Omit<ShrikeApi, "on">;
+type Methods = Omit<ShrikeApi, "on" | "platform">;
 
 const str = z.string().min(1).max(4096);
 const none = z.tuple([]);
@@ -739,9 +739,10 @@ export function registerIpc(win: () => BrowserWindow | undefined, appWin: AppWin
   handle("voicePlanWarm", z.tuple([planPrefix]), (prefix) => planner.warm(prefix));
   // ---- end planner ----
   // themes (Z): the window takes the theme's appearance, so macOS draws visible traffic lights on it, even inactive
-  handle("setWindowChrome", z.tuple([z.object({ appearance: z.enum(["system", "dark", "light"]), background: z.string().regex(/^#[0-9a-fA-F]{6}$/) })]), (c) => {
+  handle("setWindowChrome", z.tuple([z.object({ appearance: z.enum(["system", "dark", "light"]), background: z.string().regex(/^#[0-9a-fA-F]{6}$/), ink: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional() })]), (c) => {
     nativeTheme.themeSource = c.appearance;
     win()?.setBackgroundColor(c.background);
+    if (process.platform !== "darwin") win()?.setTitleBarOverlay({ color: c.background, ...(c.ink ? { symbolColor: c.ink } : {}) });
   });
 
   // ---- xray: X5 context map ----

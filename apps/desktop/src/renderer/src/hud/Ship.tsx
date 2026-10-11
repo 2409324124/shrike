@@ -15,6 +15,7 @@ import { SelfCheckCard } from "../lessons/index.ts"; // review-lessons: RL6
 // G1–G6: the Ship sheet (S). One focal action at a time, everything in plain words.
 
 const close = () => useUi.setState({ panel: null });
+import { keys } from "../lib/platform.ts";
 
 export function ShipSheet() {
   useGitBridge();
@@ -33,7 +34,7 @@ export function ShipSheet() {
             <Kbd>S</Kbd>
           </span>
           <span className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-dim">{state?.branch ? branchLine(state) : ""}</span>
-          <button type="button" className="hud-btn hidden shrink-0 @2xs:inline-flex" aria-label="See every change" title="Every file you changed, staged and committed, in the right dock (⌘⇧G)" onClick={() => (openChanges(), close())}>
+          <button type="button" className="hud-btn hidden shrink-0 @2xs:inline-flex" aria-label="See every change" title={keys("Every file you changed, staged and committed, in the right dock (⌘⇧G)")} onClick={() => (openChanges(), close())}>
             <FileDiff size={11} aria-hidden /> <span className="hidden @sm:inline">See every change</span>
           </button>
           <span className="micro hidden text-[9.5px] whitespace-nowrap text-faint @lg:inline">Esc closes</span>

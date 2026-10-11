@@ -17,6 +17,7 @@ import { VoiceOrb } from "../voice/index.ts";
 import { XpChip } from "../progress/Profile.tsx";
 import { Flag } from "lucide-react"; // quests: QB
 import { useQuests } from "../quests/store.ts";
+import { isMac, keys } from "../lib/platform.ts";
 
 export function Wordmark({ size = 12 }: { size?: number }) {
   return (
@@ -62,7 +63,7 @@ export function TopBar() {
   const full = useAgent((s) => fuel(s.usage) > 0.8);
 
   return (
-    <header className="drag flex h-11 shrink-0 items-center gap-[14px] border-b border-hair pr-1.5 pl-[84px] max-xl:gap-2.5">
+    <header className={cx("drag flex h-11 shrink-0 items-center gap-[14px] border-b border-hair max-xl:gap-2.5", isMac ? "pr-1.5 pl-[84px]" : "pr-[calc(100%-env(titlebar-area-width,100%)+6px)] pl-3")}>
       {/* Under xl the wordmark goes and the gaps tighten, so a quest result chip never pushes Ask off. */}
       <span className="contents max-xl:hidden">
         <Wordmark />
@@ -96,13 +97,13 @@ export function TopBar() {
         </button>
       )}
       <span className="flex shrink-0">
-        <VoiceOrb />
+        {isMac && <VoiceOrb />}
       </span>
       <button
         type="button"
         className="btn"
         onClick={() => run("ask")}
-        title="Ask your agent (⌘K). Drop a step, log line or file here."
+        title={keys("Ask your agent (⌘K). Drop a step, log line or file here.")}
         style={drop.over ? { borderColor: "var(--violet)", boxShadow: "0 0 18px color-mix(in srgb, var(--violet) 45%, transparent)" } : agentBusy ? { borderColor: "var(--violet)", boxShadow: "inset 0 0 0 1px var(--violet)" } : undefined}
         {...drop.props}
       >

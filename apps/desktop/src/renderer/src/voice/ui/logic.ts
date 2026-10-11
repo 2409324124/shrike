@@ -1,4 +1,5 @@
 import type { VoicePlan, VoicePlanStep } from "@shrike/schema";
+import { keys } from "../../lib/platform.ts";
 
 // Pure voice UI rules: what the orb shows, double tap, the push-to-talk key, step icons. Tested in logic.test.ts.
 
@@ -23,11 +24,11 @@ export function isDoubleTap(prevDown: number, prevUp: number, now: number, prevH
 
 export type PttKey = "alt+space" | "ctrl+alt+space" | "alt+backquote";
 export const PTT_KEYS: { id: PttKey; label: string }[] = [
-  { id: "alt+space", label: "⌥ Space" },
-  { id: "ctrl+alt+space", label: "⌃⌥ Space" },
-  { id: "alt+backquote", label: "⌥ `" },
+  { id: "alt+space", label: keys("⌥ Space") },
+  { id: "ctrl+alt+space", label: keys("⌃⌥ Space") },
+  { id: "alt+backquote", label: keys("⌥ `") },
 ];
-export const pttLabel = (k: PttKey): string => PTT_KEYS.find((p) => p.id === k)?.label ?? "⌥ Space";
+export const pttLabel = (k: PttKey): string => PTT_KEYS.find((p) => p.id === k)?.label ?? PTT_KEYS[0]!.label;
 
 export function isPtt(e: Pick<KeyboardEvent, "code" | "altKey" | "ctrlKey" | "metaKey" | "shiftKey">, key: PttKey): boolean {
   if (!e.altKey || e.metaKey || e.shiftKey) return false;

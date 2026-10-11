@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { LoaderCircle } from "lucide-react";
+import { keys } from "../lib/platform.ts";
 
 export const cx = (...c: (string | false | null | undefined)[]): string => c.filter(Boolean).join(" ");
 
@@ -11,8 +12,8 @@ export function IconButton({ label, className, children, ...rest }: ButtonHTMLAt
   return (
     <button
       type="button"
-      aria-label={label}
-      title={label}
+      aria-label={keys(label)}
+      title={keys(label)}
       className={cx("no-drag inline-flex size-6 shrink-0 items-center justify-center rounded-[6px] text-dim transition-colors hover:text-ink disabled:pointer-events-none disabled:opacity-40", className)}
       {...rest}
     >
@@ -24,7 +25,7 @@ export function IconButton({ label, className, children, ...rest }: ButtonHTMLAt
 export function Kbd({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <kbd className={cx("inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-[3px] border border-hair px-1 font-mono text-[9.5px] leading-none text-dim", className)}>
-      {children}
+      {typeof children === "string" ? keys(children) : children}
     </kbd>
   );
 }

@@ -9,6 +9,7 @@ import { clockTime, isBackgroundAction } from "../lib/format.ts";
 import { cx, MethodTag } from "../components/ui.tsx";
 import { rankQuick } from "./logic.ts";
 import { focusEvent, viewTrip } from "./commands.ts";
+import { keys } from "../lib/platform.ts";
 
 // ⌘P (O5): one list over files, trips, routes and log lines. Keyboard first, 8 results at most.
 
@@ -122,7 +123,7 @@ export function QuickOpen() {
             spellCheck={false}
             className="min-w-0 flex-1 bg-transparent font-display text-[14px] font-medium text-ink outline-none placeholder:text-dim"
           />
-          <span className="micro text-[9.5px] text-faint">⌘P</span>
+          <span className="micro text-[9.5px] text-faint">{keys("⌘P")}</span>
         </div>
         <ul id="quick-list" role="listbox" aria-label="Results" className="py-1">
           {shown.length === 0 && <li className="px-4 py-3 text-[12.5px] text-dim">Nothing matches "{q}".</li>}

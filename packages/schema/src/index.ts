@@ -1244,6 +1244,7 @@ export interface Progress {
 
 // Preload API exposed to the renderer as window.shrike
 export interface ShrikeApi {
+  platform?: string; // process.platform from preload: shortcut labels, voice, title bar
   openProjectDialog(): Promise<ProjectInfo | null>;
   openProject(root: string): Promise<ProjectInfo>;
   sampleProjectPath(): Promise<string>;
@@ -1415,7 +1416,7 @@ export interface ShrikeApi {
   voicePlan(req: VoicePlanRequest): Promise<VoicePlanResult>; // V9: the bundled planner (utilityProcess); "missing" until its model is downloaded
   voicePlanWarm(prefix: string): Promise<boolean>; // V9: load the planner and evaluate the fixed prompt when voice turns on; false: no model yet
   // Z: themes (themes-composer)
-  setWindowChrome(chrome: { appearance: "system" | "dark" | "light"; background: string }): Promise<void>; // macOS draws the traffic lights for this appearance
+  setWindowChrome(chrome: { appearance: "system" | "dark" | "light"; background: string; ink?: string }): Promise<void>; // macOS draws the traffic lights for this appearance; Windows and Linux paint their window buttons in background and ink
   // I: place inspector
   inspect(req: InspectRequest): Promise<InspectResult>; // read-only look inside a database or cache lane, through the process that holds it
   // P: prompt chains (up next, schedules, conditional chains)

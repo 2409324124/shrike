@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { VoiceChip, VoiceModels, VoicePlan } from "@shrike/schema";
 import type { Echo } from "./router.ts";
 import type { Phase } from "./ui/logic.ts";
+import { isMac } from "../lib/platform.ts";
 
 export type { Phase } from "./ui/logic.ts";
 
@@ -25,7 +26,7 @@ export interface PlanControls {
 
 const Prefs = z.object({
   langs: z.array(z.string().regex(/^[a-z]{2}$/)).max(12).catch([]), // [] = auto
-  key: z.enum(["alt+space", "ctrl+alt+space", "alt+backquote"]).catch("alt+space"),
+  key: z.enum(["alt+space", "ctrl+alt+space", "alt+backquote"]).catch(isMac ? "alt+space" : "ctrl+alt+space"), // Alt+Space opens the window menu on Windows and GNOME
   offMin: z.union([z.literal(5), z.literal(10), z.literal(30)]).catch(10),
   later: z.boolean().catch(false), // chose "Not now" on the model download
 });
@@ -73,7 +74,7 @@ function loadPrefs(): Prefs {
   try {
     raw = JSON.parse(read("shrike.voice.prefs") ?? "null");
   } catch {}
-  if (!raw || typeof raw !== "object") return { langs: defaultLangs(), key: "alt+space", offMin: 10, later: false };
+  if (!raw || typeof raw !== "object") return { langs: defaultLangs(), key: isMac ? "alt+space" : "ctrl+alt+space", offMin: 10, later: false };
   return Prefs.parse(raw);
 }
 
