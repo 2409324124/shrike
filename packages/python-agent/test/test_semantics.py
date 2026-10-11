@@ -62,6 +62,19 @@ class Semantics(unittest.TestCase):
         (silent,) = self.steps("lookup", "silent()")
         self.assertEqual(silent["error"]["message"], "RuntimeError")
 
+    def test_outgoing_calls_are_external_calls_that_carry_the_trip(self):
+        req = self.reqs["outgoing"]
+        calls = [e for e in self.events if e["traceId"] == req["traceId"] and e["kind"] == "external_call"]
+        self.assertEqual(len(calls), 2, "the echo server's own handler runs outside the request")
+        ok, down = calls
+        (fetch,) = [f for f in self.steps("outgoing", "fetch()") if f["id"] == ok["parentId"]]
+        self.assertEqual(fetch["returned"], repr(f"00-{req['traceId']}-{ok['id']}-01"), "the outside API got a traceparent naming this call")
+        self.assertEqual((ok["status"], ok["http"]["status"], ok["http"]["method"], ok["place"]["kind"], ok["source"]["file"]), ("ok", 200, "GET", "outside", "semantics.py"))
+        self.assertRegex(ok["name"], r"^GET localhost:\d+/hello$")
+        self.assertEqual(ok["place"]["id"], "outside:" + ok["place"]["detail"])
+        self.assertEqual((down["status"], down["error"]["type"], down["place"]["detail"]), ("error", "ConnectionRefusedError", down["place"]["detail"]))
+        self.assertEqual(self.reqs["outgoing"]["status"], "ok")
+
     def test_generators_hand_control_back_to_their_consumer(self):
         (total,) = self.steps("generators", "total_of()")
         gens = self.steps("generators", "numbers()")

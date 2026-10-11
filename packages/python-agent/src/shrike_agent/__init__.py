@@ -14,6 +14,8 @@ FRAMEWORKS = {
     "django.core.handlers.asgi": ("ASGIHandler", "__call__", web.wrap_asgi),
 }
 
+OUTGOING = {"httpx": "patch_httpx", "http.client": "patch_http_client"}
+
 
 def start():
     from .exporter import Exporter
@@ -44,6 +46,11 @@ def start():
 
             sqlite.patch(module)
             return
+        if name in OUTGOING:
+            from . import outgoing
+
+            getattr(outgoing, OUTGOING[name])(module)
+            return
         cls, attr, wrap = FRAMEWORKS[name]
         klass = getattr(module, cls)
         if not getattr(klass, "_shrike", False):
@@ -55,7 +62,10 @@ def start():
 
     if not trace.install():
         return
-    sys.meta_path.insert(0, _Finder(set(FRAMEWORKS) | {"sqlite3"}, patch))
+    sys.meta_path.insert(0, _Finder(set(FRAMEWORKS) | set(OUTGOING) | {"sqlite3"}, patch))
+    for name in OUTGOING:
+        if name in sys.modules:  # http.client often loads before us
+            trace.quietly(patch, name, sys.modules[name])
 
 
 # Patches a module right after it loads, before whoever imported it gets it.
