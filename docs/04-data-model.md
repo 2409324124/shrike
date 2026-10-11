@@ -205,12 +205,17 @@ Retention: keep the last 20 sessions per project by default; older ones are dele
 
 ```
 .shrike/
-├── config.json          # dev command, app URL, ports, allowlisted origins, redaction rules
-├── collections/         # saved API requests, one JSON file per request (Bruno-style)
-│   └── todos/create-todo.json
-├── scenarios/           # replayable user flows the agent can re-run
-│   └── add-a-todo.json
-└── .gitignore           # ignores local-only files
+├── config.json          # dev command, app URL, processes, declared places
+├── api/                 # API collections (Bruno format)
+├── flows/               # saved flows the agent and the user can re-run
+├── skills/, commands/   # saved skills and slash commands
+├── skill-drafts/        # a skill update being edited before it's kept
+├── quests/              # quests and their objectives
+├── memory.md            # facts the agent remembered, one per line
+├── recipes.json         # project overrides for action recipes
+├── mcp.json             # this project's MCP servers
+├── issues/              # trips saved as issues (local)
+└── worktrees/           # Shrike's git worktrees (local)
 ```
 
 `config.json` example:
@@ -220,9 +225,8 @@ Retention: keep the last 20 sessions per project by default; older ones are dele
   "devCommand": "npm run dev",
   "appUrl": "http://localhost:5173",
   "serverUrl": "http://localhost:3001",
-  "traceOrigins": ["http://localhost:3001"],
-  "redact": { "headers": ["x-internal-key"], "bodyFields": ["ssn"] },
-  "ignore": ["src/generated/**"]
+  "processes": [{ "name": "api", "command": "npm run dev:api", "url": "http://localhost:3001/health" }],
+  "places": { "localhost:4199": { "kind": "outside", "name": "Stripe (test double)" } }
 }
 ```
 

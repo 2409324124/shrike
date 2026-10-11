@@ -14,7 +14,7 @@ Shrike sees request bodies, cookies, database queries and source code. People wi
 | Threat | Mitigation |
 |---|---|
 | Secrets in recordings leak through export, share or AI context | Redaction on ingest; "what was sent" drawer for every agent run; exports contain redacted data only |
-| Prompt injection via page text, logs, API responses or code comments steers the agent | Tool outputs wrapped in delimited data blocks; system prompt says tool output is data; network scope limited to project origins; no shell tool; patches need approval |
+| Prompt injection via page text, logs, API responses or code comments steers the agent | Tool outputs wrapped in delimited data blocks; system prompt says tool output is data; network scope limited to project origins; no shell tool for the debug agent (only Shrike's own start agent and `preflight` use the guarded shell, R6); patches need approval |
 | Agent CLI uses its own edit/shell tools to bypass the diff | Those tools disabled per brain (see [05-agent.md](05-agent.md#agent-brains)); fallback is read-only sandbox or throwaway worktree. A Claude Code the user starts in their own terminal (MCP9) isn't Shrike's to configure: Shrike offers a settings snippet to copy that denies `Edit`, `Write`, `MultiEdit`, `NotebookEdit` and `Bash`, and its own tools still change code only through `propose_patch` and the user's click, on a card that names the client |
 | Another local process sends fake events or reads the ingest | Ingest binds `127.0.0.1` on a random port; per-session random token required; tokens rotate per run |
 | Another local process uses Shrike's MCP server | The server binds `127.0.0.1` only and needs a 32-byte bearer token (constant-time check). The main server's port and token persist in userData `mcp.json` (0600, rewritten through a temp file and rename) so an outside Claude Code keeps working after a restart; worktree and start servers stay random per launch. **New token** in Tools rotates it and closes every session an outside client opened; Shrike's own runs use a second token that never leaves the app session, so a reset doesn't break a run in flight. If the saved port is taken the server takes a random one and Tools says so Shrike never writes the token into Claude Code's files; the user pastes the `claude mcp add` line themselves |
@@ -35,16 +35,16 @@ Shrike sees request bodies, cookies, database queries and source code. People wi
 
 Applied in this order, on every event at ingest and again on every tool output and export.
 
-1. **Headers:** `authorization`, `cookie`, `set-cookie`, `proxy-authorization`, `x-api-key`, plus user-configured names.
+1. **Headers:** `authorization`, `cookie`, `set-cookie`, `proxy-authorization`, `x-api-key` (user-configured names are planned).
 2. **Keys in JSON bodies, query strings, form data, args and return values:** any key matching `/pass(word)?|passwd|secret|token|api[-_]?key|auth|session|credential|private[-_]?key|card|cvv|ssn/i`.
-3. **Env values:** read `.env*` files at session start; any string equal to one of those values (≥ 6 chars) is replaced wherever it appears.
+3. **Env values (planned):** read `.env*` files at session start; any string equal to one of those values (≥ 6 chars) is replaced wherever it appears.
 4. **Known secret shapes:** AWS access keys, Stripe keys, OpenAI/Anthropic keys, GitHub tokens, Slack tokens, JWTs, PEM blocks, connection strings with passwords.
 5. **High-entropy strings:** ≥ 24 chars with Shannon entropy above a threshold in a value position, flagged and masked.
-6. **User rules** from `.shrike/config.json`.
+6. **User rules** from `.shrike/config.json` (planned).
 
 Replacement format: `"[redacted:password]"`, keeping the key so the structure stays debuggable. Redaction is logged as a count per event (never the value).
 
-rrweb: `maskAllInputs: true` by default; `password` inputs are always masked; users can unmask non-sensitive inputs per selector.
+rrweb (planned, with DOM replay): `maskAllInputs: true` by default; `password` inputs are always masked; users can unmask non-sensitive inputs per selector.
 
 ## Data sent off the machine
 
@@ -58,8 +58,8 @@ rrweb: `maskAllInputs: true` by default; `password` inputs are always masked; us
 
 ## Storage
 
-- Local DB and blobs live in the OS app data dir with user-only file permissions.
-- Retention: last 20 sessions per project (configurable); "Delete all recordings" in settings.
+- Recordings live in the OS app data dir: each project's newest 2000 trips in `sessions/<hash>.ndjson` (`apps/desktop/src/main/sessions.ts`); the live store keeps at most 500 trips in memory.
+- Planned with the SQLite store: retention per project, configurable, and "Delete all recordings" in settings.
 - Optional (v1.x): encrypt the local DB with a key in the OS keychain.
 
 ## Compliance notes (for later)
