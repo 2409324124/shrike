@@ -334,6 +334,14 @@ test("a page's call to the project's Python API lands in the API lane, which Shr
   assert.ok(!buildTrip(view(click, [node(call(200))], "ok")).stations.some((s) => s.opaque), "no known services, no guess");
 });
 
+test("a cross-origin 500 the browser couldn't read (no CORS headers on FastAPI's error) still reads as the server's error", () => {
+  const click = ev({ kind: "user_action", origin: "browser", name: 'Submitted "Place order"', trigger: "submit", source: src("web/src/App.tsx", 56) });
+  const call = ev({ startMs: 10, kind: "http_request", origin: "browser", name: "POST", http: { method: "POST", url: "http://localhost:4511/api/checkout" }, status: "error", error: { type: "TypeError", message: "Failed to fetch" } });
+  const served = ev({ startMs: 11, kind: "http_request", parentId: call.id, name: "POST /api/checkout", http: { method: "POST", url: "/api/checkout", status: 500 }, status: "error" });
+  const trip = buildTrip(view(click, [node(call, [node(served)])], "error"));
+  assert.equal(trip.returned, "Server error (500)");
+});
+
 test("dev-server noise and logger colours stay out of the trip", () => {
   const nav = ev({ kind: "user_action", origin: "browser", name: "Opened /notes", trigger: "navigation" });
   const frames = ev({ kind: "http_request", origin: "browser", name: "POST /__nextjs_original-stack-frames", http: { method: "POST", url: "/__nextjs_original-stack-frames", status: 200 } });

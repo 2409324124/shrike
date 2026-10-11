@@ -618,7 +618,9 @@ export function buildTrip(view: ActionView, expanded: ReadonlySet<string> = new 
   const stations = collapse(foldSideBranches(raw, expanded), expanded);
   const browserReq = steps.find((s) => s.event.kind === "http_request" && s.event.origin === "browser")?.event;
   const firstReq = steps.find((s) => s.event.kind === "http_request")?.event;
-  const httpStatus = browserReq?.http?.status ?? firstReq?.http?.status;
+  // A cross-origin answer without CORS headers (FastAPI's 500) reaches the page as a network error: the server's side still has the status.
+  const answer = browserReq && !browserReq.http?.status ? steps.find((s) => s.event.kind === "http_request" && s.event.origin === "server" && s.event.parentId === browserReq.id)?.event : undefined;
+  const httpStatus = browserReq?.http?.status ?? answer?.http?.status ?? firstReq?.http?.status;
   const h = (browserReq ?? firstReq)?.http?.resHeaders;
   const to = h?.["x-remix-redirect"] ?? (httpStatus && httpStatus >= 300 && httpStatus < 400 ? h?.location : undefined); // Remix answers a redirect to a data fetch with 204 and this header
   const returned =
