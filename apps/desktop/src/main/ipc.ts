@@ -678,7 +678,7 @@ export function registerIpc(win: () => BrowserWindow | undefined, appWin: AppWin
   handle("workspaceAction", z.tuple([wsPath, z.enum(["folder", "terminal", "stop"])]), async (path, action) => {
     const w = await ws.known(path);
     if (action === "folder") void wsShell.openPath(w.path);
-    else if (action === "terminal") wsExec("open", ["-a", "Terminal", w.path], () => {}); // ponytail: macOS Terminal only. Upgrade: the user's own terminal app.
+    else if (action === "terminal") wsExec("open", ["-a", "Terminal", w.path], () => {}); // ponytail: macOS Terminal only (the rail hides it elsewhere). Upgrade: the user's own terminal app.
     else if (w.current) await start.stopApp();
     else await race.stopBackground(w.path);
     ws.publish();

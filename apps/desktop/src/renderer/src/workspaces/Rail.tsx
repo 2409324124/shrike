@@ -7,6 +7,7 @@ import { toast } from "../stores/ui.ts";
 import { useProject } from "../stores/project.ts";
 import { connectWorktrees, useWorktrees } from "../stores/worktrees.ts";
 import { call } from "../lib/api.ts";
+import { isMac } from "../lib/platform.ts";
 import { grouped } from "./logic.ts";
 import { connectWorkspaces, useWorkspaces } from "./store.ts";
 
@@ -315,7 +316,7 @@ function Menu({ w, x, y, onClose, onRename }: { w: Workspace; x: number; y: numb
   return (
     <div ref={ref} role="menu" aria-label={`${title(w)} actions`} className="glass solid fixed z-50 flex w-[200px] flex-col gap-0.5 rounded-[var(--r-control)] p-1 shadow-[0_12px_40px_var(--void)]" style={{ left: Math.min(x, innerWidth - 210), top: Math.min(y, innerHeight - 240) }}>
       {item("Open folder", <FolderOpen size={12} />, () => void s.action(w.path, "folder"))}
-      {item("Open in Terminal", <SquareTerminal size={12} />, () => void s.action(w.path, "terminal"))}
+      {isMac && item("Open in Terminal", <SquareTerminal size={12} />, () => void s.action(w.path, "terminal"))}
       {item("Copy path", <Copy size={12} />, () => void navigator.clipboard.writeText(w.path).then(() => toast("Path copied.", "ok"), () => toast("Couldn't copy the path.", "error")))}
       {item("Rename", <Pencil size={12} />, onRename)}
       {w.running && item("Stop its app", <Square size={11} />, () => void s.action(w.path, "stop"))}
