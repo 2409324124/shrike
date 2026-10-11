@@ -96,9 +96,32 @@ export function dataChanges(view: ActionView | undefined, placeId: string): Chan
   return [...groups.values()];
 }
 
+const WRITE = /^\s*(insert|update|delete|replace|merge|upsert)\b/i;
+const serviceHost = (e: DebugEvent | undefined) => (e?.place?.kind === "service" ? (e.place.detail ?? e.place.name) : undefined);
+
 /** A local server this trip called that Shrike can't see row changes in (unrecorded, or only through OpenTelemetry): it may have written here unseen. Its host, else undefined. */
 export function unseenWriter(view: ActionView | undefined, placeId: string): string | undefined {
-  if (!view || allEvents(view).some((e) => e.kind === "db_query" && !e.otel && e.place?.id === placeId)) return undefined;
+  if (!view) return undefined;
+  const events = allEvents(view);
+  const queries = events.filter((e) => e.kind === "db_query" && !e.otel && e.place?.id === placeId);
+  // A write seen without its rows (python-agent's sqlite3, a statement a driver couldn't parse): the server that sent it.
+  const blind = queries.find((e) => !e.change && e.status !== "error" && WRITE.test(e.db?.statement ?? e.name));
+  if (blind) {
+    const by = (nodes: TimelineNode[], svc?: DebugEvent): DebugEvent | undefined => {
+      for (const n of nodes) {
+        const s = n.event.place?.kind === "service" ? n.event : svc;
+        if (n.event.id === blind.id) return s;
+        const hit = by(n.children, s);
+        if (hit) return hit;
+      }
+      return undefined;
+    };
+    return serviceHost(by(view.tree ?? [])) ?? "your server";
+  }
+  if (queries.length) return undefined;
+  // python-agent records steps but only sqlite3 queries, so a Python server may have written to any other database unseen.
+  const py = placeId.startsWith("data:sqlite") ? undefined : events.find((e) => e.origin === "server" && !e.otel && /\.py$/.test((e.source ?? e.callSite)?.file ?? ""));
+  if (py) return serviceHost(py) ?? "your Python server";
   const find = (nodes: TimelineNode[]): string | undefined => {
     for (const n of nodes) {
       const e = n.event;

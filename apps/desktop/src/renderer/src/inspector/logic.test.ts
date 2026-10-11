@@ -110,3 +110,17 @@ test("fastapi: a click through a Python API Shrike can't see inside never claims
   assert.equal(unseenWriter(view([post, ev({ kind: "db_query", place: PG, db: { system: "postgres", statement: "SELECT 1" } })]), PG.id), undefined, "queries reached this database");
   assert.equal(unseenWriter(view([ev({ ...post, http: { ...post.http!, url: "https://api.stripe.com/v1/charges" } })]), PG.id), undefined, "an outside API is not our database's writer");
 });
+
+test("python-agent: steps recorded but database writes it can't read never claim nothing changed", () => {
+  const svc = { kind: "service" as const, id: "service:api", name: "API", detail: "localhost:4620" };
+  const step = ev({ name: "create_order()", place: svc, source: { file: "app/main.py", line: 40, precision: "exact" } });
+  assert.equal(unseenWriter(view([step]), PG.id), "localhost:4620", "SQLAlchemy over psycopg: no query reached Shrike");
+  assert.equal(unseenWriter(view([step]), "data:sqlite:edge.db"), undefined, "python-agent sees every sqlite3 query");
+  const SQ = { kind: "data" as const, id: "data:sqlite:shop.db", name: "SQLITE · shop.db" };
+  const insert = ev({ kind: "db_query", place: SQ, name: "INSERT INTO orders (item) VALUES (?)", db: { system: "sqlite", statement: "INSERT INTO orders (item) VALUES (?)" } });
+  const req = ev({ kind: "http_request", name: "POST /api/orders", place: svc });
+  const tree = (q: DebugEvent) => ({ ...view([]), tree: [{ event: req, children: [{ event: step, children: [{ event: q, children: [] }] }] }] });
+  assert.equal(unseenWriter(tree(insert), SQ.id), "localhost:4620", "a write seen without its rows");
+  assert.equal(unseenWriter(tree({ ...insert, change: { op: "insert", table: "orders", count: 1 } }), SQ.id), undefined, "node-agent's writes carry their rows");
+  assert.equal(unseenWriter(tree({ ...insert, name: "SELECT 1", db: { system: "sqlite", statement: "SELECT 1" } }), SQ.id), undefined, "reads change nothing");
+});
