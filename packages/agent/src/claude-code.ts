@@ -92,6 +92,9 @@ type Json = Record<string, any>;
 export interface ParserState {
   gotResult: boolean;
   resultError: boolean;
+  giveUp: boolean; // a failure retrying won't fix (sign-in): the caller stops Claude Code now
+  unreadable: number; // lines that weren't JSON: another output format
+  openTools: number; // tool calls without a result yet
 }
 
 // Newline-delimited JSON from `claude -p --output-format stream-json --verbose`.
@@ -105,7 +108,7 @@ export function createStreamParser(emitStep: (s: StepInput) => void, hooks: Stre
     emitStep(s);
   };
   const names = new Map<string, string>();
-  const state: ParserState = { gotResult: false, resultError: false };
+  const state: ParserState = { gotResult: false, resultError: false, giveUp: false, unreadable: 0, openTools: 0 };
   let session: string | undefined;
   // One assistant message can span several lines that repeat its usage: keep the latest per message id.
   const perMessage = new Map<string, { input: number; output: number }>();
@@ -126,9 +129,25 @@ export function createStreamParser(emitStep: (s: StepInput) => void, hooks: Stre
       if (shrike && shrike.status !== "connected") {
         emit({ kind: "error", text: "Claude Code could not connect to Shrike's tools.", detail: JSON.stringify(shrike) });
       }
-    } else if (o.type === "system" && o.subtype === "api_retry" && o.attempt === 3) {
-      // Offline, Claude Code retries silently for ~3 minutes: say why the run shows Working with no steps. Third try, so a blip stays quiet.
-      emit({ kind: "message", text: o.error_status ? "Claude's servers are busy right now. Claude Code keeps retrying." : "Claude Code can't reach Claude's servers. It keeps retrying; check your internet connection.", detail: JSON.stringify(o) });
+      for (const s of (o.mcp_servers ?? []) as Json[]) {
+        if (s.name !== "shrike" && s.status === "failed") emit({ kind: "message", text: `Your tool ${s.name} didn't start, so this run goes on without it.`, detail: JSON.stringify(s) });
+      }
+    } else if (o.type === "system" && o.subtype === "api_retry") {
+      // Claude Code retries 10 times over ~3 minutes, even a sign-in it can't fix: stop after the second (the first may follow a token refresh),
+      // and say why the run shows Working for the rest.
+      if (o.error === "authentication_failed" || o.error_status === 401 || o.error_status === 403) {
+        if (state.giveUp || n(o.attempt) < 2) return;
+        state.giveUp = state.resultError = true;
+        return emit({ kind: "error", text: SIGN_IN, detail: JSON.stringify(o) });
+      }
+      if (o.attempt !== 3) return; // third try, so a blip stays quiet
+      const text =
+        o.error_status === 429 || o.error === "rate_limit"
+          ? "Claude Code hit a rate limit. It keeps retrying for a few minutes."
+          : o.error_status
+            ? "Claude's servers are busy right now. Claude Code keeps retrying."
+            : "Claude Code can't reach Claude's servers. It keeps retrying; check your internet connection.";
+      emit({ kind: "message", text, detail: JSON.stringify(o) });
     } else if (o.type === "assistant") {
       if (o.is_api_error_message || o.error) return; // the result line reports it
       const u = o.message?.usage as Json | undefined;
@@ -149,6 +168,7 @@ export function createStreamParser(emitStep: (s: StepInput) => void, hooks: Stre
         else if (b.type === "text" && typeof b.text === "string" && b.text.trim()) emit({ kind: "message", text: b.text.trim() });
         else if (b.type === "tool_use") {
           names.set(b.id, b.name);
+          state.openTools++;
           emit(toolUseStep(b.name, b.input));
         }
       }
@@ -157,6 +177,7 @@ export function createStreamParser(emitStep: (s: StepInput) => void, hooks: Stre
       if (!Array.isArray(content)) return;
       for (const b of content as Json[]) {
         if (b.type !== "tool_result") continue;
+        state.openTools = Math.max(0, state.openTools - 1);
         emit(toolResultStep(names.get(b.tool_use_id), resultText(b.content), b.is_error === true));
       }
     } else if (o.type === "rate_limit_event") {
@@ -183,6 +204,7 @@ export function createStreamParser(emitStep: (s: StepInput) => void, hooks: Stre
       if (windows.length) usage.contextLimit = Math.max(...windows);
       if (o.usage || o.total_cost_usd !== undefined) sendUsage();
       if (o.is_error) {
+        if (state.giveUp) return; // said already
         state.resultError = true;
         emit(errorStep(o));
       } else {
@@ -197,6 +219,7 @@ export function createStreamParser(emitStep: (s: StepInput) => void, hooks: Stre
     try {
       o = JSON.parse(l);
     } catch {
+      state.unreadable++;
       return;
     }
     if (o && typeof o === "object") handle(o as Json);
@@ -225,13 +248,28 @@ function resultText(content: unknown): string {
   return (content as Json[]).filter((c) => c.type === "text").map((c) => String(c.text)).join("\n");
 }
 
+const SIGN_IN = "Sign in to Claude Code again: open a terminal, run claude, and type /login. Then try again.";
+
+// The result texts Claude Code 2.1 ends with (recorded against a local stand-in for Claude's API), in plain words. The CLI's own text stays in detail.
+const PLAIN: [RegExp, string][] = [
+  [/invalid api key|x-api-key/i, "Claude Code's API key was refused. Check ANTHROPIC_API_KEY, or remove it and sign in with claude, then /login."],
+  [/not logged in|\/login|authenticat|oauth token|token has expired/i, SIGN_IN],
+  [/credit balance|billing/i, "Your Anthropic account is out of credit. Add credit, then try again."],
+  [/usage limit|limit reached|hit your limit|rate.?limit|\b429\b/i, "Claude Code hit its usage limit. Try again when it resets."],
+  [/overloaded|\b529\b|capacity/i, "Claude's servers are busy. Try again in a moment."],
+  [/ECONNREFUSED|ENOTFOUND|EAI_AGAIN|ECONNRESET|ETIMEDOUT|connection|network|timed out|fetch failed|offline/i, "Claude Code couldn't reach Claude's servers. Check your internet connection, then try again."],
+];
+
 function errorStep(o: Json): StepInput {
   const raw = typeof o.result === "string" && o.result ? o.result : Array.isArray(o.errors) ? o.errors.join("; ") : "";
-  if (/not logged in|\/login/i.test(raw)) {
-    return { kind: "error", text: "Sign in to Claude Code first: open a terminal, run claude, and type /login.", detail: raw };
-  }
+  const plain = PLAIN.find(([re]) => re.test(raw))?.[1];
+  if (plain) return { kind: "error", text: plain, detail: raw };
   return { kind: "error", text: raw || `Claude Code stopped (${o.subtype ?? "error"}).`, detail: JSON.stringify(o) };
 }
+
+const UPDATE = "Update Claude Code (run claude update in a terminal), then try again.";
+// A long tool call (MCP_TOOL_TIMEOUT 10 min) or a deep turn can be quiet for minutes; a run silent this long is stuck.
+export const SILENCE = { noteMs: 3 * 60_000, stopMs: 15 * 60_000 };
 
 export function runClaudeCode(o: {
   bin: ClaudeBinary;
@@ -240,6 +278,7 @@ export function runClaudeCode(o: {
   emit: (s: StepInput) => void;
   onExit: (failed: boolean) => void;
   hooks?: StreamHooks;
+  silence?: typeof SILENCE; // tests shorten it
 }): { kill(): void } {
   const env = { ...process.env, ...(o.bin.loginPath ? { PATH: o.bin.loginPath } : {}), MCP_TOOL_TIMEOUT: "600000" };
   const child = spawn(o.bin.path, o.args, { cwd: o.cwd, env, stdio: ["ignore", "pipe", "pipe"] });
@@ -247,8 +286,28 @@ export function runClaudeCode(o: {
   const stderr: string[] = [];
   let exited = false;
   let spawnError: Error | undefined;
+  let stuck = false;
+  const silence = o.silence ?? SILENCE;
+  let heard = Date.now();
+  let noted = false;
+  const watch = setInterval(() => {
+    const quiet = Date.now() - heard;
+    if (quiet >= silence.stopMs) {
+      stuck = true;
+      kill();
+    } else if (quiet >= silence.noteMs && !noted && !parser.state.openTools) {
+      noted = true;
+      o.emit({ kind: "message", text: "No word from Claude Code for a few minutes. It may be offline or stuck; you can stop it and try again." });
+    }
+  }, Math.min(15_000, silence.noteMs / 2));
+  watch.unref();
 
-  child.stdout.setEncoding("utf8").on("data", (c: string) => parser.push(c));
+  child.stdout.setEncoding("utf8").on("data", (c: string) => {
+    heard = Date.now();
+    noted = false;
+    parser.push(c);
+    if (parser.state.giveUp) kill();
+  });
   child.stderr.setEncoding("utf8").on("data", (c: string) => {
     stderr.push(...c.split("\n").filter((l) => l.trim()));
     if (stderr.length > 200) stderr.splice(0, stderr.length - 200);
@@ -256,29 +315,37 @@ export function runClaudeCode(o: {
   child.on("error", (err) => (spawnError = err));
   child.on("close", (code, signal) => {
     exited = true;
+    clearInterval(watch);
     parser.end();
-    const { gotResult, resultError } = parser.state;
+    const { gotResult, resultError, unreadable } = parser.state;
     if (spawnError) {
       o.emit({ kind: "error", text: `Couldn't start Claude Code: ${spawnError.message}` });
       return o.onExit(true);
     }
     if (resultError) return o.onExit(true);
     if (code !== 0 || !gotResult) {
-      const tail = stderr.slice(-20).join("\n");
-      const why = code !== null ? `exited with code ${code}` : `was stopped (${signal})`;
-      o.emit({ kind: "error", text: `Claude Code ${why}${gotResult ? "" : " before finishing"}.`, detail: tail || undefined });
+      const tail = stderr.slice(-20).join("\n") || undefined;
+      const text = stuck
+        ? `Claude Code stopped answering for ${Math.round(silence.stopMs / 60_000)} minutes, so Shrike stopped it. Try again.`
+        : /unknown option|unknown argument|unexpected argument/i.test(tail ?? "")
+          ? `This version of Claude Code (${o.bin.version}) doesn't accept what Shrike asks of it. ${UPDATE}`
+          : code === 0 && unreadable
+            ? `Claude Code answered in a way Shrike can't read. ${UPDATE}`
+            : code !== null
+              ? `Claude Code quit before finishing (exit code ${code}). Try again.`
+              : `Claude Code was stopped (${signal}) before finishing. Try again.`;
+      o.emit({ kind: "error", text, detail: tail });
       return o.onExit(true);
     }
     o.onExit(false);
   });
 
-  return {
-    kill() {
-      if (exited) return;
-      child.kill("SIGTERM");
-      setTimeout(() => {
-        if (!exited) child.kill("SIGKILL");
-      }, 3000).unref();
-    },
-  };
+  function kill() {
+    if (exited) return;
+    child.kill("SIGTERM");
+    setTimeout(() => {
+      if (!exited) child.kill("SIGKILL");
+    }, 3000).unref();
+  }
+  return { kill };
 }

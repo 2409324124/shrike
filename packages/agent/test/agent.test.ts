@@ -173,12 +173,12 @@ async function fakeBin(script: string) {
   return p;
 }
 
-function runFake(script: string) {
+function runFake(script: string, silence?: { noteMs: number; stopMs: number }) {
   return fakeBin(script).then(
     (bin) =>
       new Promise<{ steps: StepInput[]; failed: boolean; kill: () => void }>((resolve) => {
         const steps: StepInput[] = [];
-        const r = runClaudeCode({ bin: { path: bin, version: "0" }, args: [], cwd: os.tmpdir(), emit: (s) => steps.push(s), onExit: (failed) => resolve({ steps, failed, kill: r.kill }) });
+        const r = runClaudeCode({ bin: { path: bin, version: "0" }, args: [], cwd: os.tmpdir(), emit: (s) => steps.push(s), onExit: (failed) => resolve({ steps, failed, kill: r.kill }), silence });
       }),
   );
 }
@@ -192,7 +192,7 @@ test("spawned process: stream, stderr on failure, env and cwd", async () => {
   const bad = await runFake('echo "Error: something broke" >&2; exit 3');
   assert.equal(bad.failed, true);
   assert.equal(bad.steps.length, 1);
-  assert.match(bad.steps[0]!.text, /exited with code 3/);
+  assert.match(bad.steps[0]!.text, /quit before finishing \(exit code 3\)/);
   assert.match(bad.steps[0]!.detail!, /something broke/);
 
   const missing = await new Promise<StepInput[]>((resolve) => {
@@ -200,6 +200,59 @@ test("spawned process: stream, stderr on failure, env and cwd", async () => {
     runClaudeCode({ bin: { path: "/nonexistent/claude", version: "0" }, args: [], cwd: os.tmpdir(), emit: (s) => steps.push(s), onExit: () => resolve(steps) });
   });
   assert.match(missing[0]!.text, /Couldn't start Claude Code/);
+});
+
+test("reliability: every way a Claude Code run can go wrong ends in one plain error, never a spinner", async () => {
+  // Result lines Claude Code 2.1.280 printed against a local stand-in for Claude's API (401, expired OAuth, 429, 529, billing, refused, hang).
+  const result = (text: string) => JSON.stringify({ type: "result", subtype: "success", is_error: true, result: text });
+  const plain = (text: string) => {
+    const { steps } = parseAll(result(text) + "\n");
+    assert.deepEqual(steps.map((s) => s.kind), ["error"]);
+    assert.equal(steps[0]!.detail, text); // the CLI's own words stay in detail
+    assert.doesNotMatch(steps[0]!.text, /—/);
+    return steps[0]!.text;
+  };
+  assert.match(plain("Invalid API key · Fix external API key"), /API key was refused/);
+  assert.match(plain("Failed to authenticate. API Error: 401 OAuth token has expired. Please obtain a new token or refresh your existing token."), /Sign in to Claude Code again/);
+  assert.match(plain("API Error: Request rejected (429) · Number of request tokens has exceeded your per-minute rate limit"), /usage limit/);
+  assert.match(plain("API Error: Repeated 529 Overloaded errors. The API is at capacity — this is usually temporary."), /servers are busy/);
+  assert.match(plain("Credit balance is too low"), /out of credit/);
+  assert.match(plain("API Error: Connection refused — a firewall or proxy may be blocking it (ECONNREFUSED)"), /couldn't reach Claude's servers/);
+  assert.match(plain("Request timed out"), /couldn't reach/);
+
+  // A rejected sign-in: Claude Code would retry it for ~3 minutes. One error after the second try, and the process is stopped.
+  const retry = (attempt: number, status: number | null, error: string) => JSON.stringify({ type: "system", subtype: "api_retry", attempt, max_retries: 10, retry_delay_ms: 500, error_status: status, error });
+  const auth = parseAll([1, 2, 3].map((a) => retry(a, 401, "authentication_failed")).join("\n") + "\n" + result("Invalid API key · Fix external API key") + "\n");
+  assert.deepEqual(auth.steps.map((s) => s.kind), ["error"]);
+  assert.equal(auth.state.giveUp, true);
+  const t0 = Date.now();
+  const signIn = await runFake(`echo '${[1, 2].map((a) => retry(a, 401, "authentication_failed")).join("\n")}'\nexec sleep 30`);
+  assert.ok(Date.now() - t0 < 5000, "stopped, not left retrying");
+  assert.equal(signIn.failed, true);
+  assert.equal(signIn.steps.length, 1);
+  assert.match(signIn.steps[0]!.text, /Sign in to Claude Code again/);
+  // A rate limit says so on the third try, not "busy".
+  assert.match(parseAll([1, 2, 3].map((a) => retry(a, 429, "rate_limit")).join("\n") + "\n").steps[0]!.text, /rate limit/);
+
+  // An older or newer CLI: flags it doesn't know, or output it no longer prints as stream-json.
+  const flags = await runFake(`echo "error: unknown option '--tools'" >&2; exit 1`);
+  assert.match(flags.steps[0]!.text, /doesn't accept what Shrike asks of it\. Update Claude Code/);
+  const format = await runFake('echo "Hello from a plain text run"; exit 0');
+  assert.match(format.steps[0]!.text, /answered in a way Shrike can't read\. Update Claude Code/);
+  // Crashed mid-run: in words, with a way on.
+  const crash = await runFake("kill -9 $$");
+  assert.equal(crash.failed, true);
+  assert.match(crash.steps[0]!.text, /was stopped \(SIGKILL\) before finishing\. Try again/);
+
+  // Silent: a note after a while (not during a tool call), then stopped with a reason.
+  const quiet = await runFake("exec sleep 30", { noteMs: 200, stopMs: 900 });
+  assert.equal(quiet.failed, true);
+  assert.deepEqual(quiet.steps.map((s) => s.kind), ["message", "error"]);
+  assert.match(quiet.steps[0]!.text, /No word from Claude Code/);
+  assert.match(quiet.steps[1]!.text, /stopped answering/);
+  const busyTool = JSON.stringify({ type: "assistant", message: { id: "m1", content: [{ type: "tool_use", id: "t1", name: "mcp__shrike__run_scenario", input: {} }] } });
+  const inTool = await runFake(`echo '${busyTool}'\nexec sleep 30`, { noteMs: 700, stopMs: 1600 });
+  assert.deepEqual(inTool.steps.map((s) => s.kind), ["tool_call", "error"]); // no "may be offline" note while a tool works
 });
 
 test("stop() kills the process", async () => {
