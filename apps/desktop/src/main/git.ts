@@ -79,10 +79,13 @@ interface Local {
   remote?: string;
 }
 
+/** git itself didn't run: not installed, or macOS's stand-in that asks for the developer tools. */
+export const gitMissing = (r: { code: number; stderr: string }): boolean => r.code === 127 || /xcrun: error|command not found|not recognized|ENOENT/.test(r.stderr);
+
 /** Everything local and cheap: no network, no gh. Paths are relative to `cwd` (the project root). */
 export async function readGit(cwd: string): Promise<Local> {
   const top = await tryGit(cwd, ["rev-parse", "--path-format=absolute", "--git-path", "rebase-merge", "--git-path", "rebase-apply", "--git-path", "MERGE_HEAD"]);
-  if (top.code !== 0) return { state: { isRepo: false, ahead: 0, behind: 0, changed: [], conflicts: [] } };
+  if (top.code !== 0) return { state: { isRepo: false, ahead: 0, behind: 0, changed: [], conflicts: [], ...(gitMissing(top) ? { gitMissing: true } : {}) } };
   const [rebaseMerge, rebaseApply, mergeHead] = top.stdout.split("\n").map((l) => resolve(cwd, l.trim()));
   const [status, remotes, refs, originHead] = await Promise.all([
     git(cwd, ["--no-optional-locks", "status", "--porcelain=v1", "-b", "-z", "--untracked-files=all", "--", "."]), // no index refresh: the Changes dock watches .git

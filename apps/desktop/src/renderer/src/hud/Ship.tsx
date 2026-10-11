@@ -16,6 +16,7 @@ import { SelfCheckCard } from "../lessons/index.ts"; // review-lessons: RL6
 
 const close = () => useUi.setState({ panel: null });
 import { keys } from "../lib/platform.ts";
+import { GitMissing } from "../scm/Changes.tsx";
 
 export function ShipSheet() {
   useGitBridge();
@@ -61,6 +62,12 @@ function Body({ state }: { state: GitState | null }) {
   const busy = useGit((s) => s.busy);
   const ask = useAgent((s) => s.approvals.find((a) => !a.patch));
   if (!state) return <p className="lbl flex items-center gap-2 py-6">{busy === "load" ? <Spinner size={11} /> : null} Reading your repo</p>;
+  if (state.gitMissing)
+    return (
+      <Focus title="Git isn't on this computer">
+        <p className="text-[13px] text-dim">Shipping needs git. <GitMissing /></p>
+      </Focus>
+    );
   if (!state.isRepo)
     return (
       <Focus title="This folder isn't saved in git yet">
