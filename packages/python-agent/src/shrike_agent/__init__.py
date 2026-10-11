@@ -44,6 +44,11 @@ def start():
 
             sqlite.patch(module)
             return
+        if name == "http.client":
+            from . import outgoing
+
+            outgoing.patch(module, (out.host, out.port))
+            return
         cls, attr, wrap = FRAMEWORKS[name]
         klass = getattr(module, cls)
         if not getattr(klass, "_shrike", False):
@@ -55,7 +60,12 @@ def start():
 
     if not trace.install():
         return
-    sys.meta_path.insert(0, _Finder(set(FRAMEWORKS) | {"sqlite3"}, patch))
+    names = set(FRAMEWORKS) | {"sqlite3"}
+    if (os.environ.get("SHRIKE_CALLER") or "").strip():
+        names.add("http.client")
+        if "http.client" in sys.modules:
+            trace.quietly(patch, "http.client", sys.modules["http.client"])
+    sys.meta_path.insert(0, _Finder(names, patch))
 
 
 # Patches a module right after it loads, before whoever imported it gets it.

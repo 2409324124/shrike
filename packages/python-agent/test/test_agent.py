@@ -17,7 +17,7 @@ TRACE = "4bf92f3577b34da6a3ce929d0e0e4736"
 Run = namedtuple("Run", "got stderr stdout seconds")
 
 
-def run_app(shrike=True, extra_path="", script="app.py", python=sys.executable, ingest="", timeout=30):
+def run_app(shrike=True, extra_path="", script="app.py", python=sys.executable, ingest="", timeout=30, env_extra=None):
     """Runs a test/proj script (in a temp copy of the project) against a fake ingest. Returns (messages, stderr)."""
     got = []
 
@@ -44,6 +44,7 @@ def run_app(shrike=True, extra_path="", script="app.py", python=sys.executable, 
         env["PYTHONPATH"] = os.pathsep.join(p for p in (SRC if shrike else "", os.path.join(HERE, "libs"), site, extra_path) if p)
         if shrike:
             env.update(SHRIKE_INGEST_URL=ingest or f"http://127.0.0.1:{server.server_port}", SHRIKE_TOKEN="tok", SHRIKE_PROJECT_ROOT=root, SHRIKE_SERVICE="api")
+        env.update(env_extra or {})
         t0 = time.perf_counter()
         p = subprocess.run([python, script], cwd=root, env=env, capture_output=True, text=True, timeout=timeout)
         seconds = time.perf_counter() - t0
@@ -199,6 +200,19 @@ class Safety(unittest.TestCase):
             out.push({"n": i})
         self.assertEqual((len(out.queue), out.queue[0]["n"], out.queue[-1]["n"]), (MAX_QUEUE, 5, MAX_QUEUE + 4))
         out.queue.clear()
+
+    def test_caller_script_calls_start_trips_with_a_traceparent(self):
+        run = run_app(script="cron.py", env_extra={"SHRIKE_CALLER": "cron"})
+        port, *seen = run.stdout.split()
+        calls = [e for _, _, m in run.got if m["type"] == "events" for e in m["events"] if e["kind"] == "external_call"]
+        self.assertEqual([(e["name"], e["status"], e["http"].get("status")) for e in calls], [(f"POST localhost:{port}/orders", "error", 500), (f"POST localhost:{port}/ok", "ok", 200), ("GET localhost:9/nobody", "error", None)])
+        self.assertEqual(seen, [f"00-{e['traceId']}-{e['id']}-01" for e in calls[:2]], "the server got each call's traceparent")
+        self.assertEqual(calls[0]["caller"], {"kind": "cron", "label": "cron", "command": "python cron.py"})
+        self.assertEqual((calls[0]["place"]["id"], calls[0]["source"]["file"]), (f"outside:localhost:{port}", "cron.py"))
+        self.assertEqual(len({e["traceId"] for e in calls}), 3, "one trip per call")
+        plain = run_app(script="cron.py")
+        self.assertFalse([e for _, _, m in plain.got if m["type"] == "events" for e in m["events"] if e["kind"] == "external_call"], "only a SHRIKE_CALLER script")
+        self.assertEqual(plain.stdout.split()[1:], ["None", "None"])
 
 
 if __name__ == "__main__":
