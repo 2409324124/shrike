@@ -69,4 +69,5 @@ export function installRecord(resolve: (el: EventTarget | null) => Element | nul
   window.addEventListener("click", onClick, true);
   window.addEventListener("change", onChange, true);
   window.addEventListener("submit", onSubmit, true);
+  window.addEventListener("keydown", () => (lastClick = 0), true); // Enter right after a click still submits
 }
