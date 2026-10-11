@@ -95,6 +95,9 @@ if (kind === "critique") {
   say(`It does the ask, but the empty state is missing.\nSCORE: ${score}/10\nWHY: there is no empty state when the list has nothing in it`, 900, 40);
 } else if (/^(Cluster these pull request review comments|Check this change against the review lessons)/.test(goal)) { // RL2/RL6: the lessons brain (fake-lessons.mjs)
   say((await import("./fake-lessons.mjs")).answer(goal), 900, 60);
+} else if (/^Fill in examples for these API routes/.test(goal)) { // AP22: read-only, one JSON block at the end (fake-routes.mjs)
+  tool("read_file", { path: "src/server.ts", startLine: 19, endLine: 33 }, "src/server.ts lines 19-33\n21| const { email, name } = await readJson(req);", 900, 30);
+  say((await import("./fake-routes.mjs")).answer(goal), 900, 120);
 } else if (/^# Write a commit message/m.test(goal)) { // SC3: the Commit message recipe through a quiet run
   say("Fix: Add Todo saves the owner again\n\nThe server read req.body.user, but the form sends userId.", 900, 30);
 } else if (fails) {
