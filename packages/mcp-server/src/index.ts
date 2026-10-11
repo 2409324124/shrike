@@ -8,10 +8,10 @@ import type { ShrikeHost } from "@shrike/schema";
 import { registerTools } from "./tools.ts";
 import { registerStartTools, type StartHost } from "./start.ts";
 
-export { registerStartTools, type StartHost, type PlanArgs } from "./start.ts"; // R: start agent
+export { type StartHost, type PlanArgs } from "./start.ts"; // R: start agent
 
 export { optionsReplyText } from "./options.ts"; // M1
-export { frontMatter, listSkills, OUTCOME, outcomeOf, readSkills, parseSkill, skillSteps, whenOf, type SkillDoc, type SkillHost } from "./skills.ts";
+export { frontMatter, listSkills, OUTCOME, outcomeOf, parseSkill, skillSteps, whenOf, type SkillDoc, type SkillHost } from "./skills.ts";
 import type { SkillHost } from "./skills.ts";
 
 // Shrike's own brains send this header so their reads don't show as "watched by" (A11).
