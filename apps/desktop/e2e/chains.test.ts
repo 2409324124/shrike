@@ -36,7 +36,7 @@ test("chains: up next fires in order, critique branches, round limit, failure br
     await openFolder(win);
     const closeSetup = win.getByRole("button", { name: "Close setup" });
     if (await closeSetup.isVisible({ timeout: 2000 }).catch(() => false)) await closeSetup.click();
-    await win.getByRole("banner").getByText(/Claude Code/i).first().waitFor({ timeout: 15_000 }); // the agent is picked
+    await win.getByText(/Claude Code\s*·/).first().waitFor({ timeout: 15_000 }); // the agent is picked (shown in the composer)
     await sleep(1000);
 
     // ---- P1: queue two prompts while the agent works ----
