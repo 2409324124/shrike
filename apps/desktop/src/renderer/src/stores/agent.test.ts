@@ -16,6 +16,7 @@ g.window = { shrike: fake };
 after(() => void (g.window = before)); // the suite shares one process
 
 const { useAgent, branchLines, branchState, onUsage, shownUsage } = await import("./agent.ts");
+const { useProject } = await import("./project.ts");
 const step = (runId: string, kind: AgentStep["kind"], text = "x", extra: Partial<AgentStep> = {}): AgentStep => ({ id: Math.random().toString(16), runId, kind, text, createdAt: 1, ...extra });
 
 test("C3 aside lifecycle: its status and steps stay off main; keep makes it a branch; dismiss discards it", async () => {
@@ -78,4 +79,28 @@ test("X5 usage: a branch's or an aside's tokens never land on main's ring; the r
   assert.equal(shownUsage(st)?.contextTokens, 10);
   st.viewing = "b";
   assert.equal(shownUsage(st)?.contextTokens, 50);
+});
+
+test("busy shows only for the project on screen: a run in another project stays parked there and comes back with it", () => {
+  const s = useAgent.getState;
+  const go = (root: string) => useProject.setState({ project: { root, name: root } as never });
+  const u = (runId: string) => ({ runId, inputTokens: 1, outputTokens: 1, contextTokens: 5, contextLimit: 100 });
+  go("/a");
+  s().onStatus(run("pa"));
+  s().onStep(step("pa", "message", "in a"));
+  go("/b");
+  assert.equal(s().run, null, "no Working in project b");
+  assert.deepEqual(s().steps, []);
+  s().onStep(step("pa", "message", "still in a"));
+  useAgent.setState(onUsage(s(), u("pa")));
+  assert.equal(s().run, null);
+  assert.deepEqual(s().steps, []);
+  assert.equal(s().usage, null);
+  s().onStatus(run("pa", { status: "done" }));
+  assert.equal(s().run, null, "its end lands in a, not on b");
+  go("/a");
+  assert.equal(s().run?.id, "pa");
+  assert.equal(s().run?.status, "done");
+  assert.deepEqual(s().steps.map((x) => x.text), ["in a", "still in a"]);
+  assert.equal(s().usage?.runId, "pa");
 });

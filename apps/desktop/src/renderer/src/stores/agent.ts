@@ -11,6 +11,26 @@ import { toast, useUi } from "./ui.ts";
 
 const MAX_STEPS = 1000;
 
+// A run shows only in the project it started in (main's workspaces.ts rule). Elsewhere it keeps running, parked, and its rail row says so.
+type Shown = Pick<AgentState, "run" | "steps" | "picked" | "usage">;
+const runRoot = new Map<string, string>();
+const parked = new Map<string, Shown>();
+const here = (): string => useProject.getState().project?.root ?? "";
+const away = (runId: string): Shown | null => {
+  const root = runRoot.get(runId);
+  return root === undefined || root === here() ? null : (parked.get(root) ?? { run: null, steps: [], picked: {}, usage: null });
+};
+const park = (runId: string, p: Partial<Shown>): {} => {
+  const root = runRoot.get(runId)!;
+  const cur = parked.get(root);
+  if (cur?.run?.id === runId) parked.set(root, { ...cur, ...p });
+  return {};
+};
+const upsert = (steps: AgentStep[], step: AgentStep): AgentStep[] => {
+  const i = steps.findIndex((x) => x.id === step.id);
+  return i >= 0 ? steps.map((x, j) => (j === i ? step : x)) : [...steps, step].slice(-MAX_STEPS);
+};
+
 interface AgentState {
   open: boolean;
   focusNonce: number;
@@ -173,6 +193,8 @@ export const useAgent = create<AgentState>((set, get) => ({
     set((s) => {
       const runs = { ...s.runs, [info.id]: info };
       if (isSide(info)) return { runs };
+      if (!runRoot.has(info.id)) runRoot.set(info.id, here());
+      if (away(info.id)) return park(info.id, { run: info });
       if (s.run && s.run.id !== info.id && info.status === "running") return { run: info, runs, steps: [], ...(info.continues ? {} : { viewing: null }) }; // a run main started (up next, a chain): the last run's steps aren't its
       return !s.run || s.run.id === info.id || info.status === "running" ? { run: info, runs, ...(s.run?.id !== info.id && !info.continues ? { viewing: null } : {}) } : { runs };
     }),
@@ -183,10 +205,10 @@ export const useAgent = create<AgentState>((set, get) => ({
         const list = s.runSteps[step.runId] ?? [];
         return { runSteps: { ...s.runSteps, [step.runId]: [...list.filter((x) => x.id !== step.id), step].slice(-MAX_STEPS) } };
       }
+      const p = away(step.runId);
+      if (p) return park(step.runId, { steps: upsert(p.steps, step) });
       if (s.run && step.runId !== s.run.id) return {};
-      const i = s.steps.findIndex((x) => x.id === step.id);
-      const steps = i >= 0 ? s.steps.map((x, j) => (j === i ? step : x)) : [...s.steps, step].slice(-MAX_STEPS);
-      return { steps };
+      return { steps: upsert(s.steps, step) };
     }),
   onApproval: (req) =>
     set((s) => ({
@@ -226,10 +248,21 @@ export const useAgent = create<AgentState>((set, get) => ({
     }),
 }));
 
+useProject.subscribe((st, prev) => {
+  const from = prev.project?.root ?? "";
+  const to = st.project?.root ?? "";
+  if (from === to) return;
+  const { run, steps, picked, usage } = useAgent.getState();
+  if (run) parked.set(from, { run, steps, picked, usage });
+  useAgent.setState(parked.get(to) ?? { run: null, steps: [], picked: {}, usage: null });
+  parked.delete(to);
+});
+
 /** A7/X5: a branch's or an aside's usage never lands on main's ring. */
 export function onUsage(s: Pick<AgentState, "run" | "runs" | "usageBy">, u: AgentUsage): Partial<AgentState> {
   const r = s.runs[u.runId];
   if (r && isSide(r)) return { usageBy: { ...s.usageBy, [u.runId]: u } };
+  if (away(u.runId)) return park(u.runId, { usage: u });
   return !s.run || u.runId === s.run.id ? { usage: u } : {};
 }
 
