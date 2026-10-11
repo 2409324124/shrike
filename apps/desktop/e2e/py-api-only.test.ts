@@ -174,6 +174,7 @@ for (const c of cases) {
       assert.ok(ct.stations.some((s) => s.lane === "caller:cron"), "the script's call starts in the CRON lane");
       checkTrip(c, ct, await events(win, broke.id));
       assert.equal((await status(win)).state, "running");
+      await dismissResult(win);
       await shot(app, p("07-cron-trip"), "py");
 
       await win.getByRole("banner").getByRole("button", { name: "Stop", exact: true }).click();
