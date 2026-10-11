@@ -24,6 +24,7 @@ export function git(cwd: string, args: string[], input?: string): Promise<string
       if (err) rej(new Error(String(stderr || err.message).trim().split("\n").slice(-3).join("\n")));
       else res(stdout);
     });
+    child.stdin?.on("error", () => {}); // git can exit before reading it: EPIPE on Linux
     child.stdin?.end(input ?? "");
   });
 }

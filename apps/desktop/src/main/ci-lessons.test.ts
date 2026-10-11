@@ -368,6 +368,7 @@ test("ci-lessons: verdicts and local-vs-hosted comparison", () => {
 const exec: Exec = (cmd, args, o) =>
   new Promise((done) => {
     const c = execFile(cmd, args, { cwd: o.cwd, encoding: "utf8" }, (err, stdout, stderr) => done({ code: err ? (typeof err.code === "number" ? err.code : 1) : 0, stdout, stderr }));
+    c.stdin?.on("error", () => {});
     c.stdin?.end(o.input ?? "");
   });
 

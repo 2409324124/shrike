@@ -28,6 +28,7 @@ export const exec: Exec = async (cmd, args, o) => {
     const child = execFile(cmd, args, { cwd: o.cwd, env, maxBuffer: 64 * 1024 * 1024, timeout: 180_000 }, (err, stdout, stderr) =>
       done({ code: err ? (typeof err.code === "number" ? err.code : 127) : 0, stdout: String(stdout), stderr: String(stderr) || (err?.message ?? "") }),
     );
+    child.stdin?.on("error", () => {}); // git can exit before reading it: EPIPE on Linux
     child.stdin?.end(o.input ?? "");
   });
 };
