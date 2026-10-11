@@ -195,10 +195,7 @@ function pathOf(a: Attrs): string | undefined {
 function dataPlace(system: string, a: Attrs): Place {
   const label = system.toUpperCase();
   const name = s(a["db.namespace"] ?? a["db.name"]);
-  if (system === "sqlite") {
-    const file = name ? basename(name) : ":memory:";
-    return { id: `data:sqlite:${file}`, kind: "data", name: `SQLITE · ${file}` };
-  }
+  if (system === "sqlite") return name ? { id: `data:sqlite:${basename(name)}`, kind: "data", name: `SQLITE · ${basename(name)}` } : { id: "data:sqlite", kind: "data", name: "SQLITE" }; // Python's sqlite3 instrumentation names no file
   const where = `${hostKey(s(a["server.address"] ?? a["net.peer.name"]) ?? "localhost", a["server.port"] ?? a["net.peer.port"])}${name ? `/${name}` : ""}`;
   return { id: `data:${system}:${where}`, kind: "data", name: name ? `${label} · ${name}` : label, detail: where };
 }

@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { test } from "node:test";
 import { gzipSync } from "node:zlib";
-import type { DebugEvent, IngestMessage } from "@shrike/schema";
+import type { DebugEvent, IngestMessage, TimelineNode } from "@shrike/schema";
 import { startIngest } from "./ingest.ts";
 import { decodeTraces, otlpMessages } from "./otlp.ts";
+import { Runner } from "./runner.ts";
 import { Store } from "./store.ts";
 
 // A tiny protobuf encoder, enough to build an ExportTraceServiceRequest the way the SDKs send it.
@@ -150,4 +153,34 @@ test("store: an OpenTelemetry server span joins the page's cross-origin call and
   assert.deepEqual(served.children.map((c) => c.event.name).sort(), ["SELECT price, qty FROM items WHERE id = ?", "price_of"]);
   assert.equal(store.getEvent("3333333333333333")?.source?.file, "api/main.py", "absolute SDK paths are made project-relative");
   assert.equal(store.getEvent("00f067aa0ba902b7")?.source?.file, "api/main.py");
+});
+
+const pyApp = join(import.meta.dirname, "../../../../fixtures/py-app");
+test("fixtures/py-app live: the runner's env makes a real FastAPI app's 500 and its query join the page's click", { skip: !existsSync(join(pyApp, "api/.venv")) && "needs fixtures/py-app/api/.venv (see its README)" }, async () => {
+  const store = new Store({ projectRoot: () => pyApp, onUpdate: () => {} });
+  const ing = await startIngest((m) => store.handle(m));
+  const api = JSON.parse(readFileSync(join(pyApp, ".shrike/config.json"), "utf8")).processes.find((p: { name: string }) => p.name === "api");
+  const runner = new Runner({ onStatus: () => {}, onOutput: () => {} });
+  try {
+    await runner.start({ root: pyApp, name: "py-app", devCommand: "", routes: [], expectedPlaces: [], processes: [api] }, { nodeAgentRegister: "/none.mjs", ingestUrl: ing.url, token: ing.token });
+    while (runner.status.state === "starting") await new Promise((r) => setTimeout(r, 100));
+    assert.equal(runner.status.state, "running");
+    const B = "8".repeat(32);
+    const url = "http://localhost:8010/api/items/3/unit-price";
+    store.handle({ type: "hello", source: "browser", url: "http://localhost:5190/", at: Date.now() });
+    const root: DebugEvent = { id: "c1".repeat(8), traceId: B, origin: "browser", kind: "user_action", name: 'Clicked "Unit price of Gift card"', trigger: "click", startMs: Date.now(), status: "ok" };
+    store.handle({ type: "events", events: [root, { id: "c2".repeat(8), traceId: B, parentId: root.id, origin: "browser", kind: "http_request", name: `GET ${url}`, startMs: Date.now(), status: "ok", http: { method: "GET", url } }] });
+    assert.equal((await fetch(url)).status, 500);
+    let served: TimelineNode | undefined;
+    for (let i = 0; i < 50 && !served?.children.length; i++) {
+      await new Promise((r) => setTimeout(r, 100));
+      served = store.getAction(root.id)?.tree[0]?.children[0];
+    }
+    assert.deepEqual(store.listActions().map((a) => a.label), ['Clicked "Unit price of Gift card"'], "the readiness check and startup queries make no trips");
+    assert.deepEqual([served?.event.name, served?.event.status, served?.event.error?.type, served?.event.source?.file], ["GET /api/items/3/unit-price", "error", "ZeroDivisionError", "api/main.py"]);
+    assert.deepEqual(served?.children.map((c) => [c.event.kind, c.event.place?.id]), [["db_query", "data:sqlite"]]);
+  } finally {
+    await runner.stop();
+    await ing.close();
+  }
 });

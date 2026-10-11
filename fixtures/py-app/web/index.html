@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Py shop</title>
+  </head>
+  <body>
+    <h1>Py shop</h1>
+    <ul id="items"></ul>
+    <p id="out" role="status"></p>
+    <script>
+      const api = `http://localhost:${new URLSearchParams(location.search).get("api") ?? "8010"}`;
+      const out = document.getElementById("out");
+      fetch(`${api}/api/items`)
+        .then((r) => r.json())
+        .then((items) => {
+          for (const it of items) {
+            const li = document.createElement("li");
+            const b = document.createElement("button");
+            b.textContent = `Unit price of ${it.name}`;
+            b.onclick = async () => {
+              const r = await fetch(`${api}/api/items/${it.id}/unit-price`);
+              out.textContent = r.ok ? `${(await r.json()).unit_cents} cents each` : "Couldn't get the price";
+            };
+            li.append(b);
+            document.getElementById("items").append(li);
+          }
+        });
+    </script>
+  </body>
+</html>
