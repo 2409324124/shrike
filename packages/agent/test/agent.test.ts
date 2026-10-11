@@ -1,4 +1,5 @@
 import { after, test } from "node:test";
+import Anthropic from "@anthropic-ai/sdk";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -245,13 +246,13 @@ test("reliability: every way a Claude Code run can go wrong ends in one plain er
   assert.match(crash.steps[0]!.text, /was stopped \(SIGKILL\) before finishing\. Try again/);
 
   // Silent: a note after a while (not during a tool call), then stopped with a reason.
-  const quiet = await runFake("exec sleep 30", { noteMs: 200, stopMs: 900 });
+  const quiet = await runFake("exec sleep 30", { noteMs: 400, stopMs: 1500 });
   assert.equal(quiet.failed, true);
   assert.deepEqual(quiet.steps.map((s) => s.kind), ["message", "error"]);
   assert.match(quiet.steps[0]!.text, /No word from Claude Code/);
   assert.match(quiet.steps[1]!.text, /stopped answering/);
   const busyTool = JSON.stringify({ type: "assistant", message: { id: "m1", content: [{ type: "tool_use", id: "t1", name: "mcp__shrike__run_scenario", input: {} }] } });
-  const inTool = await runFake(`echo '${busyTool}'\nexec sleep 30`, { noteMs: 700, stopMs: 1600 });
+  const inTool = await runFake(`echo '${busyTool}'\nexec sleep 30`, { noteMs: 1500, stopMs: 3000 });
   assert.deepEqual(inTool.steps.map((s) => s.kind), ["tool_call", "error"]); // no "may be offline" note while a tool works
 });
 
@@ -389,6 +390,25 @@ test("built-in brain: tool errors go back to the model, stop() ends the run", as
     const n = r.steps.length;
     await new Promise((res) => setTimeout(res, 50));
     assert.equal(r.steps.length, n); // nothing after stop
+  } finally {
+    await server.close();
+  }
+});
+
+test("built-in brain: offline, a refused key and a rate limit end the run in plain words", async () => {
+  const server = await startMcpServer(host);
+  try {
+    const cases: [unknown, RegExp][] = [
+      [new Anthropic.APIConnectionError({ message: undefined }), /couldn't reach Claude's servers/],
+      [Object.assign(new Error('401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"}}'), { status: 401 }), /refused your ANTHROPIC_API_KEY/],
+      [Object.assign(new Error("429 rate_limit_error"), { status: 429 }), /rate limit/],
+    ];
+    for (const [err, want] of cases) {
+      const r = run({ messages: { create: () => Promise.reject(err) } }, server);
+      await r.done;
+      assert.deepEqual(r.statuses, ["running", "failed"]);
+      assert.match(r.steps.at(-1)!.text, want);
+    }
   } finally {
     await server.close();
   }
