@@ -21,7 +21,7 @@
   finds the line, fixes it after you say OK, and clicks again to prove it works.
 </p>
 
-<p align="center"><sub>Works with Node backends (Express, Next.js, NestJS, Hono, Remix) and Vite or Next frontends. Any other backend that speaks OpenTelemetry (.NET, Python, Go, Java) gets basic tracing.</sub></p>
+<p align="center"><sub>Works with Node backends (Express, Next.js, NestJS, Hono, Remix), Python 3.12+ backends (FastAPI, Flask, Django) and Vite or Next frontends. Any other backend that speaks OpenTelemetry (.NET, Go, Java, older Python) gets basic tracing.</sub></p>
 
 <p align="center">
   <a href="https://github.com/SumantxD/shrike/releases/latest"><b>Download for Mac</b></a> ·
@@ -193,7 +193,7 @@ Try a fix in a git worktree copy with its own ports and its own agent. Race two 
 </tr>
 </table>
 
-Works today with Node servers (Express, Next.js, NestJS, Hono, Remix) and Vite or Next frontends. Any backend that speaks OpenTelemetry (.NET, Python, Go, Java) works with basic tracing: its requests, queries and outside calls show up, but not per-function values. Shrike points the app's OpenTelemetry SDK at itself when it runs the app; see [fixtures/py-app](fixtures/py-app) for a FastAPI example.
+Works today with Node servers (Express, Next.js, NestJS, Hono, Remix), Python 3.12+ servers (FastAPI, Flask, Django) and Vite or Next frontends. On Python, Shrike records every call into your own code with its arguments, what it returned and its file and line, nested under the request that caused it, plus its sqlite3 queries, with no change to your code ([packages/python-agent](packages/python-agent)). Any backend that speaks OpenTelemetry (.NET, Go, Java, Python before 3.12) works with basic tracing: its requests, queries and outside calls show up, but not per-function values. Shrike points the app's OpenTelemetry SDK at itself when it runs the app; see [fixtures/py-app](fixtures/py-app) for FastAPI, Flask and Django examples.
 
 ## Quick start
 
@@ -263,7 +263,8 @@ Details in [docs/07-security-privacy.md](docs/07-security-privacy.md).
 - [ ] Windows and Linux
 - [ ] Codex and OpenCode as agent brains
 - [ ] Shareable recordings (`.shriketrace`) and a read-only web viewer
-- [ ] More stacks: Vite SSR, SvelteKit, Nuxt, function steps for Python and other OpenTelemetry backends
+- [x] Function steps for Python 3.12+ (FastAPI, Flask, Django)
+- [ ] More stacks: Vite SSR, SvelteKit, Nuxt, function steps for other OpenTelemetry backends
 
 The full plan is in [docs/08-roadmap.md](docs/08-roadmap.md).
 

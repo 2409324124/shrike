@@ -21,3 +21,5 @@ packages/node-agent/test/drivers/prisma/generated/
 packages/node-agent/test/drivers/prisma/*.db
 # web-sourced photo (Google Images thumbnail per its download metadata): kept local until its licence is confirmed
 design-system/brand/shrike.jpeg
+__pycache__/
+packages/python-agent/test/.venv/

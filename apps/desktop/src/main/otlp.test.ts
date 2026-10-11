@@ -159,7 +159,7 @@ const pyApp = join(import.meta.dirname, "../../../../fixtures/py-app");
 test("fixtures/py-app live: the runner's env makes a real FastAPI app's 500 and its query join the page's click", { skip: !existsSync(join(pyApp, "api/.venv")) && "needs fixtures/py-app/api/.venv (see its README)" }, async () => {
   const store = new Store({ projectRoot: () => pyApp, onUpdate: () => {} });
   const ing = await startIngest((m) => store.handle(m));
-  const api = JSON.parse(readFileSync(join(pyApp, ".shrike/config.json"), "utf8")).processes.find((p: { name: string }) => p.name === "api");
+  const api = { ...JSON.parse(readFileSync(join(pyApp, ".shrike/config.json"), "utf8")).processes.find((p: { name: string }) => p.name === "api"), command: ".venv/bin/opentelemetry-instrument .venv/bin/uvicorn main:app --port 8010" };
   const runner = new Runner({ onStatus: () => {}, onOutput: () => {} });
   try {
     await runner.start({ root: pyApp, name: "py-app", devCommand: "", routes: [], expectedPlaces: [], processes: [api] }, { nodeAgentRegister: "/none.mjs", ingestUrl: ing.url, token: ing.token });

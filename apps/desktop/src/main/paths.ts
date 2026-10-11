@@ -10,6 +10,7 @@ const repo = app.isPackaged ? process.resourcesPath : resolve(app.getAppPath(), 
 export const paths = {
   repo,
   nodeAgentRegister: join(repo, "packages/node-agent/src/register.mjs"),
+  pythonAgent: join(repo, "packages/python-agent/src"), // sitecustomize.py: first on PYTHONPATH
   browserAgentBundle: join(repo, "packages/browser-agent/dist/browser-agent.js"),
   promptsDir: join(repo, "prompts/agent"),
   sampleProject: join(repo, "fixtures/todo-app"),

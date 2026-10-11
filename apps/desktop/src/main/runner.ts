@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
-import { isAbsolute, join, relative, resolve } from "node:path";
+import { delimiter, isAbsolute, join, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { ProcessSpec, ProjectInfo, RunStatus } from "@shrike/schema";
 import { readEnv } from "@shrike/scanner";
@@ -21,6 +21,7 @@ export interface RunnerOptions {
 
 export interface RunEnv {
   nodeAgentRegister: string; // absolute path of register.mjs
+  pythonAgent?: string; // folder holding python-agent's sitecustomize.py
   ingestUrl: string;
   token: string;
   serverUrl?: string; // API server that must also answer before the app counts as running
@@ -114,6 +115,13 @@ export function addOtelEnv(env: NodeJS.ProcessEnv, service: string, ingestUrl: s
     OTEL_INSTRUMENTATION_HTTP_SERVER_CAPTURE_REQUEST_HEADERS: "x-shrike-internal",
   };
   for (const [k, v] of Object.entries(ours)) env[k] ??= v;
+}
+
+/** python-agent: its folder goes first on PYTHONPATH, so Python 3.12+ loads its sitecustomize.py (which runs the user's own after it). Harmless for Node. */
+export function addPythonAgent(env: NodeJS.ProcessEnv, dir: string | undefined): void {
+  if (!dir) return;
+  const rest = (env.PYTHONPATH ?? "").split(delimiter).filter((p) => p && p !== dir);
+  env.PYTHONPATH = [dir, ...rest].join(delimiter);
 }
 
 // Runs with a live process; portTaken doesn't count their ports as "another program" (a worktree's run, W2).
@@ -213,6 +221,7 @@ export class Runner {
       if (!plain) {
         childEnv.NODE_OPTIONS = base.NODE_OPTIONS ? `${base.NODE_OPTIONS} ${ours}` : ours;
         addOtelEnv(childEnv, spec.name, env.ingestUrl, env.token);
+        addPythonAgent(childEnv, env.pythonAgent);
       }
       const cwd = resolve(project.root, spec.cwd ?? ".");
       const rel = relative(project.root, cwd);
@@ -383,6 +392,7 @@ export class Runner {
       const ours = `--import=${pathToFileURL(env.nodeAgentRegister).href} --enable-source-maps`;
       childEnv.NODE_OPTIONS = base.NODE_OPTIONS ? `${base.NODE_OPTIONS} ${ours}` : ours;
       addOtelEnv(childEnv, spec.name, env.ingestUrl, env.token);
+      addPythonAgent(childEnv, env.pythonAgent);
     }
     const child = spawn(process.env.SHELL || "/bin/zsh", ["-lc", spec.command], { cwd, env: childEnv, detached: true, stdio: ["ignore", "pipe", "pipe"] });
     let done!: () => void;
