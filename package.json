@@ -2,6 +2,11 @@
   "name": "shrike",
   "private": true,
   "license": "MIT",
+  "author": "Sumant Tirkey <st72365@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SumantxD/shrike.git"
+  },
   "type": "module",
   "engines": {
     "node": ">=22.18"

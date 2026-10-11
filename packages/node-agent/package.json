@@ -2,6 +2,12 @@
   "name": "@shrike/node-agent",
   "version": "0.0.0",
   "license": "MIT",
+  "author": "Sumant Tirkey <st72365@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SumantxD/shrike.git",
+    "directory": "packages/node-agent"
+  },
   "private": true,
   "type": "module",
   "engines": {
