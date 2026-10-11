@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
+import { readJson } from "./state-file.ts";
 import type { AgentRunInfo, AgentStep, AgentUsage, ChainDef, ChainEvent, ChainRun, ChainStep, ChainsState, GitState, RunStatus, ShrikeEvents, UpNextItem, UpNextWhen } from "@shrike/schema";
 import { afterRun, afterScore, missedWhy, nextUp, onRelaunch, overBudget, pauseOnStop, moveItem, tidy, whenLabel, withCritique, type LastRun, type Next } from "../renderer/src/chains/logic.ts";
 
@@ -89,7 +90,7 @@ export function createChains(deps: ChainDeps) {
     loaded = (async () => {
       if (!f) return;
       try {
-        const v = JSON.parse(await readFile(f, "utf8")) as { items?: unknown; paused?: unknown; chain?: unknown };
+        const v = ((await readJson(f)) ?? {}) as { items?: unknown; paused?: unknown; chain?: unknown };
         const list = Array.isArray(v.items) ? (v.items as UpNextItem[]).filter((i) => i && typeof i.id === "string" && typeof i.prompt === "string" && i.when && typeof i.when.on === "string") : [];
         items = onRelaunch(list, now());
         paused = v.paused === true;

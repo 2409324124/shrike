@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, rename, writeFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
+import { readJson } from "./state-file.ts";
 import type { BrowserWindow } from "electron";
 import type { Medal, Progress, ProgressCard, PullRequest, QuestResult, Race, ShrikeEvents, SkillEvent, StartPlan } from "@shrike/schema";
 import { CARDS, newCards, scoreQuest, titleOf, XP_TABLE, type CardTallies, type QuestFacts } from "../renderer/src/progress/xp.ts";
@@ -52,7 +53,7 @@ const medals = (v: unknown): Medals => ({ bronze: num(rec(v).bronze), silver: nu
 
 export async function readLedger(dir: string): Promise<Ledger> {
   try {
-    const v = rec<unknown>(JSON.parse(await readFile(file(dir), "utf8")));
+    const v = rec<unknown>(await readJson(file(dir)));
     const projects = Object.fromEntries(Object.entries(rec<Record<string, unknown>>(v.projects)).map(([k, p]) => [k, { name: typeof p.name === "string" ? p.name : basename(k), xp: num(p.xp), quests: num(p.quests), medals: medals(p.medals), ...(p.started === true ? { started: true } : {}), ...(typeof p.startDay === "string" ? { startDay: p.startDay } : {}) }]));
     return {
       xp: num(v.xp), quests: num(v.quests), starts: num(v.starts), fixes: num(v.fixes), ships: num(v.ships), sGrades: num(v.sGrades), medals: medals(v.medals),

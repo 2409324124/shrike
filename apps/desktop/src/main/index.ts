@@ -1,5 +1,5 @@
 import { app, BrowserWindow, screen, type WebContents } from "electron";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { color } from "@shrike/design";
 import { stopAllAgents } from "./agent.ts";
@@ -9,6 +9,7 @@ import { automated, headless } from "./headless.ts";
 import { banner } from "./banner.ts";
 import { placeAppWindow } from "./app-view.ts";
 import { isMac } from "./platform.ts";
+import { writeAtomicSync } from "./state-file.ts";
 
 let win: BrowserWindow | undefined;
 let appWin: BrowserWindow | undefined; // the user's app in its own window (detached from the dock)
@@ -86,7 +87,7 @@ function openAppWindow(): void {
     appView.handOff();
     try {
       const bounds = w.getNormalBounds();
-      writeFileSync(appWinFile(), JSON.stringify({ displayId: screen.getDisplayMatching(bounds).id, bounds, fullScreen: w.isFullScreen() }));
+      writeAtomicSync(appWinFile(), JSON.stringify({ displayId: screen.getDisplayMatching(bounds).id, bounds, fullScreen: w.isFullScreen() }));
     } catch {}
   });
   w.on("closed", () => {

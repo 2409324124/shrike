@@ -4,6 +4,7 @@ import { copyFileSync, cpSync, existsSync, lstatSync, mkdirSync, readdirSync, re
 import { dirname, join, relative, resolve } from "node:path";
 import type { Worktree } from "@shrike/schema";
 import { linkDir } from "./platform.ts";
+import { readJsonSync, writeAtomicSync } from "./state-file.ts";
 
 export const NAME_RE = /^[a-z0-9][a-z0-9-]{0,39}$/;
 const STEP = 100; // W2: port offset between worktrees
@@ -41,7 +42,7 @@ const commonDir = async (main: string) => resolve(main, (await git(main, ["rev-p
 
 export async function readMeta(main: string): Promise<Record<string, Meta>> {
   try {
-    const v: unknown = JSON.parse(readFileSync(join(await commonDir(main), "shrike-worktrees.json"), "utf8"));
+    const v = readJsonSync(join(await commonDir(main), "shrike-worktrees.json"));
     return v && typeof v === "object" ? (v as Record<string, Meta>) : {};
   } catch {
     return {};
@@ -49,7 +50,7 @@ export async function readMeta(main: string): Promise<Record<string, Meta>> {
 }
 
 async function writeMeta(main: string, meta: Record<string, Meta>): Promise<void> {
-  writeFileSync(join(await commonDir(main), "shrike-worktrees.json"), JSON.stringify(meta, null, 2));
+  writeAtomicSync(join(await commonDir(main), "shrike-worktrees.json"), JSON.stringify(meta, null, 2));
 }
 
 // Creating and removing read-modify-write the metadata file; a race starts several at once.

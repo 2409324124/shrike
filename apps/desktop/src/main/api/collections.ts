@@ -2,11 +2,12 @@
 // <project>/.shrike/api/<name>/; any other Bruno folder can be linked in place. Secret env values go to the keychain.
 import { createHash } from "node:crypto";
 import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";
-import { cp, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
-import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { cp, mkdir, readFile, rename, rm } from "node:fs/promises";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import type { ApiAuth, ApiCollection, ApiEnvironment, ApiKv, ApiRequest, ApiTreeNode } from "@shrike/schema";
 import { bruToDefaults, bruToEnv, bruToRequest, defaultsToBru, envToBru, parseBru, requestToBru, type BruDefaults } from "./bru.ts";
 import type { Layer } from "./exec.ts";
+import { readJsonSync, writeAtomic } from "../state-file.ts";
 import { defaultsToOc, ocToDefaults, ocToRequest, requestToOc, setOcEnvironment } from "./oc.ts";
 import type { Scope } from "./vars.ts";
 
@@ -49,12 +50,7 @@ export function safeJoin(root: string, rel: string): string {
   return abs;
 }
 
-export async function atomicWrite(abs: string, text: string): Promise<void> {
-  await mkdir(dirname(abs), { recursive: true });
-  const tmp = `${abs}.${process.pid}.${Date.now()}.tmp`;
-  await writeFile(tmp, text, { mode: 0o644 });
-  await rename(tmp, abs);
-}
+export const atomicWrite = (abs: string, text: string): Promise<void> => writeAtomic(abs, text, 0o644);
 
 export const fileName = (name: string) => name.replace(/[\\/:*?"<>|\x00-\x1f]/g, "-").replace(/^\.+/, "").trim().slice(0, 120) || "Untitled";
 const literalSecret = (v: string) => !!v.trim() && !/\{\{[^}]+\}\}/.test(v);
@@ -75,7 +71,7 @@ export function createCollections(o: Opts) {
   const secretsFile = () => join(o.stateDir(), "api-secrets.json");
   const readJson = <T>(f: string, d: T): T => {
     try {
-      return JSON.parse(readFileSync(f, "utf8")) as T;
+      return (readJsonSync(f) as T | undefined) ?? d;
     } catch {
       return d;
     }

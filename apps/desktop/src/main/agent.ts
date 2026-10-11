@@ -34,6 +34,7 @@ import { sdlc } from "./sdlc.ts";
 import { SERVER_OUTPUT_ID } from "./store.ts";
 import { adoptWorktreeFix, createWorktree, listWorktrees, removeWorktree, worktreeAgentTarget } from "./race.ts"; // worktrees: W1 agent runs in a worktree, C6 branches
 import { randomHex } from "./store.ts";
+import { readJson } from "./state-file.ts";
 import * as wt from "./worktrees.ts";
 import { listAll as allSkills, noteSkillStep, skillHost } from "./skills.ts"; // skills: S1–S5
 
@@ -313,7 +314,7 @@ async function ensureLoaded(root: string): Promise<void> {
   if (loaded.has(root)) return;
   loaded.add(root);
   try {
-    const saved = JSON.parse(await readFile(runsFile(root), "utf8")) as { runs?: Omit<RunRec, "root">[] };
+    const saved = ((await readJson(runsFile(root))) ?? {}) as { runs?: Omit<RunRec, "root">[] };
     const fresh = new Map(registry); // runs of this app session go after the saved ones
     registry.clear();
     for (const r of saved.runs ?? []) {

@@ -1,10 +1,10 @@
 // Last 200 sends per project in userData, redacted before they're written.
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { ApiAuth, ApiBody, ApiHistoryEntry, ApiKv, ApiRequest } from "@shrike/schema";
 import { redactCell, redactText } from "@shrike/redact";
 import { atomicWrite } from "./collections.ts";
+import { readJson } from "../state-file.ts";
 
 export const HISTORY_MAX = 200;
 const SENSITIVE = /^(authorization|cookie|set-cookie|proxy-authorization|x-api-key)$/i;
@@ -50,7 +50,7 @@ export function createHistory(o: { stateDir: () => string; projectRoot: () => st
     const f = file();
     if (!f) return [];
     try {
-      const list = JSON.parse(await readFile(f, "utf8")) as unknown;
+      const list = await readJson(f);
       return Array.isArray(list) ? (list as ApiHistoryEntry[]) : [];
     } catch {
       return [];
