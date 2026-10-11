@@ -1,6 +1,6 @@
 # References
 
-Mood references for the Shrike design system. Save the original images here with these names so the catalogue in `../README.md` can point at them. Descriptions are kept in the catalogue, so the system still works without the files.
+Mood references for the Shrike design system. They are third-party images, so they stay on your machine and are never committed (see `.gitignore`). Save them here with these names so the catalogue in `../README.md` can point at them. Descriptions are kept in the catalogue, so the system still works without the files.
 
 | File | ID | Reference |
 |---|---|---|

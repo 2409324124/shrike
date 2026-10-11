@@ -28,3 +28,7 @@ __pycache__/
 .pytest_cache/
 Thumbs.db
 .claude/worktrees/
+
+# Mood references stay local (third-party images); only the catalogue is tracked
+design-system/references/*
+!design-system/references/README.md
