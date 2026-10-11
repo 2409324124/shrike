@@ -1,0 +1,8 @@
+{
+  "appUrl": "http://localhost:4610",
+  "processes": [
+    { "name": "web", "command": "npm run dev:web", "url": "http://localhost:4610" },
+    { "name": "gateway", "command": "npm run dev:gateway", "url": "http://localhost:4611/health" },
+    { "name": "pricing", "command": ".venv/bin/uvicorn main:app --port 4612", "cwd": "pricing", "url": "http://localhost:4612/health" }
+  ]
+}

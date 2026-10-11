@@ -198,7 +198,7 @@ function composeFrom(file: string, root: string): Source[] {
     const inner = DEFAULT_PORT[engine]!;
     const port = Number(new RegExp(String.raw`["']?(?:[\d.]+:)?(\d+):${inner}["']?`).exec(b)?.[1]) || inner;
     const env: Record<string, string> = {};
-    for (const m of b.matchAll(/^\s*-?\s*["']?(\w+)["']?\s*[:=]\s*["']?([^"'\n]*)["']?\s*$/gm)) env[m[1]!] = m[2]!;
+    for (const m of b.matchAll(/^[ \t]*-?[ \t]*["']?(\w+)["']?[ \t]*[:=][ \t]*["']?([^"'\n]*)["']?[ \t]*$/gm)) env[m[1]!] = m[2]!; // one line each: `environment:` must not swallow its first key
     const from = relative(root, file);
     if (engine === "postgres") {
       const user = env.POSTGRES_USER ?? "postgres";

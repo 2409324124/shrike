@@ -65,6 +65,14 @@ def rethrow():
         raise
 
 
+def rate(table, key):
+    return table[key]
+
+
+def silent():
+    raise RuntimeError()
+
+
 def note(x):
     return x
 
@@ -128,6 +136,19 @@ async def handler(scope):
     if which == "errors":
         safe()
         rethrow()
+    if which == "outgoing":
+        got = fetch(f"http://127.0.0.1:{echo.server_port}/hello?x=1")
+        try:
+            fetch(f"http://localhost:{CLOSED}/down")
+        except OSError:
+            pass
+        return got
+    if which == "lookup":
+        try:
+            silent()
+        except RuntimeError:
+            pass
+        return rate({"standard": 0.2}, "reduced")
     if which == "generators":
         out = [total_of(3), first_of(5)]
         async for t in ticks(2):
@@ -149,6 +170,37 @@ async def handler(scope):
         return work(int(which[-1]))
 
 
+# An outside API that answers with the traceparent it got, and a port nobody listens on (down here: lines above are asserted).
+import http.server  # noqa: E402
+import socket  # noqa: E402
+import threading  # noqa: E402
+import urllib.request  # noqa: E402
+
+
+class Echo(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        body = (self.headers.get("traceparent") or "none").encode()
+        self.send_response(200)
+        self.send_header("content-type", "text/plain")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, *a):
+        pass
+
+
+echo = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Echo)
+threading.Thread(target=echo.serve_forever, daemon=True).start()
+with socket.socket() as s:
+    s.bind(("127.0.0.1", 0))
+    CLOSED = s.getsockname()[1]
+
+
+def fetch(url):
+    with urllib.request.urlopen(url, timeout=2) as r:
+        return r.read().decode()
+
+
 app = Starlette(handler)
 
 
@@ -167,7 +219,7 @@ async def call(path):
 
 
 async def main():
-    for path in ["/classes", "/recursion", "/hot", "/errors", "/generators", "/threads", "/values", "/secrets"]:
+    for path in ["/classes", "/recursion", "/hot", "/errors", "/lookup", "/outgoing", "/generators", "/threads", "/values", "/secrets"]:
         await call(path)
     await asyncio.gather(call("/concurrent1"), call("/concurrent2"))
 

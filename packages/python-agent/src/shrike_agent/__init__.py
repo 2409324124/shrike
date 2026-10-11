@@ -14,6 +14,8 @@ FRAMEWORKS = {
     "django.core.handlers.asgi": ("ASGIHandler", "__call__", web.wrap_asgi),
 }
 
+OUTGOING = {"httpx": "patch_httpx", "http.client": "patch_http_client"}
+
 
 def start():
     from .exporter import Exporter
@@ -23,6 +25,9 @@ def start():
     trace.place = {"kind": "service", "id": f"service:{service.lower()}", "name": service.upper()}
     out = Exporter(os.environ["SHRIKE_INGEST_URL"], os.environ.get("SHRIKE_TOKEN"))
     trace.sink = out.push
+    from . import outgoing
+
+    outgoing.configure((out.host, out.port))
 
     def hello(url=None):
         msg = {"type": "hello", "source": "server", "pid": os.getpid(), "at": time.time() * 1000, "place": dict(trace.place)}
@@ -44,10 +49,10 @@ def start():
 
             sqlite.patch(module)
             return
-        if name == "http.client":
+        if name in OUTGOING:
             from . import outgoing
 
-            outgoing.patch(module, (out.host, out.port))
+            getattr(outgoing, OUTGOING[name])(module)
             return
         cls, attr, wrap = FRAMEWORKS[name]
         klass = getattr(module, cls)
@@ -60,12 +65,10 @@ def start():
 
     if not trace.install():
         return
-    names = set(FRAMEWORKS) | {"sqlite3"}
-    if (os.environ.get("SHRIKE_CALLER") or "").strip():
-        names.add("http.client")
-        if "http.client" in sys.modules:
-            trace.quietly(patch, "http.client", sys.modules["http.client"])
-    sys.meta_path.insert(0, _Finder(names, patch))
+    sys.meta_path.insert(0, _Finder(set(FRAMEWORKS) | set(OUTGOING) | {"sqlite3"}, patch))
+    for name in OUTGOING:
+        if name in sys.modules:  # http.client often loads before us
+            trace.quietly(patch, name, sys.modules[name])
 
 
 # Patches a module right after it loads, before whoever imported it gets it.

@@ -26,6 +26,20 @@ test("buildActionView: Add Todo tree, status, duration, framework", () => {
   assert.equal(create.children[1]!.children[0]!.event.kind, "db_query");
 });
 
+test("buildActionView: one query under two OpenTelemetry instrumentations shows once; repeats and node-agent's stay", () => {
+  const root = ev({ kind: "user_action", origin: "browser", name: "Clicked", startMs: 0, durationMs: 50 });
+  const req = ev({ kind: "http_request", name: "POST /api/orders", startMs: 1, durationMs: 40, otel: true });
+  const q = (p: Partial<DebugEvent>) => ev({ kind: "db_query", origin: "db", name: "INSERT", startMs: 0, otel: true, parentId: req.id, db: { system: "postgres", statement: "INSERT INTO orders (item) VALUES (%(item)s)" }, ...p });
+  const orm = q({ name: "INSERT edge", startMs: 5, durationMs: 4 });
+  const driver = q({ name: "INSERT", startMs: 5.5, durationMs: 3 });
+  const nested = q({ name: "INSERT", startMs: 6, durationMs: 1, parentId: orm.id });
+  const again = q({ name: "INSERT edge", startMs: 12, durationMs: 4 });
+  const mine = q({ otel: undefined, startMs: 5.5, durationMs: 3 });
+  const v = buildActionView(root, [root, req, orm, driver, nested, again, mine], true);
+  assert.deepEqual(v.tree[0]!.children.map((n) => n.event.id), [orm.id, mine.id, again.id]);
+  assert.deepEqual(v.tree[0]!.children[0]!.children, []);
+});
+
 test("buildActionView: orphans, cycles and duplicates attach safely", () => {
   const root = ev({ kind: "user_action", origin: "browser", name: "Opened /", trigger: "navigation", startMs: 0, durationMs: 85 });
   const a = ev({ kind: "function", name: "a()", startMs: 5, parentId: "ffffffffffffffff" });

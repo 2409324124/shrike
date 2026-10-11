@@ -36,11 +36,12 @@ test("discover: URLs, split DB_* vars, Prisma sqlite, compose, supabase and fire
     writeFileSync(join(root, ".env"), `DATABASE_URL="postgresql+psycopg://app:pw1@localhost:15434/app"\nREDIS_URL=redis://localhost:16379\nNEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:15421\nNEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=pk-1\nLITE_URL=file:./dev.db\n`);
     writeFileSync(join(root, "backend", ".env"), "DB_HOST=127.0.0.1\nDB_PORT=13307\nDB_USER=root\nDB_PASSWORD=root\nDB_NAME=test\nMONGODB_URL=mongodb://127.0.0.1:17017/node-boilerplate\n");
     writeFileSync(join(root, "prisma", "schema.prisma"), `datasource db {\n  provider = "sqlite"\n  url      = env("LITE_URL")\n}\n`);
-    writeFileSync(join(root, "docker-compose.yml"), `services:\n  db:\n    image: postgres:16\n    ports:\n      - "15999:5432"\n    environment:\n      POSTGRES_PASSWORD: pw2\n      POSTGRES_DB: shop\n`);
+    writeFileSync(join(root, "docker-compose.yml"), `services:\n  db:\n    image: postgres:16\n    ports:\n      - "15999:5432"\n    environment:\n      POSTGRES_USER: shopper\n      POSTGRES_PASSWORD: pw2\n      POSTGRES_DB: shop\n`);
     writeFileSync(join(root, "supabase", "config.toml"), `[api]\nport = 15421\n\n[db]\nport = 15422\n`);
     writeFileSync(join(root, "firebase.json"), JSON.stringify({ emulators: { firestore: { port: 18080 } } }));
     writeFileSync(join(root, ".firebaserc"), JSON.stringify({ projects: { default: "demo-shrike" } }));
     writeFileSync(join(root, "data.sqlite"), "");
+    assert.equal(discover(root).find((s) => s.from === "docker-compose.yml")?.url, "postgresql://shopper:pw2@127.0.0.1:15999/shop", "the first key under environment: counts");
     const found = discover(root).map(({ url, key, ...s }) => ({ ...s, secret: !!(url || key) }));
     const by = (e: string) => found.filter((s) => s.engine === e).map((s) => `${s.host ?? s.file}:${s.port ?? ""}/${s.database ?? ""} ${s.from}`);
     assert.deepEqual(by("postgres"), ["localhost:15434/app .env", "localhost:15422/postgres supabase/config.toml", "localhost:15999/shop docker-compose.yml"]);
@@ -71,6 +72,9 @@ test("pick: a lane's host, port and database choose the source; an expected lane
   assert.equal(pick("data:sqlite:data.db", all)?.source, lite);
   assert.equal(pick("data:sqlite:other.db", all), undefined);
   assert.equal(pick("data:mysql", all), undefined);
+  assert.equal(pick("data:localhost:15433", all)?.source, b, "a place declared by host and port in .shrike/config.json");
+  assert.equal(pick("data:localhost:5432/app", all)?.source, a);
+  assert.equal(pick("data:localhost:9999", all), undefined);
 });
 
 test("errors in plain words, never the connection string", () => {

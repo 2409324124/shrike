@@ -54,7 +54,7 @@ export async function launch(env: Record<string, string> = {}, keep?: string): P
     userData,
     async cleanup() {
       await app.close().catch(() => {});
-      for (const f of ["todo-app", "shop-app", "api-only", "py-app", "py-api-only", "flask-api-only"]) removeRunSkills(join(repo, "fixtures", f));
+      for (const f of ["todo-app", "shop-app", "api-only", "py-app", "py-api-only", "flask-api-only", "polyglot", "py-edge"]) removeRunSkills(join(repo, "fixtures", f));
       if (!keep) rmSync(userData, { recursive: true, force: true });
     },
   };
@@ -211,8 +211,10 @@ export function fixtureCopy(name: string, o: { ports?: Record<number, number>; g
   const src = join(repo, "fixtures", name);
   const dst = join(mkdtempSync(join(tmpdir(), `shrike-e2e-${name}-`)), name);
   cpSync(src, dst, { recursive: true, filter: (f) => !/\/(node_modules|\.data|\.shrike\/(flows|worktrees|skills|commands))(\/|$)/.test(f.slice(src.length)) });
-  mkdirSync(join(dst, "node_modules"));
-  for (const e of readdirSync(join(src, "node_modules"))) if (e !== ".vite") symlinkSync(join(src, "node_modules", e), join(dst, "node_modules", e));
+  if (existsSync(join(src, "node_modules"))) {
+    mkdirSync(join(dst, "node_modules"));
+    for (const e of readdirSync(join(src, "node_modules"))) if (e !== ".vite") symlinkSync(join(src, "node_modules", e), join(dst, "node_modules", e));
+  }
   const cfg = join(dst, ".shrike", "config.json");
   if (o.ports && existsSync(cfg)) {
     let text = readFileSync(cfg, "utf8");

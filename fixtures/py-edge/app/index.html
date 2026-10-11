@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Edge Shop</title>
+  </head>
+  <body>
+    <h1>Edge Shop</h1>
+    <button id="usd">Order a mug in USD</button>
+    <button id="eur">Order a mug in EUR</button>
+    <button id="dash">Load dashboard</button>
+    <p id="out" role="status"></p>
+    <script>
+      const out = document.getElementById("out");
+      async function order(currency) {
+        const res = await fetch("/api/orders", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ item: "mug", cents: 1200, currency }) });
+        out.textContent = res.ok ? `Order #${(await res.json()).id} placed` : "Couldn't place the order";
+      }
+      document.getElementById("usd").onclick = () => order("USD");
+      document.getElementById("eur").onclick = () => order("EUR");
+      document.getElementById("dash").onclick = async () => {
+        const res = await fetch("/api/dashboard");
+        out.textContent = res.ok ? `${(await res.json()).orders} orders so far` : "Couldn't load the dashboard";
+      };
+    </script>
+  </body>
+</html>
