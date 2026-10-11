@@ -200,6 +200,17 @@ export function headOf(l: Pick<LaneDef, "label" | "name" | "detail">): { head: s
   return { head: head!.toUpperCase(), ...(sub && sub.toUpperCase() !== head!.toUpperCase() ? { sub } : {}) };
 }
 
+const SHORT: Record<string, string> = { POSTGRES: "PGSQL", POSTGRESQL: "PGSQL", MONGODB: "MONGO", DYNAMODB: "DYNMO", RABBITMQ: "RMQ" };
+
+/** A lane header's text for `room` px at `ch` px a letter: the name, else a 3 to 5 letter short form, else nothing (the glyph alone). Never cuts a word. */
+export function fitHead(head: string, room: number, ch: number): string {
+  const fits = (t: string) => t.length * ch <= room;
+  if (fits(head)) return head;
+  const words = head.split(" ");
+  const short = SHORT[head] ?? (words.length > 1 ? words[0]! : head.length <= 5 ? head : head[0] + head.slice(1).replace(/[AEIOU\W_]/gi, "").slice(0, 3));
+  return fits(short) ? short : "";
+}
+
 /** Place glyphs: the path form of @shrike/design placeGlyph (12x12, stroke), for lane headers in the DOM and on canvas. */
 export const PLACE_GLYPH = {
   browser: "M3 2l6 4.2-2.6.6L8 10l-1.3.6L5.2 7.4 3 9z",
@@ -307,7 +318,7 @@ function outsidePlace(e: DebugEvent): Place {
 function placeFor(e: DebugEvent, parent: Place | undefined, hasServedChild: boolean, page: Place): Place {
   if (e.kind === "external_call") {
     if (e.place?.kind === "outside" || (!e.place && !hasServedChild)) return e.place ?? outsidePlace(e);
-    return parent?.kind === "service" || parent?.kind === "caller" ? parent : FALLBACK.server; // a call into an instrumented service starts in the caller's lane (T19); a cron script's call in its CRON lane
+    return parent?.kind === "service" || parent?.kind === "queue" || parent?.kind === "caller" ? parent : FALLBACK.server; // a call into an instrumented service starts in the caller's lane (T19); a queue's delivery in its QUEUE lane; a cron script's call in its CRON lane
   }
   if (e.place) return e.place;
   if (e.kind === "db_query") return FALLBACK.database;
@@ -822,10 +833,13 @@ export function lastStation(trip: Trip): number {
 
 // ---------------------------------------------------------------- layout
 
-/** Vertical gap before a station. Even spacing, or proportional to time spent (time view). */
+const TIME_ROW = 44; // time view: a two-line label (31px) and air, the least a row gets
+const BELOW_ROOM = 16; // time view: a label written under its station needs this much more before the next row
+
+/** Vertical gap before a station. Even spacing, or by time spent (time view): never under a label's height, long spans compressed (√, capped). */
 export function rowGap(ms: number, timeMode: boolean): number {
   if (!timeMode) return ROW;
-  return Math.max(34, Math.min(260, 34 + Math.sqrt(Math.max(0, ms)) * 34));
+  return Math.max(TIME_ROW, Math.min(260, 34 + Math.sqrt(Math.max(0, ms)) * 34));
 }
 
 /** The trip's own lanes, all full width: the default when no session lane layout is given (clips, tests). */
@@ -850,16 +864,17 @@ export function layoutTrip(trip: Trip, width: number, timeMode = false, lanes: L
   const stacked = new Set<Station>();
   const ys: number[] = [];
   // A label written under its station (TripView `below`: the thread arrives from the right) shows only a red chip; leave room for it.
-  const chipBelow = (i: number) => {
+  const below = (i: number) => {
     const s = trip.stations[i];
     const prev = trip.stations[i - 1];
-    return !timeMode && !!s?.chip && !!s.chipError && !!prev && !s.fork && !prev.fork && xOf(prev) > xOf(s);
+    return !!s && !!prev && !s.fork && !prev.fork && xOf(prev) > xOf(s);
   };
+  const chipBelow = (i: number) => (timeMode ? below(i) : below(i) && !!trip.stations[i]!.chip && !!trip.stations[i]!.chipError);
   const gap = (s: Station, i: number) => (i === 0 ? 46 : broke ? Math.max(62, rowGap(s.ms, timeMode)) : rowGap(s.ms, timeMode)); // rows after the snap keep room for two-line labels
   for (let i = 0; i < trip.stations.length; ) {
     const s = trip.stations[i]!;
     if (!s.fork) {
-      y += gap(s, i) + (chipBelow(i - 1) ? CHIP_ROOM : 0);
+      y += gap(s, i) + (chipBelow(i - 1) ? (timeMode ? BELOW_ROOM : CHIP_ROOM) : 0);
       ys[i] = y;
       broke ||= !!s.snap;
       i++;

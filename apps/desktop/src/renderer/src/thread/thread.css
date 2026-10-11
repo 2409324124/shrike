@@ -98,7 +98,7 @@
 .th-lab.hot:not(.left):not(.below) { transform: translateY(-19px); } /* its name sits level with the station like a left label, so a wrapped chip grows down into its own row, not up into the step before */
 .th-lab .x { color: var(--slow); }
 .th-st.post:not(.focus), .th-lab.post { opacity: .45; } /* the thread broke before these: error handling, not the path */
-.th-trip.time .th-chip { display: none; } /* rows get as close as 34px in time view */
+.th-trip.time .th-chip { display: none; } /* rows get as close as 44px in time view: room for the two-line label, not a chip */
 .th-lab.express { color: var(--ink-dim); overflow: hidden; text-overflow: ellipsis; }
 .th-chip {
   display: inline-block; margin-top: 3px; padding: 2px 7px; border-radius: 5px; font: 500 11px var(--mono); white-space: pre;
@@ -257,7 +257,8 @@
 .th-lanehead span, .th-lanehead button.group { transition: color .3s, left .5s var(--ease), opacity .2s; }
 .th-lab, .th-coil { transition: opacity .3s, top .5s var(--ease), left .5s var(--ease); }
 .th-shot { transition: top .5s var(--ease), left .5s var(--ease); }
-.th-lanehead.many span { letter-spacing: .14em; }
+.th-lanehead.many span { letter-spacing: .08em; } /* Thread.tsx head() fits names to this tracking */
+.th-lanehead.many span:not(.sliver) b .th-glyph { margin-right: 4px; }
 /* Sliver labels run below the 46px band, so with slivers the band is solid down to TITLE_SLIM (Thread.tsx) and a label (10px down, at most 78 tall) ends inside it. */
 .th-lanehead.slim { height: 96px; background: linear-gradient(180deg, var(--void) 0 88px, transparent); }
 .th-lanehead span.sliver { max-height: 78px; overflow: visible clip; color: color-mix(in srgb, var(--ink-faint) 80%, var(--ink-dim)); background: color-mix(in srgb, var(--void) 85%, transparent); padding: 2px 0; border-radius: 4px; }

@@ -256,7 +256,7 @@ Code: `apps/desktop/src/renderer/src/files/` (`files.css`, prefix `.fm`; `.fv` i
 | FV4 | **Depth fiber** | Hairline curve from the hot tree row's edge to the live line, `cyan` (`fail` at the failure), drawn after the pan | Built |
 | FV5 | **Lane gate** | Vertical hairline between cards where the story crosses lanes, a caps label on `abyss` | Built |
 | FV6 | **Place card** | 270px, `panelBg`, 1.5px dashed `glassEdge`, place glyph and name, the statement and values, a `fail` chip when it refused | Built |
-| FV7 | **Thread between cards** | Orthogonal path from the line the story left to the line it reached, violet to cyan spectrum, `fail` when it carried the failure; returns run under the strip, dashed. One white-hot comet while it draws | Built |
+| FV7 | **Thread between cards** | Orthogonal path from the line the story left to the line it reached, violet to cyan spectrum, `fail` when it carried the failure; returns run under the strip, dashed. Drawn behind the cards, so no thread crosses code; threads that don't touch the focused card fade to 14%. One white-hot comet while it draws | Built |
 | FV8 | **Breadcrumb and call stack** | Mono path with `›` separators, the function and line in `cyan` (`fail` where it broke); a row of frame chips, the current one edged, frames that returned struck through | Built |
 | FV9 | **Folder error propagation** | Parent folder names in `failInk` with a × when a file inside failed | Built |
 | FV14 | **Step scrubber** | 58px rail: ticks per step (square for places, a diamond where it snapped), a spectrum fill, a 20px knob, file segment labels; drag both ways | Built |
@@ -265,7 +265,7 @@ Code: `apps/desktop/src/renderer/src/files/` (`files.css`, prefix `.fm`; `.fv` i
 
 ### Discovered lanes (D1–D13)
 
-A lane is a place where code runs or data lives. Order is fixed by kind (`lane.order`, D9). Each lane header is a 11px kind glyph (`placeGlyph`) + caps name (10px, 0.24em) + a 9px `inkFaint` sub-label (the target: `sessions`, `events.db`, `test double`).
+A lane is a place where code runs or data lives. Order is fixed by kind (`lane.order`, D9). Each lane header is a 11px kind glyph (`placeGlyph`) + caps name (10px, 0.24em) + a 9px `inkFaint` sub-label (the target: `sessions`, `events.db`, `test double`). With more than six lanes the name tracks at 0.08em; when it still doesn't fit, it becomes a 3 to 5 letter short form (`PGSQL`, `STRP`), then the glyph alone, with the full name in the tooltip. A word is never cut.
 
 | ID | Lane kind | Anatomy | Status |
 |---|---|---|---|

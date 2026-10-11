@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { ActionView, DebugEvent, TimelineNode } from "@shrike/schema";
-import { buildTrip, layoutTrip, glyphPath, lanesFor, laneColumns, touchedBy, LANE_X, SLIVER } from "./thread-layout.ts";
+import { buildTrip, layoutTrip, glyphPath, lanesFor, laneColumns, touchedBy, fitHead, LANE_X, SLIVER } from "./thread-layout.ts";
 
 let n = 0;
 const ev = (p: Partial<DebugEvent>): DebugEvent => ({ id: (++n).toString(16).padStart(16, "0"), traceId: "t".repeat(32), origin: "server", kind: "function", name: "f()", startMs: n, status: "ok", ...p });
@@ -207,6 +207,19 @@ test("backend-only callers: curl 409 from sqlite, cron with a slow outside call 
   assert.ok(g.stations.find((s) => s.kind === "external_call")!.x > g.stations.find((s) => s.kind === "db_query")!.x, "outside sits right of data");
 });
 
+test("a queue's delivery to a subscriber starts in the QUEUE lane, not a SERVER lane", () => {
+  const Q = { id: "queue:localhost:4408", kind: "queue" as const, name: "QUEUE · order-events", detail: "localhost:4408" };
+  const N = { id: "service:notifications", kind: "service" as const, name: "NOTIFICATIONS", detail: "localhost:4407" };
+  const root = ev({ kind: "user_action", origin: "browser", name: 'Clicked "Place order"', trigger: "click" });
+  const qReq = ev({ kind: "http_request", name: "POST /topics/order.placed/messages", http: { method: "POST", url: "/topics/order.placed/messages", status: 202 }, place: Q });
+  const deliver = ev({ name: "deliver()", place: Q, source: src("services/queue/src/broker/deliver.ts", 9) });
+  const call = ev({ kind: "external_call", name: "POST", http: { method: "POST", url: "http://localhost:4407/events/order-placed", status: 200 }, place: N, durationMs: 5 });
+  const nReq = ev({ kind: "http_request", name: "POST /events/order-placed", http: { method: "POST", url: "/events/order-placed", status: 200 }, place: N });
+  const trip = buildTrip(view(root, [node(qReq, [node(deliver, [node(call, [node(nReq)])])])], "ok"));
+  assert.equal(trip.stations.find((s) => s.kind === "external_call")!.lane, Q.id);
+  assert.deepEqual([...new Set(trip.stations.map((s) => s.lane))], [Q.id, N.id]);
+});
+
 test("accordion: untouched lanes are slivers, more than 6 touched lanes of a kind fold into a group", () => {
   const pay = buildTrip(payNow(0));
   const curl = buildTrip(curlSignup(10));
@@ -385,4 +398,27 @@ test("nextjs-supabase login: stacked side branches (React's async components) ne
     const a = side[k - 1]!, b = side[k]!;
     assert.ok(b.y - tall(b) / 2 >= a.y + tall(a) / 2, `"${a.label}" (y ${a.y}) and "${b.label}" (y ${b.y}) overlap`);
   }
+});
+
+test("time view: back-to-back 0ms rows clear a two-line label, a label written below gets more, time still reads", () => {
+  const root = ev({ kind: "user_action", origin: "browser", name: 'Clicked "Place order"', trigger: "click" });
+  const fn = (name: string, ms: number, kids: TimelineNode[] = []) => node(ev({ name, durationMs: ms, source: src("cart/pricing.ts", 9) }), kids);
+  const q = node(ev({ kind: "db_query", origin: "db", name: "SELECT", db: { system: "postgresql", statement: "SELECT 1" }, durationMs: 0 }));
+  const req = ev({ kind: "http_request", name: "POST /orders", http: { method: "POST", url: "/orders", status: 200 } });
+  const trip = buildTrip(view(root, [node(req, [fn("load()", 0, [q]), fn("priceCart()", 0), fn("lineTotal()", 0), fn("slow()", 400)])], "ok"));
+  const g = layoutTrip(trip, 1000, true);
+  const y = (l: string) => g.stations.find((s) => s.label.startsWith(l))!.y;
+  for (let i = 1; i < g.stations.length; i++) assert.ok(g.stations[i]!.y - g.stations[i - 1]!.y >= 44, `row ${i} clears a two-line label`);
+  assert.ok(y("lineTotal") - y("priceCart") >= 60, "priceCart's label sits under it (the thread came back from the database): the next row clears it");
+  assert.ok(y("slow") - y("lineTotal") > 2 * (y("lineTotal") - y("priceCart")), "400ms still reads longer than 0ms");
+});
+
+test("lane heads fit: the name, else a short form, else the glyph; never a cut word", () => {
+  assert.equal(fitHead("QUEUE", 36, 6.8), "QUEUE");
+  assert.equal(fitHead("POSTGRES", 36, 6.8), "PGSQL");
+  assert.equal(fitHead("STRIPE", 36, 6.8), "STRP");
+  assert.equal(fitHead("SQLITE", 36, 6.8), "SQLT");
+  assert.equal(fitHead("POSTGRES", 80, 6.8), "POSTGRES");
+  assert.equal(fitHead("7 services", 30, 8), "7");
+  assert.equal(fitHead("NOTIFICATIONS", 10, 6.8), "");
 });

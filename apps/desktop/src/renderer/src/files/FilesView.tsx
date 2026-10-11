@@ -435,7 +435,7 @@ export function FilesView({ view, trip }: { view: ActionView; trip: Trip }) {
                 </radialGradient>
               </defs>
               {all.map((l: Link, i) => (
-                <path key={i} className={`fm-link${l.ret ? " ret" : ""}`} fill="none" stroke={l.err || l.ret ? "var(--fail)" : "url(#fm-spec)"} strokeWidth={l.ret ? 1.8 : 2.4} strokeLinejoin="round" strokeLinecap="round" />
+                <path key={i} className={`fm-link${l.ret ? " ret" : ""}${l.from.key !== fk && l.to.key !== fk ? " far" : ""}`} fill="none" stroke={l.err || l.ret ? "var(--fail)" : "url(#fm-spec)"} strokeWidth={l.ret ? 1.8 : 2.4} strokeLinejoin="round" strokeLinecap="round" />
               ))}
               <circle ref={comet} r="9" fill="url(#fm-comet)" opacity="0" />
             </svg>
@@ -747,6 +747,21 @@ function Rail({ steps, k, timeMode, onGo, onDrag }: { steps: FStep[]; k: number;
     segs.push({ a: i, b: j, label: key.startsWith("place:") ? (steps[i]!.place?.name.split(" · ")[0] ?? "") : base(key) });
     i = j + 1;
   }
+  // A long trip has more segments than room: a label shows only where it fits beside its neighbours (the current one always does).
+  const span = (g: (typeof segs)[number]) => {
+    const mid = (xOf(g.a) + xOf(g.b)) / 2;
+    const w = g.label.length * 6.6 + 10;
+    return [mid - w / 2, mid + w / 2] as const;
+  };
+  const cur = segs.find((g) => k >= g.a && k <= g.b);
+  let right = -Infinity;
+  const shown = new Set(cur ? [cur] : []);
+  for (const g of segs) {
+    const [l, r] = span(g);
+    if (g === cur || l < right || (cur && l < span(cur)[1] && r > span(cur)[0])) continue;
+    shown.add(g);
+    right = r;
+  }
   return (
     <div
       className="fm-rail"
@@ -767,7 +782,7 @@ function Rail({ steps, k, timeMode, onGo, onDrag }: { steps: FStep[]; k: number;
         {steps.map((s, i) => (
           <div key={i} className={`tk${i <= k ? " done" : ""}${i <= k && s.err && s.snap ? " err" : ""}${s.place ? " pl" : ""}`} style={{ left: xOf(i) }} title={`${i + 1}. ${s.label}${s.file ? ` · ${base(s.file)}:${s.line}` : ""}`} />
         ))}
-        {segs.map((g) => (
+        {segs.filter((g) => shown.has(g)).map((g) => (
           <div key={g.a} className={`seglbl${k >= g.a && k <= g.b ? " cur" : ""}${k >= g.a && k <= g.b && steps[k]?.err ? " err" : ""}`} style={{ left: (xOf(g.a) + xOf(g.b)) / 2 }}>
             {g.label}
           </div>

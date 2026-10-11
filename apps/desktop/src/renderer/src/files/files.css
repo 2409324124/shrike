@@ -22,12 +22,14 @@ html[data-glow="off"] .fm { --glow-c: 0 2px 8px color-mix(in srgb, var(--cyan) 2
 .fm-clip, .fm-ovclip { position: absolute; inset: 0; pointer-events: none; -webkit-mask-image: linear-gradient(90deg, transparent 0, transparent var(--mask-l), #000 calc(var(--mask-l) + 70px)); mask-image: linear-gradient(90deg, transparent 0, transparent var(--mask-l), #000 calc(var(--mask-l) + 70px)); }
 .fm-clip > * { pointer-events: auto; }
 .fm-clip { z-index: 2; }
-.fm-ovclip { z-index: 4; transition: opacity .3s var(--ease); }
+.fm-ovclip { z-index: 1; transition: opacity .3s var(--ease); } /* threads run behind the cards: they never cross a card's code */
 .overview .fm-clip, .overview .fm-ovclip { -webkit-mask-image: none; mask-image: none; }
 .fm-ov { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 .fm-ov.top { z-index: 5; }
-.fm-link { filter: drop-shadow(0 0 3px color-mix(in srgb, var(--cyan) 60%, transparent)); }
+.fm-link { filter: drop-shadow(0 0 3px color-mix(in srgb, var(--cyan) 60%, transparent)); transition: opacity .3s var(--ease); }
 .fm-link.ret, html[data-glow="off"] .fm-link { filter: none; }
+.fm-link.far { opacity: .14; }
+.overview .fm-link.far { opacity: 1; }
 
 /* FV1 REPO: the editor sidebar, pinned left */
 .fm-tree { width: 248px; border: 1px solid var(--hair); border-radius: 14px; background: var(--panel-bg); box-shadow: var(--drop); overflow: hidden; position: relative; }

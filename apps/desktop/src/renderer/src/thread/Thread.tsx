@@ -6,7 +6,7 @@ import { cssColor as color, font, motion } from "@shrike/design";
 import { useActions } from "../stores/actions.ts";
 import { useProject } from "../stores/project.ts";
 import { firstFailure, tripOrder, useThread } from "../stores/thread.ts";
-import { knownPlaces, buildTrip, FALLBACK, glyphPath, laneColumns, lanesFor, layoutTrip, touchedBy, type LaneCol, type LaneDef, type LaneLayout, type PlacedStation, type Trip, type TripGeometry } from "../lib/thread-layout.ts";
+import { knownPlaces, buildTrip, FALLBACK, fitHead, glyphPath, laneColumns, lanesFor, layoutTrip, touchedBy, type LaneCol, type LaneDef, type LaneLayout, type PlacedStation, type Trip, type TripGeometry } from "../lib/thread-layout.ts";
 import { isGuess, offsets, plannedLanes, visibleRange } from "./logic.ts";
 import { reducedMotion } from "./motion.ts";
 import { TripView, type Play } from "./TripView.tsx";
@@ -107,6 +107,9 @@ export function Thread() {
   const laneDefs = useMemo(() => plannedLanes(list.length ? lanesFor(list, expected ?? []) : expected?.length ? lanesFor([], [FALLBACK.screen, ...expected]) : BLANK, expected, guessed), [list, expected, guessed]);
   const touchKey = (fTrip ?? list[list.length - 1]) ? [...touchedBy((fTrip ?? list[list.length - 1])!)].join("|") : laneDefs.map((l) => l.id).join("|");
   const lanes = useMemo(() => laneColumns(laneDefs, new Set(touchKey.split("|")), width, openGroups), [laneDefs, touchKey, width, openGroups]);
+  const many = lanes.cols.length > 6;
+  const head = (c: LaneCol) => fitHead(c.head, c.w - 4 - (many ? 15 : 17), many ? 6.8 : 8.4); // 10px mono caps at .08em (many) or .24em, after the glyph
+  const sub = (c: LaneCol) => (!c.sub || c.sub.length * 6.4 <= c.w - 8 ? c.sub : c.sub.split(/[\s.-]/)[0]); // too long: its first word (10px at .04em), the rest is in the tooltip
   const inspecting = useInspector((s) => s.placeId); // I1: lane headers open the place in the dock
   const raceOpen = useWorktrees((s) => !!s.open);
   const toast = useUi((s) => s.toasts.length > 0 || (!!s.newTrip && !raceOpen)); // a toast takes the header band (Toasts.tsx)
@@ -231,21 +234,21 @@ export function Thread() {
             <div key={c.key} className={`th-lane${c.mode === "sliver" ? " dim" : ""}${c.ghost ? " ghost" : ""}`} style={{ left: c.x }} />
           ))}
         </div>
-        <div className={`th-lanehead${lanes.cols.length > 6 ? " many" : ""}${lanes.cols.some((c) => c.mode === "sliver") ? " slim" : ""}${toast ? " quiet" : ""}`}>
+        <div className={`th-lanehead${many ? " many" : ""}${lanes.cols.some((c) => c.mode === "sliver") ? " slim" : ""}${toast ? " quiet" : ""}`}>
           {lanes.cols.map((c) =>
             c.mode === "group" ? (
-              <button key={c.key} className="hot group" style={{ left: c.x, maxWidth: c.w - 8 }} title={c.title} onClick={() => useThread.getState().toggleGroup(c.kind)}>
+              <button key={c.key} className="hot group" style={{ left: c.x, maxWidth: c.w - 4 }} title={`${c.label}. ${c.title}`} aria-label={`${c.label}. ${c.title}`} onClick={() => useThread.getState().toggleGroup(c.kind)}>
                 <KindGlyph d={c.glyph} />
-                {c.label} ▸
+                {fitHead(c.label, c.w - 52, 8).replace(/.+/, "$& ▸") || c.ids.length}
               </button>
             ) : (
-              <span key={c.key} className={`${c.mode === "sliver" ? "sliver" : "hot"}${c.ghost ? " ghost" : ""}${inspecting === c.key ? " on" : ""}`} style={{ left: c.x, ...(c.mode === "full" ? { maxWidth: c.w - 8 } : {}) }} title={isGuess(c, guessed) ? `${c.title}. A guess from package.json until Claude plans the start` : c.title}>
-                <button type="button" className="th-lanebtn" aria-pressed={inspecting === c.key} onClick={() => useInspector.getState().toggle(c.key)}>
+              <span key={c.key} className={`${c.mode === "sliver" ? "sliver" : "hot"}${c.ghost ? " ghost" : ""}${inspecting === c.key ? " on" : ""}`} style={{ left: c.x, ...(c.mode === "full" ? { maxWidth: c.w - 4 } : {}) }} title={isGuess(c, guessed) ? `${c.title}. A guess from package.json until Claude plans the start` : c.title}>
+                <button type="button" className="th-lanebtn" aria-pressed={inspecting === c.key} aria-label={c.mode === "full" && head(c) !== c.head ? c.title : undefined} onClick={() => useInspector.getState().toggle(c.key)}>
                   <b>
                     <KindGlyph d={c.glyph} />
-                    {c.mode === "sliver" ? sliverText(c, lanes.cols) : c.head}
+                    {c.mode === "sliver" ? sliverText(c, lanes.cols) : head(c)}
                   </b>
-                  {c.mode === "full" && (c.sub || isGuess(c, guessed)) && <small>{[c.sub, isGuess(c, guessed) && "guess"].filter(Boolean).join(" · ")}</small>}
+                  {c.mode === "full" && (c.sub || isGuess(c, guessed)) && <small>{[sub(c), isGuess(c, guessed) && "guess"].filter(Boolean).join(" · ")}</small>}
                 </button>
                 {openGroups.has(c.kind) && c.mode === "full" && lanes.cols.find((o) => o.kind === c.kind) === c && (
                   <i role="button" tabIndex={0} aria-label={`Fold the ${c.kind} lanes`} onClick={() => useThread.getState().toggleGroup(c.kind)} onKeyDown={(e) => e.key === "Enter" && useThread.getState().toggleGroup(c.kind)}>
