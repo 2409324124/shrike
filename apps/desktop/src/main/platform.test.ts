@@ -4,7 +4,7 @@ import { existsSync, lstatSync, mkdirSync, mkdtempSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { defaultShell, isWin, killTree, linkDir, loginPathNeeded, shellArgs } from "./platform.ts";
+import { defaultShell, isWin, killTree, linkDir, loginPathNeeded, mergePath, shellArgs, userPath } from "./platform.ts";
 
 test("shell: $SHELL or /bin/sh on macOS and Linux, cmd.exe on Windows", () => {
   assert.deepEqual(shellArgs("npm run dev", "linux", {}), ["/bin/sh", ["-lc", "npm run dev"]]);
@@ -39,4 +39,14 @@ test("linkDir: links a folder, copies when linking fails", () => {
   writeFileSync(join(tmp, "c", "taken"), ""); // a non-empty folder at `to` stops the link, not the copy
   linkDir(join(tmp, "a"), join(tmp, "c"));
   assert.ok(existsSync(join(tmp, "c", "x.txt")));
+});
+
+test("user PATH: what ~/.zshrc adds (nvm, fnm, asdf) counts, as when Shrike is opened from Finder", { skip: !existsSync("/bin/zsh") && "needs zsh" }, async () => {
+  const home = mkdtempSync(join(tmpdir(), "shrike-home-"));
+  writeFileSync(join(home, ".zshrc"), 'echo "welcome"\nexport PATH="$HOME/.nvm/versions/node/v22.12.0/bin:$PATH"\n');
+  const env = { HOME: home, SHELL: "/bin/zsh", PATH: "/usr/bin:/bin" };
+  const p = await userPath("darwin", env);
+  assert.ok(p?.split(":").includes(join(home, ".nvm/versions/node/v22.12.0/bin")), p);
+  assert.equal(await userPath("win32", env), undefined);
+  assert.equal(mergePath("/a:/b", "/b:/c", ":"), "/a:/b:/c");
 });
