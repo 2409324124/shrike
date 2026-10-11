@@ -13,6 +13,7 @@ from .trace import cur, quietly
 
 BODY_LIMIT = 64 * 1024
 LOOPBACK = {"127.0.0.1", "::1", "0.0.0.0", "::", "localhost"}
+READABLE = re.compile(r"json|text/(?!event-stream)|xml|x-www-form-urlencoded", re.I)
 KINDS = {"browser", "curl", "postman", "explorer", "agent", "cron", "test", "service", "other"}
 caller = None  # set by configure() in a SHRIKE_CALLER process
 ingest = None  # (host, port) of Shrike's ingest: the exporter's own posts are never calls

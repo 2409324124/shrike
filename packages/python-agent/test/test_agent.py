@@ -216,6 +216,13 @@ class Safety(unittest.TestCase):
 
 
 class Files(unittest.TestCase):
+    def test_outgoing_bodies_are_kept_only_when_readable(self):
+        sys.path.insert(0, SRC)
+        from shrike_agent import outgoing
+
+        self.assertEqual(outgoing._text(b'{"EUR": "0.92"}', "application/json"), '{"EUR": "0.92"}')
+        self.assertIsNone(outgoing._text(b"\x89PNG", "image/png"))
+
     def test_a_virtualenv_in_a_subfolder_is_not_project_code(self):
         sys.path.insert(0, SRC)
         from shrike_agent import trace
