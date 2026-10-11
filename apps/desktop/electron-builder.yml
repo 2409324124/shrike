@@ -32,3 +32,22 @@ mac:
     NSMicrophoneUsageDescription: Shrike listens while you hold Option Space or turn on hands-free, so you can drive it by voice. Audio stays on this Mac.
 dmg:
   artifactName: Shrike-${version}-arm64.${ext}
+# Linux (scripts/release/build-linux.sh): no voice, no signing. node-llama-cpp's Linux CPU build comes from npm; the planner turns itself off if it can't load.
+linux:
+  target:
+    - { target: AppImage, arch: [x64, arm64] }
+    - { target: deb, arch: [x64, arm64] }
+  category: Development
+  icon: resources/icon.png
+  maintainer: Sumant Tirkey <st72365@gmail.com>
+  synopsis: The Agentic Debugging Environment
+appImage:
+  artifactName: Shrike-${version}-${arch}.${ext}
+deb:
+  artifactName: Shrike-${version}-${arch}.${ext}
+# Windows: not built or tested yet (docs/14-compatibility.md). Unsigned NSIS installer.
+win:
+  target: [{ target: nsis, arch: [x64] }]
+  icon: resources/icon.png
+nsis:
+  artifactName: Shrike-${version}-x64-setup.${ext}

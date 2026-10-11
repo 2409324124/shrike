@@ -1,9 +1,10 @@
-import { spawn, type ChildProcess } from "node:child_process";
+import type { ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
 import { delimiter, isAbsolute, join, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { ProcessSpec, ProjectInfo, RunStatus } from "@shrike/schema";
 import { readEnv } from "@shrike/scanner";
+import { killTree, spawnShell } from "./platform.ts";
 
 const MAX_LINES = 2000;
 const READY_TIMEOUT_MS = 45_000;
@@ -210,7 +211,6 @@ export class Runner {
     delete base.ELECTRON_RUN_AS_NODE;
     const ours = `--import=${pathToFileURL(env.nodeAgentRegister).href} --enable-source-maps`;
     Object.assign(base, { SHRIKE_INGEST_URL: env.ingestUrl, SHRIKE_TOKEN: env.token, SHRIKE_PROJECT_ROOT: project.root, FORCE_COLOR: "1", ...NO_TTY_ENV, ...portEnv(project, env.serverUrl, off) });
-    const shell = process.env.SHELL || "/bin/zsh";
 
     for (const spec of specs) {
       // ponytail: a process whose URL is declared "outside" (a test double for a real API) runs without the recorder, so its lane stays outside.
@@ -228,7 +228,7 @@ export class Runner {
       if (rel.startsWith("..") || isAbsolute(rel)) return this.fail(`The "${spec.name}" process folder is outside the project: ${spec.cwd}`);
       let child: ChildProcess;
       try {
-        child = spawn(shell, ["-lc", spec.command], { cwd, env: childEnv, detached: true, stdio: ["ignore", "pipe", "pipe"] });
+        child = spawnShell(spec.command, { cwd, env: childEnv, detached: true, stdio: ["ignore", "pipe", "pipe"] });
       } catch (err) {
         return this.fail(`Couldn't start "${spec.command}": ${(err as Error).message}`);
       }
@@ -394,7 +394,7 @@ export class Runner {
       addOtelEnv(childEnv, spec.name, env.ingestUrl, env.token);
       addPythonAgent(childEnv, env.pythonAgent);
     }
-    const child = spawn(process.env.SHELL || "/bin/zsh", ["-lc", spec.command], { cwd, env: childEnv, detached: true, stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawnShell(spec.command, { cwd, env: childEnv, detached: true, stdio: ["ignore", "pipe", "pipe"] });
     let done!: () => void;
     const p: Proc = { managed: true, spec, cwd, root: project.root, child, state: "starting", startedAt: Date.now(), url: spec.url, lines: [], partial: "", atLineStart: true, exited: new Promise((r) => (done = r)) };
     this.procs.push(p);
@@ -434,11 +434,11 @@ export class Runner {
     if (!p?.child.pid) return false;
     const pid = p.child.pid;
     p.stopRequested = true;
-    killGroup(pid, "SIGTERM");
-    const timer = setTimeout(() => killGroup(pid, "SIGKILL"), 3000);
+    killTree(pid, "SIGTERM");
+    const timer = setTimeout(() => killTree(pid, "SIGKILL"), 3000);
     await p.exited;
     clearTimeout(timer);
-    killGroup(pid, "SIGKILL");
+    killTree(pid, "SIGKILL");
     p.state = "stopped";
     this.refresh();
     return true;
@@ -475,12 +475,12 @@ export class Runner {
       return this.status;
     }
     this.stopping = true;
-    for (const p of procs) if (p.child.pid) killGroup(p.child.pid, "SIGTERM");
-    const timer = setTimeout(() => procs.forEach((p) => p.child.pid && killGroup(p.child.pid, "SIGKILL")), 3000);
+    for (const p of procs) if (p.child.pid) killTree(p.child.pid, "SIGTERM");
+    const timer = setTimeout(() => procs.forEach((p) => p.child.pid && killTree(p.child.pid, "SIGKILL")), 3000);
     await Promise.all(procs.map((p) => p.exited));
     clearTimeout(timer);
     // Children that ignored SIGTERM (e.g. vite under `&`) may outlive the shell.
-    for (const p of procs) if (p.child.pid) killGroup(p.child.pid, "SIGKILL");
+    for (const p of procs) if (p.child.pid) killTree(p.child.pid, "SIGKILL");
     if (keepError && this.status.state === "error") this.refresh();
     else if (this.status.state !== "stopped") this.set({ state: "stopped" });
     return this.status;
@@ -488,7 +488,7 @@ export class Runner {
 
   // Synchronous last resort for process exit.
   killNow(): void {
-    for (const p of this.procs) if (p.child.pid) killGroup(p.child.pid, "SIGKILL");
+    for (const p of this.procs) if (p.child.pid) killTree(p.child.pid, "SIGKILL");
   }
 }
 
@@ -507,11 +507,6 @@ export function lastProblem(lines: string[]): string | undefined {
     .findLast((l) => !/^at |^(throw|await|return|const|let|var)\b|[;{]$/.test(l) && /\b(error|could not|couldn't|cannot|can't|failed|refused|EADDRINUSE)\b/i.test(l) && l.replace(/^\w*(error|exception):?/i, "").trim().length > 8);
 }
 
-function killGroup(pid: number, signal: NodeJS.Signals): void {
-  try {
-    process.kill(-pid, signal);
-  } catch {}
-}
 
 export async function responds(url: string): Promise<boolean> {
   try {

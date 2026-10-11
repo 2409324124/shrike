@@ -6,6 +6,7 @@ import { useUi } from "../stores/ui.ts";
 import { cx, IconButton } from "../components/ui.tsx";
 import { Toasts } from "../components/Toasts.tsx";
 import { PointLayer } from "../hud/AppDock.tsx";
+import { isMac } from "../lib/platform.ts";
 
 const PAGE_CANVAS = { colorScheme: "light", background: "Canvas" } as const;
 
@@ -48,7 +49,7 @@ export function AppWindow() {
 
   return (
     <div className="app-bg flex h-full w-full flex-col">
-      <header className="drag group flex h-8 shrink-0 items-center gap-2 border-b border-hair pr-1.5 pl-[76px]">
+      <header className={cx("drag group flex h-8 shrink-0 items-center gap-2 border-b border-hair", isMac ? "pr-1.5 pl-[76px]" : "pr-[calc(100%-env(titlebar-area-width,100%)+6px)] pl-3")}>
         <span className="lbl shrink-0">Your app</span>
         {running && <span className="lbl selectable no-drag min-w-0 truncate" style={{ textTransform: "none" }}>{url}</span>}
         <span className="flex-1" />

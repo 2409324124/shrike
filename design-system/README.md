@@ -333,7 +333,7 @@ Code: `renderer/src/appwindow/`, `hud/AppDock.tsx`, `main/index.ts` (the window)
 
 | ID | Element | Anatomy | Status |
 |---|---|---|---|
-| AW1 | **App window** | Its own native window (`index.html#app-window`): a 32px `border-hair` header on `app-bg` (traffic lights inset, caps `YOUR APP`, the URL in mono normal case, ⌖ point, reload, `hud-btn` **Dock back** with lucide `PanelLeftClose`), the webview below. Opens on the display, bounds and full screen state it closed with (`userData/app-window.json`); a display that is gone falls back to centred on the primary. Closing it docks the app back | Built |
+| AW1 | **App window** | Its own native window (`index.html#app-window`): a 32px `border-hair` header on `app-bg` (traffic lights inset on macOS; the system window buttons over its right end on Windows and Linux, caps `YOUR APP`, the URL in mono normal case, ⌖ point, reload, `hud-btn` **Dock back** with lucide `PanelLeftClose`), the webview below. Opens on the display, bounds and full screen state it closed with (`userData/app-window.json`); a display that is gone falls back to centred on the primary. Closing it docks the app back | Built |
 | AW2 | **Pop out button** | lucide `SquareArrowOutUpRight` (11px) at the end of the app dock bar, shown on dock hover like ⌖; O does the same and docks it back | Built |
 | AW3 | **Away rail** | While the app is in its own window the dock collapses to a 46px `glass` rail (same width as the closed right dock): lucide `PanelLeftOpen` (16px, 1.75 stroke) over vertical caps `YOUR APP IS IN ITS OWN WINDOW · BRING IT BACK`; the whole rail is the button. A lane opened from the Thread still shows its inspector in the dock | Built |
 

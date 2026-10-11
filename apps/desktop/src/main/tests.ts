@@ -1,6 +1,6 @@
-import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { killTree, spawnShell } from "./platform.ts";
 
 // L4 Prove: run the project's own unit tests and say what happened in plain words.
 
@@ -46,21 +46,16 @@ export function runTests(root: string, timeoutMs = 180_000): Promise<{ ok: boole
   const cmd = testCommand(root);
   if (!cmd) return Promise.resolve(null);
   return new Promise((resolve) => {
-    const shell = process.env.SHELL || "/bin/zsh";
-    const child = spawn(shell, ["-lc", cmd], { cwd: root, env: { ...process.env, CI: "1", FORCE_COLOR: "0" }, detached: true, stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawnShell(cmd, { cwd: root, env: { ...process.env, CI: "1", FORCE_COLOR: "0" }, detached: true, stdio: ["ignore", "pipe", "pipe"] });
     let output = "";
     const add = (c: Buffer) => {
       output += c.toString("utf8");
       if (output.length > 400_000) output = output.slice(-200_000);
     };
-    child.stdout.on("data", add);
-    child.stderr.on("data", add);
+    child.stdout?.on("data", add);
+    child.stderr?.on("data", add);
     let timedOut = false;
-    const kill = () => {
-      try {
-        process.kill(-child.pid!, "SIGKILL");
-      } catch {}
-    };
+    const kill = () => killTree(child.pid, "SIGKILL");
     const timer = setTimeout(() => {
       timedOut = true;
       kill();

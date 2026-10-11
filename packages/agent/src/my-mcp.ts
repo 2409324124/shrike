@@ -94,6 +94,7 @@ const exec = promisify(execFile);
 
 /** Every process under pid (children, grandchildren), read before the parent goes so reparented ones aren't lost. */
 async function descendants(pid: number): Promise<number[]> {
+  if (process.platform === "win32") return []; // no ps: taskkill /T takes the tree below
   try {
     const { stdout } = await exec("ps", ["-axo", "pid=,ppid="], { timeout: 3000 });
     const kids = new Map<number, number[]>();
@@ -177,6 +178,7 @@ export async function checkMcpServer(s: Server, o: { timeoutMs?: number; cwd?: s
     const kids = pid ? await descendants(pid) : [];
     await client.close().catch(() => {});
     await transport.close().catch(() => {});
+    if (pid && process.platform === "win32") await exec("taskkill", ["/pid", String(pid), "/T", "/F"], { windowsHide: true }).catch(() => {});
     for (const k of [...kids, ...(pid ? [pid] : [])]) if (alive(k)) try { process.kill(k, "SIGKILL"); } catch {}
   }
 }

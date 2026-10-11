@@ -28,6 +28,8 @@ Every phase has a "done when" check run against the fixtures. Don't start a phas
 | 10 | **Share + cloud** | M | `.shriketrace` export/import, `apps/cloud` (auth, share links, hosted key, billing), web viewer | A shared link opens a read-only recording in the browser; revoking it works |
 | 11 | **Launch** | M | `apps/site`, docs site, demo video, open source repo hygiene (CONTRIBUTING, licence, issue templates) | See [10-go-to-market.md](10-go-to-market.md) launch checklist |
 
+Phase 9, Windows and Linux (2026-10-11): Linux builds (AppImage, `.deb`, x64 and arm64) from `scripts/release/build-linux.sh` and in CI, without voice; not released yet. Windows has its code paths (cmd.exe, taskkill, junctions) and an NSIS target but hasn't been run on Windows. Details and what was checked: [14-compatibility.md](14-compatibility.md#operating-systems).
+
 ## After launch (ordered by expected demand)
 
 1. Flow review polish and "make this page faster" agent goal

@@ -152,7 +152,7 @@ export const useSkills = create<SkillsState>((set, get) => ({
     if (!s) return undefined;
     toast(`Saved the skill "${s.name}". Check its steps.`, "ok");
     const root = useProject.getState().project?.root;
-    const rel = s.path && root && s.path.startsWith(`${root}/`) ? s.path.slice(root.length + 1) : `.shrike/skills/${s.id}.md`;
+    const rel = s.path && root && s.path.startsWith(root) && /^[\\/]/.test(s.path.slice(root.length)) ? s.path.slice(root.length + 1).replace(/\\/g, "/") : `.shrike/skills/${s.id}.md`;
     useUi.getState().openFile({ path: rel, line: 1 });
     return s;
   },

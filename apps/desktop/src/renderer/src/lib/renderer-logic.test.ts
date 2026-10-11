@@ -4,6 +4,7 @@ import { lineDiff } from "./hud.ts";
 import { parseAnsi } from "./ansi.ts";
 import { focusIndex, type PlayStep } from "./steps.ts";
 import { statusWords } from "./format.ts";
+import { keys } from "./platform.ts";
 
 test("line diff of the killer fix", () => {
   const before = "a\nb\n  insertTodo({ title, userId: req.body.user });\nd\ne";
@@ -32,4 +33,13 @@ test("lands on the deepest failing function under the first failure", () => {
   assert.equal(focusIndex(steps), 5);
   assert.equal(focusIndex([st("user_action", 0, "ok"), st("function", 1, "ok")]), 1);
   assert.equal(focusIndex([st("user_action", 0, "error"), st("db_query", 1, "error")]), 1);
+});
+
+test("shortcut labels read Ctrl and Alt off macOS", () => {
+  assert.equal(keys("⌘⇧G", true), "⌘⇧G");
+  assert.equal(keys("Close the dock (⌘⇧G)", false), "Close the dock (Ctrl+Shift+G)");
+  assert.equal(keys("⌘↵ approve", false), "Ctrl+Enter approve");
+  assert.equal(keys("⌃⌥ Space", false), "Ctrl+Alt+Space");
+  assert.equal(keys("⌥ `", false), "Alt+`");
+  assert.equal(keys("⌘", false), "Ctrl");
 });

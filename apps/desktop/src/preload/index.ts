@@ -9,6 +9,7 @@ const methods = [
 ] as const satisfies readonly Exclude<keyof ShrikeApi, "on">[];
 
 const api: Record<string, unknown> = {
+  platform: process.platform,
   on(channel: string, cb: (payload: unknown) => void) {
     const listener = (_e: unknown, payload: unknown) => cb(payload);
     ipcRenderer.on(`shrike:event:${channel}`, listener);

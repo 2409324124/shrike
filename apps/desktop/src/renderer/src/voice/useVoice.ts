@@ -8,6 +8,7 @@ import { Turn, type Echo } from "./router.ts";
 import { translit } from "./understand/normalize.ts";
 import { markUsed, offerUndo, showPlan, useVoiceStore, type PlanControls } from "./store.ts";
 import { isDoubleTap, isPtt, isPttUp, TAP_MS } from "./ui/logic.ts";
+import { isMac } from "../lib/platform.ts";
 
 // Push-to-talk: hold ⌥ Space (or press and hold the orb), talk, let go. Double tap, or the orb's lock: hands-free.
 // The turn itself (partials, the cascade, yes / no / stop / undo) is router.ts; this file is the loop and what you see.
@@ -252,6 +253,7 @@ export function onVoiceEvent(e: VoiceEvent): void {
 /** Mount once (Shell): the push-to-talk key, the helper's events, model progress, hands-free auto-off. */
 export function useVoice(): void {
   useEffect(() => {
+    if (!isMac) return; // the helper is macOS only: no key, no orb
     const down = (e: KeyboardEvent) => {
       if (!isPtt(e, get().prefs.key)) return;
       e.preventDefault(); // no non-breaking space in a field, no replay

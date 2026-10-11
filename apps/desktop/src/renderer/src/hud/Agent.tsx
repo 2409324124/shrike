@@ -24,6 +24,7 @@ import { isOpenItem } from "../chains/logic.ts";
 import { ActivityLine, ContextMapPanel, FileChips, McpMark, SkillChip, ThinkingStrip, toggleContextMap, TokensBadge, ToolsUsed, useContextMapUi } from "./Xray.tsx"; // X (xray), MCP6
 
 const LIVE_KINDS = new Set<AgentStep["kind"]>(["message", "tool_call", "error", "done"]);
+import { keys } from "../lib/platform.ts";
 
 /**
  * The agent as one small pill top right (prototype: "Bad value playbook • • •"): the lit playbook and three plan dots.
@@ -411,7 +412,7 @@ function Cards({ stage }: { stage: RefObject<HTMLElement | null> }) {
           {pending?.patch ? (
             <div className="flex flex-wrap gap-2">
               <button type="button" className="btn go" autoFocus onClick={() => void useAgent.getState().answer(pending.id, true)}>
-                Apply fix ⌘↵
+                Apply fix {keys("⌘↵")}
               </button>
               <ReviewFixButton patchId={pending.patch.id} />
               <SandboxButton patchId={pending.patch.id} actionId={probe?.actionId ?? focus.actionId ?? undefined} />
@@ -582,7 +583,7 @@ function RequestCard({ req }: { req: ApprovalRequest }) {
       <p className="mt-1 mb-2.5 text-[12.5px] text-dim">{req.reason}</p>
       <div className="flex gap-2">
         <button type="button" className="btn go" onClick={() => void useAgent.getState().answer(req.id, true)}>
-          Allow ⌘↵
+          Allow {keys("⌘↵")}
         </button>
         <button type="button" className="btn" onClick={() => void useAgent.getState().answer(req.id, false)}>
           Not now
@@ -654,11 +655,11 @@ function ContextPopover({ anchor }: { anchor: RefObject<HTMLElement | null> }) {
 }
 
 function usageText(u: AgentUsage | null): string {
-  if (!u) return "Ask your agent (⌘K)";
+  if (!u) return keys("Ask your agent (⌘K)");
   const parts = [`${fmtTokens(u.contextTokens ?? 0)}${u.contextLimit ? ` of ${fmtTokens(u.contextLimit)}` : ""} tokens in use`, `${fmtTokens(u.inputTokens)} in · ${fmtTokens(u.outputTokens)} out this run`];
   if (u.costUsd != null) parts.push(`$${u.costUsd.toFixed(u.costUsd < 1 ? 3 : 2)}`);
   if (u.rateLimitResetsAt) parts.push(`plan limit resets ${new Date(u.rateLimitResetsAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`);
-  return `Ask your agent (⌘K) · ${parts.join(" · ")}`;
+  return `${keys("Ask your agent (⌘K)")} · ${parts.join(" · ")}`;
 }
 
 /** The trip a fix belongs to: the first trip after it was applied (its re-run), else the newest. */

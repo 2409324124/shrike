@@ -322,7 +322,7 @@ async function jdkAt(home: string): Promise<Jdk | undefined> {
 
 const ls = async (dir: string, re: RegExp, sub = "") => (await readdir(dir).catch(() => [] as string[])).filter((n) => re.test(n)).map((n) => join(dir, n, sub));
 
-// JAVA_HOME, macOS java_home, Homebrew, Linux and SDKMAN installs.
+// JAVA_HOME, macOS java_home, Homebrew, Linux, NixOS, SDKMAN and Windows installs.
 async function findJava(): Promise<Java> {
   const listed =
     process.platform === "darwin"
@@ -332,6 +332,8 @@ async function findJava(): Promise<Java> {
       : [];
   const brew = (await Promise.all(["/opt/homebrew/opt", "/usr/local/opt"].map((d) => ls(d, /^openjdk(@\d+)?$/, "libexec/openjdk.jdk/Contents/Home")))).flat();
   const other = (await Promise.all([ls("/usr/lib/jvm", /./), ls(join(homedir(), ".sdkman/candidates/java"), /^\d/)])).flat();
+  other.push("/run/current-system/sw/lib/openjdk", join(homedir(), ".nix-profile/lib/openjdk")); // NixOS
+  if (process.platform === "win32") other.push(...(await Promise.all(["Java", "Eclipse Adoptium", "Microsoft"].map((d) => ls(join(process.env.ProgramFiles || "C:\\Program Files", d), /jdk/i)))).flat());
   const env = str(process.env.JAVA_HOME);
   const all = (await Promise.all([...(env ? [env] : []), ...listed, ...brew, ...other].map(jdkAt))).filter((j): j is Jdk => !!j);
   const jdks = all.filter((j, i) => all.findIndex((k) => k.home === j.home) === i);

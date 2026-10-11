@@ -7,6 +7,7 @@ import { api, errorMessage } from "../lib/api.ts";
 import { BUILTINS, METHODS, OPERATORS, UNARY, fromApi, hasBody, isRedacted, looksLikeCurl, paramsFromUrl, pathParams, redactedVar, uid, urlWithParams, type Auth, type BodyMode, type Req, type Row, type Scope } from "./model.ts";
 import { CodeArea, KvTable, SecretInput, VarInput } from "./parts.tsx";
 import { appAddress, colFor, isDirty, scopeFor, useApi, type Tab } from "./store.ts";
+import { keys } from "../lib/platform.ts";
 
 // AP-url and AP3: the URL bar and the request's tabs.
 
@@ -74,7 +75,7 @@ export function UrlBar({ tab }: { tab: Tab }) {
       <button type="button" className="ap-icon" aria-label="Show as code" title="Show as code: cURL, fetch, Python" onClick={() => useApi.setState({ dialog: "code" })}>
         <Code2 size={14} />
       </button>
-      <button type="button" className="ap-icon" aria-label="Save (⌘S)" title="Save (⌘S)" disabled={!dirty && !!tab.draft.path} onClick={() => useApi.getState().save(tab.id)}>
+      <button type="button" className="ap-icon" aria-label={keys("Save (⌘S)")} title={keys("Save (⌘S)")} disabled={!dirty && !!tab.draft.path} onClick={() => useApi.getState().save(tab.id)}>
         <Save size={13} />
       </button>
       {sending ? (
@@ -83,7 +84,7 @@ export function UrlBar({ tab }: { tab: Tab }) {
           Cancel
         </button>
       ) : (
-        <button type="submit" className="btn go ap-send" disabled={!r.url.trim()} title="Send (⌘↵)">
+        <button type="submit" className="btn go ap-send" disabled={!r.url.trim()} title={keys("Send (⌘↵)")}>
           <Send size={11} />
           Send
         </button>

@@ -24,6 +24,7 @@ const TABS: { id: DockTab; word: string; Icon: typeof FileDiff }[] = [
   { id: "tools", word: "Tools", Icon: Plug }, // mcp: MCP1
   { id: "api", word: "API", Icon: Send }, // api: AP
 ];
+import { keys } from "../lib/platform.ts";
 
 function useDockKeys(): void {
   useEffect(() => {
@@ -65,7 +66,7 @@ export function RightDock() {
     return (
       <nav aria-label="Right dock" className="glass ml-3 flex w-[46px] shrink-0 flex-col items-center gap-1 rounded-[var(--r-pane)] py-2">
         {TABS.map(({ id, word, Icon }) => (
-          <button key={id} type="button" className={cx("dock-rail-btn", tab === id && "on")} title={`${word}${id === "changes" ? " (⌘⇧G)" : ""}`} aria-label={word} onClick={() => useDock.getState().show(id)}>
+          <button key={id} type="button" className={cx("dock-rail-btn", tab === id && "on")} title={`${word}${id === "changes" ? ` (${keys("⌘⇧G")})` : ""}`} aria-label={word} onClick={() => useDock.getState().show(id)}>
             <Icon size={16} strokeWidth={1.75} aria-hidden />
             {badge(id)}
           </button>

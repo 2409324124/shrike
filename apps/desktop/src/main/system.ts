@@ -4,6 +4,7 @@ import { existsSync } from "node:fs";
 import { appendFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { resolveInside } from "./files.ts";
+import { defaultShell, isWin } from "./platform.ts";
 
 // Tries each editor CLI in order; prints the one that opened the file. File and line arrive as $1 and $2, never interpolated.
 const EDITOR_SCRIPT = `
@@ -17,9 +18,9 @@ exit 3
 `;
 
 function tryCli(abs: string, line: number): Promise<string | undefined> {
-  const sh = process.env.SHELL || "/bin/zsh";
+  if (isWin) return Promise.resolve(undefined); // ponytail: Windows opens the file in its default app. Upgrade: try code.cmd -g through cmd.exe.
   return new Promise((resolve) => {
-    execFile(sh, ["-lc", EDITOR_SCRIPT, "shrike", abs, String(line)], { timeout: 15_000 }, (err, stdout) => {
+    execFile(defaultShell(), ["-lc", EDITOR_SCRIPT, "shrike", abs, String(line)], { timeout: 15_000 }, (err, stdout) => {
       resolve(err ? undefined : stdout.trim().split("\n").pop() || undefined);
     });
   });

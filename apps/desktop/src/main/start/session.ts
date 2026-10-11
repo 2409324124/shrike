@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from "node:child_process";
+import type { ChildProcess } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
 import { copyFile, readdir, readFile, rename, writeFile } from "node:fs/promises";
@@ -9,6 +9,7 @@ import type { PlanArgs, StartHost } from "@shrike/mcp-server";
 import { plannedPlaces } from "@shrike/scanner";
 import { NO_TTY_ENV, responds, type RunEnv, type Runner } from "../runner.ts";
 import type { SkillDirs } from "../skills.ts";
+import { killTree, spawnShell } from "../platform.ts";
 import { CATEGORY_WORDS, decide, judge, projectScript, rememberable, type Judgement } from "./policy.ts";
 import { Quest } from "./quest.ts";
 import type { Recipe } from "./recipes.ts";
@@ -238,7 +239,7 @@ export class StartSession implements StartHost {
       delete env.ELECTRON_RENDERER_URL;
       let out = "";
       let timedOut = false;
-      const child = spawn(process.env.SHELL || "/bin/zsh", ["-lc", command], { cwd, env, detached: true, stdio: ["ignore", "pipe", "pipe"] });
+      const child = spawnShell(command, { cwd, env, detached: true, stdio: ["ignore", "pipe", "pipe"] });
       this.children.add(child);
       const on = (b: Buffer) => {
         const s = b.toString("utf8");
@@ -249,8 +250,8 @@ export class StartSession implements StartHost {
       child.stderr?.on("data", on);
       const timer = setTimeout(() => {
         timedOut = true;
-        killGroup(child.pid, "SIGTERM");
-        setTimeout(() => killGroup(child.pid, "SIGKILL"), 2000).unref();
+        killTree(child.pid, "SIGTERM");
+        setTimeout(() => killTree(child.pid, "SIGKILL"), 2000).unref();
       }, timeoutMs);
       child.once("error", (e) => (out += `\n${e.message}`));
       child.once("close", (code) => {
@@ -602,7 +603,7 @@ export class StartSession implements StartHost {
     this.stopped = true;
     void this.learn(false, "the start was stopped before it finished");
     clearInterval(this.poll);
-    for (const c of this.children) killGroup(c.pid, "SIGKILL");
+    for (const c of this.children) killTree(c.pid, "SIGKILL");
     for (const r of this.asks.values()) r({ allow: false });
     this.asks.clear();
     this.waiting.clear();
@@ -614,12 +615,6 @@ export class StartSession implements StartHost {
   }
 }
 
-function killGroup(pid: number | undefined, sig: NodeJS.Signals): void {
-  if (!pid) return;
-  try {
-    process.kill(-pid, sig);
-  } catch {}
-}
 
 function sourceWords(s: Recipe["source"]): string {
   return s === "shrike-skill" ? "Shrike's run skill" : s === "project-skill" ? "The project's own Claude skill" : s === "claude-skill" ? "Your Claude skill" : s === "readme" ? "The README" : s === "lessons" ? "Lessons" : "Explored";

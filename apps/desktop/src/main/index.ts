@@ -8,6 +8,7 @@ import { registerIpc } from "./ipc.ts";
 import { automated, headless } from "./headless.ts";
 import { banner } from "./banner.ts";
 import { placeAppWindow } from "./app-view.ts";
+import { isMac } from "./platform.ts";
 
 let win: BrowserWindow | undefined;
 let appWin: BrowserWindow | undefined; // the user's app in its own window (detached from the dock)
@@ -25,6 +26,11 @@ const webPreferences = {
   webviewTag: true,
   backgroundThrottling: !(headless || automated), // hidden or background test windows must keep rendering and running timers
 };
+
+// macOS: the traffic lights sit inset in the window's own top bar. Windows and Linux: the top bar is the title bar too, with the
+// system buttons drawn over its right end in the theme's colours (setWindowChrome repaints them).
+const chrome = (height: number, x: number, y: number) =>
+  isMac ? { titleBarStyle: "hiddenInset" as const, trafficLightPosition: { x, y } } : { titleBarStyle: "hidden" as const, titleBarOverlay: { color: color.void, symbolColor: color.ink, height } };
 
 function loadRenderer(w: BrowserWindow, hash?: string): void {
   if (process.env.ELECTRON_RENDERER_URL) void w.loadURL(process.env.ELECTRON_RENDERER_URL + (hash ? `#${hash}` : ""));
@@ -66,8 +72,7 @@ function openAppWindow(): void {
     show: false,
     fullscreenable: true,
     backgroundColor: color.void,
-    titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
-    trafficLightPosition: { x: 12, y: 9 }, // centred in the 32px header
+    ...chrome(32, 12, 9), // centred in the 32px header
     webPreferences,
   }));
   guard(w.webContents);
@@ -102,8 +107,7 @@ function createWindow(): void {
     minWidth: 1100,
     show: false,
     backgroundColor: color.void, // the theme's own ground arrives from the renderer (setWindowChrome)
-    titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
-    trafficLightPosition: { x: 16, y: 15 }, // centred in the 44px top bar (14px buttons)
+    ...chrome(44, 16, 15), // centred in the 44px top bar (14px buttons)
     webPreferences,
   });
   const wc = win.webContents;

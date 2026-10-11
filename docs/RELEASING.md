@@ -1,4 +1,4 @@
-# Releasing the macOS build
+# Releasing
 
 One command builds a signed macOS arm64 `.dmg`. It is signed with a Developer ID and the hardened runtime, then notarised by Apple and stapled, so it opens with no warning.
 
@@ -64,3 +64,21 @@ xcrun notarytool store-credentials shrike --apple-id <apple id> --team-id ZK8UX8
 ```
 
 `SHRIKE_SKIP_NOTARY=1` skips it for a local test build. electron-builder's own `notarize` stays off: the script notarises the final `.dmg`.
+
+## Linux
+
+`scripts/release/build-linux.sh [x64|arm64] [targets] [out-dir]` builds an AppImage and a `.deb` (defaults: this machine's arch, `AppImage deb`, `./release`). It stages the app exactly like the macOS build, minus the voice helper (macOS only), signing and notarisation. Run it on Linux with Node 24 and pnpm 10 (`rsync` too); on another arch or OS electron-builder downloads the matching Electron instead of reusing the installed one.
+
+```sh
+pnpm i
+scripts/release/build-linux.sh x64 AppImage ./release
+```
+
+- `node-llama-cpp` installs its Linux CPU build for the target arch (`npm install --cpu --os=linux`); the CUDA and Vulkan builds are dropped. Voice is hidden off macOS, so the planner never loads; if it did and failed, it turns itself off.
+- Output: `release/dist/Shrike-<version>-<arch>.AppImage` and `.deb`, with their sha256. Unsigned.
+- CI (`.github/workflows/ci.yml`) builds the x64 AppImage and `.deb` on every push and pull request and keeps them as the `shrike-linux-x64` artifact.
+- NixOS: the AppImage runs with `appimage-run Shrike-<version>-x64.AppImage`. To package it properly, wrap `release/dist/linux-unpacked` with nixpkgs' `electron` the way other Electron apps there do; there is no Shrike derivation yet.
+
+## Windows
+
+`electron-builder.yml` has an unsigned NSIS target (`Shrike-<version>-x64-setup.exe`). There is no build script yet: stage as above on Windows and run `electron-builder --win --x64` against the stage. CI typechecks and runs the unit tests on `windows-latest`; the app itself has not been run on Windows.

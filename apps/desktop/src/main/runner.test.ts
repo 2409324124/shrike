@@ -6,6 +6,19 @@ import { test } from "node:test";
 import type { RunStatus } from "@shrike/schema";
 import { detectUrl, portTaken, Runner } from "./runner.ts";
 
+/** A killed group can linger a moment on Linux while its children are reaped. */
+async function groupGone(pid: number): Promise<boolean> {
+  for (let i = 0; i < 40; i++) {
+    try {
+      process.kill(-pid, 0);
+    } catch {
+      return true;
+    }
+    await new Promise((r) => setTimeout(r, 50));
+  }
+  return false;
+}
+
 test("detectUrl prefers Vite's Local: line", () => {
   assert.deepEqual(detectUrl("  \x1b[32m➜\x1b[39m  \x1b[1mLocal\x1b[22m:   \x1b[36mhttp://localhost:\x1b[1m5173\x1b[22m/\x1b[39m"), { url: "http://localhost:5173/", local: true });
   assert.deepEqual(detectUrl("Server on http://127.0.0.1:3001."), { url: "http://127.0.0.1:3001", local: false });
@@ -36,7 +49,7 @@ const s = http.createServer((q, r) => r.end("ok")).listen(0, "127.0.0.1", () => 
   const pid = r.status.processes![0]!.pid!;
   await r.stop();
   assert.equal(r.status.state, "stopped");
-  assert.throws(() => process.kill(-pid, 0));
+  assert.ok(await groupGone(pid));
   assert.deepEqual(states.filter((s, i) => s !== states[i - 1]), ["starting", "running", "stopped"]);
 });
 
@@ -128,7 +141,7 @@ test("several processes: per-process env, output and state; a declared outside o
   const pids = r.status.processes!.map((p) => p.pid!);
   await r.stop();
   assert.equal(r.status.state, "stopped");
-  for (const pid of pids) assert.throws(() => process.kill(-pid, 0));
+  for (const pid of pids) assert.ok(await groupGone(pid));
 });
 
 test("backend-only: no page to wait for; a process failing after start marks only itself; one failing while starting fails the run; Run again restarts cleanly", async (t) => {
@@ -168,7 +181,7 @@ test("backend-only: no page to wait for; a process failing after start marks onl
   const oldPid = r.status.processes![0]!.pid!;
   await until("the rest stopped", () => r.status.processes![0]!.state === "stopped");
   assert.equal(r.status.state, "error", "still says why");
-  assert.throws(() => process.kill(-oldPid, 0), "a failed start frees the other ports");
+  assert.ok(await groupGone(oldPid), "a failed start frees the other ports");
   await r.start(project, env);
   assert.equal(r.status.state, "starting");
   await until("running again", () => r.status.state !== "starting");
@@ -323,12 +336,12 @@ test("R3 services: added one at a time, one exiting leaves the others, stopServi
   r.markRunning("http://127.0.0.1:1/");
   assert.equal(r.status.state, "running");
   assert.equal(await r.stopService("a"), true);
-  assert.throws(() => process.kill(-a.pid!, 0));
+  assert.ok(await groupGone(a.pid!));
   assert.equal(r.services().find((s) => s.name === "a")!.state, "stopped");
   assert.equal(await r.stopService("a"), false);
   const b = await r.startService(project, { name: "b", command: "node a.mjs", instrument: false }, env);
   await r.stop();
-  assert.throws(() => process.kill(-b.pid!, 0));
+  assert.ok(await groupGone(b.pid!));
   assert.equal(r.status.state, "stopped");
 });
 

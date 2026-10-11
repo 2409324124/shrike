@@ -83,7 +83,7 @@ Long trips stay readable: plumbing (framework code, repeated helpers) collapses 
 
 ## HUD and summoned surfaces
 
-- Top bar (44px, the macOS traffic lights centred in it at x 16, y 15): wordmark, project, run state, REC, ⌘K. Nothing else. Under 1280px the wordmark and the voice hint go, so Ask always fits.
+- Top bar (44px, the macOS traffic lights centred in it at x 16, y 15): wordmark, project, run state, REC, ⌘K. Nothing else. Under 1280px the wordmark and the voice hint go, so Ask always fits. On Windows and Linux the top bar is the title bar: no left inset, and the system window buttons sit over its right end in the theme's `void` and `ink` (title bar overlay). Shortcut labels there read Ctrl, Alt and Shift instead of ⌘ ⌥ ⇧, and voice (macOS only for now) is hidden.
 - Caption (bottom of the feed area): the focused station's caption in plain words, at most three lines (the full text is in its tooltip). The key hints sit in its flow on the right, above the trip label.
 - Narrow windows: the stage keeps about 480px. The workspaces rail folds to icons first, then the app pane and the dock shrink. Nothing scrolls sideways.
 - Toasts stack at the top of the stage, centred on it, above everything else on it.

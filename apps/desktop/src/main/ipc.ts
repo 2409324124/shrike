@@ -109,7 +109,7 @@ import { createCiLessons, type CiLessons } from "./ci-lessons.ts";
 let ciSvc: CiLessons | undefined;
 let questsSvc: Quests | undefined;
 // mcp: the tools hub (MCP1 to MCP8)
-import { spawn as mcpSpawn } from "node:child_process";
+import { killTree as mcpKill, spawnShell as mcpSpawn } from "./platform.ts";
 import { readFile as mcpRead } from "node:fs/promises";
 import { checkMcpServer, loginPath as mcpLoginPath } from "@shrike/agent";
 import { createMcpHub, mcpServerOfStep, serverName as mcpName, type AddPlan } from "./mcp.ts";
@@ -122,7 +122,7 @@ import { codeLangZ, envZ, idZ, importKindZ, relZ, requestZ, sendOptsZ } from "./
 let mcpObserve: ((step: AgentStep) => void) | undefined;
 let mcpHub: ReturnType<typeof createMcpHub> | undefined;
 
-type Methods = Omit<ShrikeApi, "on">;
+type Methods = Omit<ShrikeApi, "on" | "platform">;
 
 const str = z.string().min(1).max(4096);
 const none = z.tuple([]);
@@ -189,7 +189,7 @@ export function registerIpc(win: () => BrowserWindow | undefined, appWin: AppWin
   handle("dockApp", none, async () => appWin.close());
   handle("appWindowOpen", none, async () => !!appWin.get());
   handle("listFiles", none, () => files.fileTree(requireProject().root));
-  handle("mapTree", z.tuple([z.array(z.string().min(1).max(1024).refine((p) => !p.startsWith("/") && !p.split("/").includes("..") && !p.includes("\0"), "not a project path")).max(2000)]), (touched) => files.mapTree(requireProject().root, touched));
+  handle("mapTree", z.tuple([z.array(z.string().min(1).max(1024).refine((p) => !/^([\\/]|[a-zA-Z]:)/.test(p) && !p.split(/[\\/]/).includes("..") && !p.includes("\0"), "not a project path")).max(2000)]), (touched) => files.mapTree(requireProject().root, touched));
   handle("readFile", z.tuple([str]), (path) => files.readFile(requireProject().root, path));
   handle("writeFile", z.tuple([str, z.string().max(20 * 1024 * 1024)]), (path, content) => files.writeFile(requireProject().root, path, content));
   handle("getActions", none, async () => store.listActions());
@@ -679,7 +679,7 @@ export function registerIpc(win: () => BrowserWindow | undefined, appWin: AppWin
   handle("workspaceAction", z.tuple([wsPath, z.enum(["folder", "terminal", "stop"])]), async (path, action) => {
     const w = await ws.known(path);
     if (action === "folder") void wsShell.openPath(w.path);
-    else if (action === "terminal") wsExec("open", ["-a", "Terminal", w.path], () => {}); // ponytail: macOS Terminal only. Upgrade: the user's own terminal app.
+    else if (action === "terminal") wsExec("open", ["-a", "Terminal", w.path], () => {}); // ponytail: macOS Terminal only (the rail hides it elsewhere). Upgrade: the user's own terminal app.
     else if (w.current) await start.stopApp();
     else await race.stopBackground(w.path);
     ws.publish();
@@ -740,9 +740,10 @@ export function registerIpc(win: () => BrowserWindow | undefined, appWin: AppWin
   handle("voicePlanWarm", z.tuple([planPrefix]), (prefix) => planner.warm(prefix));
   // ---- end planner ----
   // themes (Z): the window takes the theme's appearance, so macOS draws visible traffic lights on it, even inactive
-  handle("setWindowChrome", z.tuple([z.object({ appearance: z.enum(["system", "dark", "light"]), background: z.string().regex(/^#[0-9a-fA-F]{6}$/) })]), (c) => {
+  handle("setWindowChrome", z.tuple([z.object({ appearance: z.enum(["system", "dark", "light"]), background: z.string().regex(/^#[0-9a-fA-F]{6}$/), ink: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional() })]), (c) => {
     nativeTheme.themeSource = c.appearance;
     win()?.setBackgroundColor(c.background);
+    if (process.platform !== "darwin") win()?.setTitleBarOverlay({ color: c.background, ...(c.ink ? { symbolColor: c.ink } : {}) });
   });
 
   // ---- xray: X5 context map ----
@@ -1054,20 +1055,20 @@ export function registerIpc(win: () => BrowserWindow | undefined, appWin: AppWin
     pushTimer = setTimeout(() => void mcpView().then((v) => emit("mcp:update", v), () => {}), 80);
   };
   const children = new Set<ReturnType<typeof mcpSpawn>>();
-  wtApp.on("before-quit", () => children.forEach((c) => c.pid && (() => { try { process.kill(-c.pid!, "SIGKILL"); } catch {} })()));
+  wtApp.on("before-quit", () => children.forEach((c) => mcpKill(c.pid, "SIGKILL")));
   /** A catalog install (warming the npm or uv cache), judged by the guarded shell first. Three minutes at most. */
   const install = async (cmd: string, cwd: string): Promise<string | null> => {
     const j = mcpJudge(cmd, { root: cwd, cwd });
     if (j.verdict === "never") return j.why;
     const PATH = await mcpLoginPath();
     return new Promise((done) => {
-      const child = mcpSpawn(process.env.SHELL || "/bin/zsh", ["-lc", cmd], { cwd, env: { ...process.env, ...(PATH ? { PATH } : {}) }, detached: true, stdio: ["ignore", "pipe", "pipe"] });
+      const child = mcpSpawn(cmd, { cwd, env: { ...process.env, ...(PATH ? { PATH } : {}) }, detached: true, stdio: ["ignore", "pipe", "pipe"] });
       children.add(child);
       let tail = "";
       const keep = (c: Buffer) => void (tail = (tail + c.toString("utf8")).slice(-2000));
-      child.stdout.on("data", keep);
-      child.stderr.on("data", keep);
-      const timer = setTimeout(() => { try { process.kill(-child.pid!, "SIGKILL"); } catch {} }, 180_000);
+      child.stdout?.on("data", keep);
+      child.stderr?.on("data", keep);
+      const timer = setTimeout(() => mcpKill(child.pid, "SIGKILL"), 180_000);
       const end = (ok: boolean) => (clearTimeout(timer), children.delete(child), done(ok ? null : redactText(tail.trim().split("\n").at(-1) ?? "The install didn't finish.")));
       child.on("close", (code) => end(code === 0));
       child.on("error", () => end(false));

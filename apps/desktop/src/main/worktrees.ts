@@ -1,8 +1,9 @@
 // W1–W5: git worktrees under <main>/.shrike/worktrees/<name>, on branch shrike/<name>. No Electron imports (tested with node:test).
 import { execFile } from "node:child_process";
-import { copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import type { Worktree } from "@shrike/schema";
+import { linkDir } from "./platform.ts";
 
 export const NAME_RE = /^[a-z0-9][a-z0-9-]{0,39}$/;
 const STEP = 100; // W2: port offset between worktrees
@@ -23,6 +24,7 @@ export function git(cwd: string, args: string[], input?: string): Promise<string
       if (err) rej(new Error(String(stderr || err.message).trim().split("\n").slice(-3).join("\n")));
       else res(stdout);
     });
+    child.stdin?.on("error", () => {}); // git can exit before reading it: EPIPE on Linux
     child.stdin?.end(input ?? "");
   });
 }
@@ -153,7 +155,13 @@ async function create(main: string, name: string, note: string | undefined, port
       const from = join(main, f);
       const to = join(path, f);
       mkdirSync(dirname(to), { recursive: true });
-      if (lstatSync(from).isSymbolicLink()) symlinkSync(readlinkSync(from), to); // also a link to nowhere
+      if (lstatSync(from).isSymbolicLink()) {
+        try {
+          symlinkSync(readlinkSync(from), to); // also a link to nowhere
+        } catch {
+          cpSync(from, to, { recursive: true, dereference: true }); // Windows without symlink rights
+        }
+      }
       else copyFileSync(from, to);
     }
     if ((await git(path, ["status", "--porcelain"])).trim()) {
@@ -189,7 +197,7 @@ function linkDeps(main: string, wt: string): void {
     const to = join(wt, d, "node_modules");
     if (!existsSync(from) || !existsSync(join(wt, d)) || existsSync(to)) continue;
     mkdirSync(to);
-    for (const e of readdirSync(from)) if (!/^\.(vite|cache)/.test(e)) symlinkSync(join(from, e), join(to, e));
+    for (const e of readdirSync(from)) if (!/^\.(vite|cache)/.test(e)) linkDir(join(from, e), join(to, e));
   }
 }
 

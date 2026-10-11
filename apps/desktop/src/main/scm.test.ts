@@ -13,6 +13,7 @@ const sh = (cwd: string, ...args: string[]) => execFileSync("git", args, { cwd, 
 const exec: Exec = (cmd, args, o) =>
   new Promise((done) => {
     const c = execFile(cmd, args, { cwd: o.cwd, env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } }, (err, stdout, stderr) => done({ code: err ? (typeof err.code === "number" ? err.code : 1) : 0, stdout, stderr }));
+    c.stdin?.on("error", () => {});
     c.stdin?.end(o.input ?? "");
   });
 

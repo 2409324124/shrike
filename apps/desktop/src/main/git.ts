@@ -6,16 +6,18 @@ import type { AgentOptions, AgentRunInfo, BrainId, Flow, GitState, PullRequest }
 import * as hub from "./github.ts";
 import type { Exec, Gh, PrDetail } from "./github.ts";
 import { resolveRecipe } from "./recipes.ts";
+import { defaultShell, loginPathNeeded } from "./platform.ts";
 import { noteOutcome } from "./skills.ts";
 
 // G1–G6: git on the user's machine through the git CLI (and GitHub through gh, see github.ts).
 // Anything that leaves the machine or merges goes through an approval first. Never a force-push.
 
 let loginPathP: Promise<string | undefined> | undefined;
-/** GUI apps on macOS start with a minimal PATH; git and gh live where the login shell says. */
+/** GUI apps on macOS and Linux start with a minimal PATH; git and gh live where the login shell says. Windows apps get the full one. */
 function loginPath(): Promise<string | undefined> {
   return (loginPathP ??= new Promise((done) => {
-    execFile(process.env.SHELL || "/bin/zsh", ["-lc", 'printf "__SHRIKE__%s" "$PATH"'], { timeout: 5000 }, (err, out) => done(err ? undefined : out.split("__SHRIKE__").pop()?.trim() || undefined));
+    if (!loginPathNeeded()) return done(undefined);
+    execFile(defaultShell(), ["-lc", 'printf "__SHRIKE__%s" "$PATH"'], { timeout: 5000 }, (err, out) => done(err ? undefined : out.split("__SHRIKE__").pop()?.trim() || undefined));
   }));
 }
 
@@ -26,6 +28,7 @@ export const exec: Exec = async (cmd, args, o) => {
     const child = execFile(cmd, args, { cwd: o.cwd, env, maxBuffer: 64 * 1024 * 1024, timeout: 180_000 }, (err, stdout, stderr) =>
       done({ code: err ? (typeof err.code === "number" ? err.code : 127) : 0, stdout: String(stdout), stderr: String(stderr) || (err?.message ?? "") }),
     );
+    child.stdin?.on("error", () => {}); // git can exit before reading it: EPIPE on Linux
     child.stdin?.end(o.input ?? "");
   });
 };

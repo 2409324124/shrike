@@ -1,5 +1,4 @@
 import { createHash, randomBytes } from "node:crypto";
-import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises";
 import { connect } from "node:net";
@@ -8,6 +7,7 @@ import { z } from "zod";
 import type { AgentOptions, AgentRunInfo, CiFailureKind, CiJob, CiLessonsState, CiPipeline, CiStep, PreflightLeg, PreflightRun, PrCheck, ScmState } from "@shrike/schema";
 import { frontMatter } from "@shrike/mcp-server";
 import { ghStatus, type Exec, type Gh } from "./github.ts";
+import { killTree, spawnShell } from "./platform.ts";
 import { judge } from "./start/policy.ts";
 import { loadSkills, pendingDraft, proposeUpdate, rescanNow, settleNow, noteSkillUse, slug, type SkillDirs } from "./skills.ts";
 
@@ -1069,8 +1069,7 @@ export type Runner = (cmd: string, o: { cwd: string; env: Record<string, string>
 /** A login shell (the user's PATH), its own process group, killed on abort or timeout. */
 export const shellRunner: Runner = (cmd, o) =>
   new Promise((done) => {
-    const sh = process.env.SHELL || "/bin/zsh";
-    const child = spawn(sh, ["-lc", cmd], { cwd: o.cwd, env: { ...process.env, ...o.env }, detached: true, stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawnShell(cmd, { cwd: o.cwd, env: { ...process.env, ...o.env }, detached: true, stdio: ["ignore", "pipe", "pipe"] });
     let output = "";
     let part = "";
     let timedOut = false;
@@ -1082,15 +1081,11 @@ export const shellRunner: Runner = (cmd, o) =>
       part = lines.pop() ?? "";
       for (const l of lines) if (l.trim()) o.onLine(l);
     };
-    const kill = () => {
-      try {
-        process.kill(-child.pid!, "SIGKILL");
-      } catch {}
-    };
+    const kill = () => killTree(child.pid, "SIGKILL");
     const timer = setTimeout(() => ((timedOut = true), kill()), o.timeoutMs);
     o.signal.addEventListener("abort", kill, { once: true });
-    child.stdout.on("data", add);
-    child.stderr.on("data", add);
+    child.stdout?.on("data", add);
+    child.stderr?.on("data", add);
     child.on("error", (e) => (clearTimeout(timer), done({ code: 127, output: e.message, timedOut })));
     child.on("close", (code) => {
       clearTimeout(timer);

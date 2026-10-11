@@ -11,6 +11,7 @@ import { RequestTabs, UrlBar } from "./RequestPane.tsx";
 import { EmptyResponse, ResponsePane } from "./ResponsePane.tsx";
 import { CodeDialog, EnvDialog, ImportDialog } from "./Dialogs.tsx";
 import "./api.css";
+import { keys } from "../lib/platform.ts";
 
 // AP: the API client. Bruno's layout (tree | tabs, URL bar, request | response) in Shrike's glass.
 // Under 980px wide the tree floats over (closed until asked); under 700px the response sits under the request.
@@ -25,7 +26,7 @@ function EnvPicker() {
   };
   return (
     <div className="relative shrink-0">
-      <button type="button" className={cx("hud-btn ap-envbtn", !cur && "none")} aria-haspopup="menu" title={`Environment${col ? ` of ${col.name}` : ""} (⌘E)`} onClick={() => setOpen(!open)}>
+      <button type="button" className={cx("hud-btn ap-envbtn", !cur && "none")} aria-haspopup="menu" title={`Environment${col ? ` of ${col.name}` : ""} (${keys("⌘E")})`} onClick={() => setOpen(!open)}>
         <Globe size={11} aria-hidden />
         <span className="truncate">{cur ?? "No environment"}</span>
       </button>
@@ -70,7 +71,7 @@ function TabStrip({ onTree, treeOpen }: { onTree(): void; treeOpen: boolean }) {
             </button>
           </div>
         ))}
-        <button type="button" className="ap-icon" aria-label="New request (⌘B)" title="New request (⌘B)" onClick={() => useApi.getState().newTab()}>
+        <button type="button" className="ap-icon" aria-label={keys("New request (⌘B)")} title={keys("New request (⌘B)")} onClick={() => useApi.getState().newTab()}>
           <Plus size={13} />
         </button>
       </div>

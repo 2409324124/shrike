@@ -27,7 +27,7 @@ interface ThemeState {
 function apply(id: ThemeId, matchSystem: boolean): void {
   if (typeof document === "undefined") return;
   // The window follows too: macOS draws the traffic lights (and their inactive grey) for this appearance.
-  void window.shrike?.setWindowChrome?.({ appearance: matchSystem ? "system" : themes[id].scheme, background: palette(id).color.void }).catch(() => {});
+  void window.shrike?.setWindowChrome?.({ appearance: matchSystem ? "system" : themes[id].scheme, background: palette(id).color.void, ink: palette(id).color.ink }).catch(() => {});
   let el = document.getElementById(STYLE_ID);
   if (!el) {
     el = document.createElement("style");

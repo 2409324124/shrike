@@ -203,6 +203,8 @@ Works today with Node servers (Express, Next.js, NestJS, Hono, Remix), Python 3.
 2. Open Shrike. The build is signed and notarised by Apple, so it opens like any other app.
 3. Click **Open the sample project**, press **Run**, add a todo, and watch it break.
 
+**Linux** (x64, arm64): there is no released build yet. Build an AppImage or `.deb` with `scripts/release/build-linux.sh` (see [docs/RELEASING.md](docs/RELEASING.md)), or take the AppImage from the `shrike-linux-x64` artifact of a CI run. Voice is macOS only. On NixOS, run the AppImage with `appimage-run`. **Windows** builds from the same config but hasn't been run on a Windows machine yet ([docs/14-compatibility.md](docs/14-compatibility.md#operating-systems)).
+
 ### Run from source
 
 ```sh
@@ -215,7 +217,7 @@ pnpm dev
 <details>
 <summary><b>Requirements</b></summary>
 
-- macOS on Apple Silicon (voice needs macOS 15 or later)
+- macOS on Apple Silicon (voice needs macOS 15 or later). Linux runs from source or a CI build, without voice
 - Node 24 (any Node from 22.18 runs your app; Shrike's own build uses 24)
 - pnpm 10 for running from source, plus Xcode if you want voice (the helper builds on first use)
 - [Claude Code](https://docs.claude.com/en/docs/claude-code) is optional. Shrike uses it on your own subscription when it's installed. Without it, the built-in agent runs on your own Anthropic API key, and the recording, Thread and API client work with no agent at all.
@@ -260,7 +262,7 @@ Details in [docs/07-security-privacy.md](docs/07-security-privacy.md).
 
 - [x] Notarised builds
 - [ ] Auto-update
-- [ ] Windows and Linux
+- [ ] Windows and Linux releases (Linux builds from source today)
 - [ ] Codex and OpenCode as agent brains
 - [ ] Shareable recordings (`.shriketrace`) and a read-only web viewer
 - [x] Function steps for Python 3.12+ (FastAPI, Flask, Django)

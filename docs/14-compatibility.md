@@ -140,6 +140,18 @@ Plan, as built: Reddit users asked for Python. OpenTelemetry already gave a Pyth
 
 Checked with `apps/desktop/src/main/python.test.ts` (real servers through the Runner, ingest and store) and `packages/python-agent/test` on Python 3.12 and 3.14 (3.13 not installed here). Overhead on the FastAPI fixture endpoint (0.7 ms, Apple M4 Pro): +81 us per request (12%) one at a time, 24% fewer requests per second at 10 concurrent with the CPU saturated; Flask's dev server: within noise. A call into the project's own code costs about 0.15 us outside a request, a recorded step about 4 us, and past the cap of 2000 steps per request about 0.35 us.
 
+## Operating systems
+
+Status on 2026-10-11 (roadmap Phase 9, Windows and Linux). Everything that differs by OS goes through `apps/desktop/src/main/platform.ts` and, in the renderer, `src/renderer/src/lib/platform.ts`.
+
+| OS | Build | Checked | Differences |
+|---|---|---|---|
+| macOS, Apple Silicon | Signed, notarised `.dmg` (released) | Everything, including the e2e suite and voice | None: this is the reference |
+| Linux x64, arm64 | AppImage and `.deb` from `scripts/release/build-linux.sh` or the CI artifact; not released yet | In Docker (Debian 12, arm64): install, typecheck and the unit suite (609 tests: 594 pass, 13 skip; the 2 failures were the Electron sandbox in a container and a timing check under load); `build-linux.sh arm64` built both packages; the packaged app opened its window under Xvfb. Not checked: x64 outside CI, a real desktop, the e2e suite, running a project end to end | No voice. Shells run in `$SHELL -lc`, else `/bin/sh` (NixOS has no `/bin/zsh`). No "Open in Terminal" in the workspace menu. The window buttons sit over the right end of the top bar in the theme's colours. Shortcut labels read Ctrl and Alt |
+| Windows x64 | Unsigned NSIS installer from `electron-builder.yml`; no script yet | Not run on Windows. CI typechecks there and runs the platform tests; the Windows branches of `platform.ts` are unit tested on macOS through an injected platform | No voice. Commands run in `cmd.exe /d /s /c` with no login-shell PATH; a process tree is stopped with `taskkill /T /F`; `node_modules` is linked with junctions, copied when that fails. Claude Code must be the native `claude.exe` (the npm `.cmd` shim can't be spawned without a shell). Open in editor uses the default app. Same title bar and labels as Linux |
+
+NixOS: run the AppImage with `appimage-run`, or wrap `linux-unpacked` with nixpkgs' `electron`. JDKs are also looked for in `/run/current-system/sw/lib/openjdk` and `~/.nix-profile/lib/openjdk` (after `JAVA_HOME`).
+
 ## What was fixed in this phase
 
 At the start every project ran but none had a working database lane, and only one showed any server events. Fixed, by area:
@@ -203,6 +215,8 @@ At the start every project ran but none had a working database lane, and only on
 | @planetscale/database, node-cache and keyv have no hook | none of the ten | Lower priority in docs/13; not built |
 | DynamoDB, Upstash, Neon HTTP, libSQL HTTP and the Supabase PostgREST look-inside are only checked against fakes | none of the ten | No real project uses them; DynamoDB Local was skipped to save disk |
 | A packaged build must ship pg, mysql2, mongodb, redis and the DynamoDB client | build | `electron.vite.config.ts` keeps them external because bundling them broke the build |
+| Windows has never been run | build | No Windows machine; CI gates only the platform, redact and correlator tests there, the rest of the suite still assumes a POSIX shell and "/" paths |
+| Linux hasn't run a project end to end in the packaged app | build | Only the welcome window was checked under Xvfb |
 | firebase-tools 14+ needs Java 21 | vite-react-firebase | Environment limit. Setup now works around it with JDK 11 to 20, and asks for Java 21 when there is none |
 
 Environment lessons for whoever runs these again:

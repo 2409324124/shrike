@@ -153,7 +153,7 @@ export function Composer() {
     useAgent.getState().setGoal(""); // said: it now lives in the conversation
   };
   const onKey = (e: ReactKeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && e.metaKey && e.shiftKey && !list?.length) return void (e.preventDefault(), queue());
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && e.shiftKey && !list?.length) return void (e.preventDefault(), queue());
     if (e.key === "Enter" && !e.shiftKey) return void (e.preventDefault(), submit());
     if (e.key === "Escape" && !list?.length) return void (e.preventDefault(), e.stopPropagation(), close()); // Esc lets go of the composer before anything else
     if (!list?.length) return;
