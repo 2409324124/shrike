@@ -124,10 +124,18 @@ All channels are typed in `@shrike/schema` and validated with zod in main. The r
 | Failure | Behaviour |
 |---|---|
 | Dev command exits | Terminal tab opens with the output; agent offers "Explain this error" |
-| URL not detected in 30s | Ask for the URL, remember it in `.shrike/config.json` |
+| URL not detected in 45s | The run stops and says to type the app's address in Setup; a command that printed a different local address than the one set is named with both addresses |
+| App port already taken | Refused before starting when anything accepts connections there (TCP, not only HTTP); a command that still dies on it gets "Port N is already in use by another program" under its own error line (Node, Python, Go, Vite wordings) |
+| Dev command waits for an answer (`(Y/n)`, `›`) | It gets no stdin, so it exits; the error adds that Shrike can't answer questions and to run it once in a terminal or skip the question |
+| Dev command floods its output | Main reads it without falling behind (the 2,000-line tail trims in batches) and sends the window at most 20 messages a second, the newest 64KB each, with "[shrike] Skipped N KB of output to keep up." (`host.ts`) |
+| Shrike force-quit or crashed while the app runs | Each process group and its leader's start time are kept in `userData/process-groups.json`; the next launch ends those groups before anything starts, never a group whose leader's start time differs (a reused pid). Quit and window close stop every group as before. Windows: not tracked |
+| Second launch on the same data | It quits and focuses the first window (single-instance lock), so two copies never share files or the MCP port |
+| Error thrown in main | Logged (redacted) to `userData/logs/main.log`; Shrike keeps running and no error dialog appears |
+| Window renderer crashes | The window loads again and re-reads its state from main; three crashes in a minute stop the reloading |
+| Damaged state file (`userData` or `.shrike`) | Read as missing, but first copied aside to `<file>.broken-<hash>` so a later save never erases it; saves are temp file + rename; a failed save says why in plain words (read-only folder, no permission, disk full) (`state-file.ts`) |
 | node-agent crashes on load | Restart once without function hooks (OTel-only), show "Basic tracing" badge |
 | No source maps | Locations marked approximate; banner explains in one line |
-| Event flood (> 50k per session) | Drop `function` events for framework files first, then sample, show "truncated" marker |
+| Event flood (a click with 100k steps, a server polling in a loop) | A trip keeps its first 5,000 steps (errors still get in up to 10,000) and one note in the trip says how many more were skipped; the store keeps the newest 500 trips and 100,000 events, dropping the oldest finished trips first and never one an agent waits on; bodies are cut at 64KB with "…[truncated]" (`apps/desktop/src/main/store.ts`) |
 | Files changed since recording | Banner; editor opens recorded snapshot, never highlights the live file |
 | AI unavailable or no key | All non-AI features work; agent panel shows setup steps |
 

@@ -1,10 +1,10 @@
-import { randomBytes } from "node:crypto";
-import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { readdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 import type { ActionView, ApiAssertion, AppElement, AppSnapshot, DebugEvent, Flow, FlowStep, HttpRequestSpec, HttpResponseSpec, ShrikeEvents } from "@shrike/schema";
 import { redactEvent, redactText } from "@shrike/redact";
 import { runAssertions } from "./api/assert.ts";
+import { writeAtomic } from "./state-file.ts";
 
 // B1 record, B2 replay, B3 keep watching. Flows live in <project>/.shrike/flows/<id>.json.
 // Electron-free: main/ipc.ts wires the page, the app driver, notifications and file watching in.
@@ -84,11 +84,7 @@ export async function loadFlow(root: string, id: string): Promise<Flow> {
 }
 
 export async function writeFlow(root: string, flow: Flow): Promise<void> {
-  await mkdir(flowsDir(root), { recursive: true });
-  const file = join(flowsDir(root), `${checkId(flow.id)}.json`);
-  const tmp = `${file}.${randomBytes(3).toString("hex")}.tmp`;
-  await writeFile(tmp, `${JSON.stringify(flow, null, 2)}\n`);
-  await rename(tmp, file);
+  await writeAtomic(join(flowsDir(root), `${checkId(flow.id)}.json`), `${JSON.stringify(flow, null, 2)}\n`);
 }
 
 export async function removeFlow(root: string, id: string): Promise<void> {

@@ -13,6 +13,11 @@ const SERVER_IDLE_MS = 800;
 // ponytail: safety net for browser actions whose action_end never arrives (page navigated away mid-window).
 const BROWSER_IDLE_MS = 10_000;
 const MAX_SERVER_LOGS = 2000;
+// Floods (a click that logs in a loop, a server polling itself): bound what one trip and the whole store keep.
+export const MAX_TRIP_EVENTS = 5000;
+export const MAX_TRIPS = 500;
+export const MAX_EVENTS = 100_000;
+const MAX_BODY_CHARS = 64 * 1024; // docs/04: bodies are at most 64KB
 const THROTTLE_MS = 100;
 // Sent on Shrike's own requests (readiness polls, source-map fetches) so they don't show up as Actions.
 export const INTERNAL_HEADER = "x-shrike-internal";
@@ -48,6 +53,7 @@ interface TraceState {
   ended: boolean;
   pending: number; // in-flight stack resolutions
   ignored?: boolean;
+  dropped?: number; // events past MAX_TRIP_EVENTS, not kept
   timer?: ReturnType<typeof setTimeout>;
 }
 
@@ -87,7 +93,7 @@ export class Store {
   }
 
   private add(raw: DebugEvent): void {
-    const e = redactEvent(raw);
+    const e = redactEvent(clampBodies(raw));
     e.traceId = this.aliases.get(e.traceId) ?? e.traceId;
     if (e.source && (e.origin === "browser" || isAbsolute(e.source.file))) e.source = { ...e.source, file: relativize(e.source.file, this.opts.projectRoot()) }; // OpenTelemetry SDKs send absolute paths
     if ((e.kind === "http_request" || e.kind === "db_query") && e.origin === "browser" && e.stack) {
@@ -105,8 +111,11 @@ export class Store {
     if (t.ignored) return;
     if (e.http?.reqHeaders?.[INTERNAL_HEADER]) return this.ignore(t);
     const isNew = !this.events.has(e.id);
+    // ponytail: past the cap only errors get in (up to twice the cap), so a break after a flood still shows. Upgrade: keep the last N too.
+    if (isNew && t.eventIds.size >= MAX_TRIP_EVENTS && (e.status !== "error" || t.eventIds.size >= 2 * MAX_TRIP_EVENTS) && !(e.kind === "user_action" && !e.parentId && !t.rootId)) return this.drop(e.traceId, t);
     this.events.set(e.id, { ...this.events.get(e.id), ...e });
     t.eventIds.add(e.id);
+    if (isNew) this.evict(e.traceId);
 
     if (e.kind === "user_action" && !e.parentId && !t.rootId) {
       t.rootId = e.id;
@@ -240,6 +249,38 @@ export class Store {
     }
     this.moveTrace(traceId, nav.traceId);
     this.markDirty(nav.traceId);
+  }
+
+  /** One note in the trip says how many steps weren't kept; it's updated, not repeated. */
+  private drop(traceId: string, t: TraceState): void {
+    t.dropped = (t.dropped ?? 0) + 1;
+    const root = this.rootOf(t);
+    const id = `dropped-${traceId}`.slice(0, 64);
+    const message = `This trip had too many steps. Shrike kept the first ${MAX_TRIP_EVENTS.toLocaleString("en-US")} and skipped ${t.dropped.toLocaleString("en-US")} more.`;
+    const note = this.events.get(id);
+    if (note?.log) note.log.message = note.name = message;
+    else {
+      this.events.set(id, { id, traceId, parentId: root?.id, origin: root?.origin ?? "server", kind: "log", name: message, startMs: Date.now(), status: "ok", log: { level: "warn", message } });
+      t.eventIds.add(id);
+    }
+    this.markDirty(traceId);
+  }
+
+  /** Over MAX_TRIPS or MAX_EVENTS: forget the oldest finished trips first, never one an agent is waiting on or the one just added to. */
+  private evict(keep: string): void {
+    if (this.traces.size <= MAX_TRIPS && this.events.size <= MAX_EVENTS) return;
+    const pick = (finished: boolean) => {
+      for (const [id, t] of this.traces) if (id !== keep && (!finished || t.complete || t.ignored) && !(t.rootId && this.waiters.has(t.rootId))) return id;
+    };
+    while (this.traces.size > MAX_TRIPS || this.events.size > MAX_EVENTS) {
+      const id = pick(true) ?? pick(false);
+      if (!id) return;
+      const t = this.traces.get(id)!;
+      clearTimeout(t.timer);
+      for (const e of t.eventIds) this.events.delete(e);
+      this.traces.delete(id);
+      this.dirty.delete(id);
+    }
   }
 
   private ignore(t: TraceState): void {
@@ -484,6 +525,13 @@ export function declare(p: Place, declared: Declared | undefined): Place {
     if (normHost(p.detail) === normHost(key) || p.id.endsWith(`:${key}`)) return { id: `${d.kind}:${key}`, kind: d.kind, name: d.name, detail: p.detail ?? key };
   }
   return p;
+}
+
+function clampBodies(e: DebugEvent): DebugEvent {
+  const h = e.http;
+  const cut = (s: string | undefined) => (s && s.length > MAX_BODY_CHARS ? `${s.slice(0, MAX_BODY_CHARS)}…[truncated]` : s);
+  if (!h || ((h.reqBody?.length ?? 0) <= MAX_BODY_CHARS && (h.resBody?.length ?? 0) <= MAX_BODY_CHARS)) return e;
+  return { ...e, http: { ...h, reqBody: cut(h.reqBody), resBody: cut(h.resBody) } };
 }
 
 function safeBuild(root: DebugEvent, events: DebugEvent[], complete: boolean): ActionView | undefined {

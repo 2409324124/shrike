@@ -1,18 +1,41 @@
 import { app, BrowserWindow, screen, type WebContents } from "electron";
-import { readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, readFileSync, renameSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { color } from "@shrike/design";
+import { redactText } from "@shrike/redact";
 import { stopAllAgents } from "./agent.ts";
 import { appView, runner, shutdown } from "./host.ts";
+import { reapOrphans, trackGroups } from "./runner.ts";
 import { registerIpc } from "./ipc.ts";
 import { automated, headless } from "./headless.ts";
 import { banner } from "./banner.ts";
 import { placeAppWindow } from "./app-view.ts";
 import { adoptUserPath, isMac } from "./platform.ts";
+import { writeAtomicSync } from "./state-file.ts";
 
 let win: BrowserWindow | undefined;
 let appWin: BrowserWindow | undefined; // the user's app in its own window (detached from the dock)
 const ICON = join(import.meta.dirname, "../../resources/icon.png"); // B-brand4: the dot-bust app icon (design-system/brand/icon.py)
+
+// A bug in main is logged and Shrike keeps running: no "A JavaScript error occurred" dialog, no crash that leaves the user's app orphaned.
+function logError(kind: string, err: unknown): void {
+  const line = `${new Date().toISOString()} ${kind}: ${redactText(err instanceof Error ? (err.stack ?? err.message) : String(err))}\n`;
+  console.error(`[shrike] ${line}`);
+  try {
+    const dir = join(app.getPath("userData"), "logs");
+    const file = join(dir, "main.log");
+    mkdirSync(dir, { recursive: true });
+    if ((statSync(file, { throwIfNoEntry: false })?.size ?? 0) > 1_000_000) renameSync(file, `${file}.old`);
+    appendFileSync(file, line);
+  } catch {}
+}
+process.on("uncaughtException", (err) => logError("uncaught exception", err));
+process.on("unhandledRejection", (err) => logError("unhandled rejection", err));
+
+// One Shrike per userData: a second launch focuses the first instead of fighting it for files and the MCP port.
+const primary = app.requestSingleInstanceLock();
+if (!primary) app.quit();
+app.on("second-instance", () => win && (win.isMinimized() && win.restore(), win.focus()));
 
 if (headless && process.platform === "darwin") app.setActivationPolicy("accessory");
 // Dev only, a real terminal only: never in tests, headless runs or piped logs.
@@ -50,6 +73,14 @@ function guard(wc: WebContents): void {
     prefs.sandbox = true;
   });
   appView.watch(wc);
+  // A crashed window loads again (state comes back from main); three crashes in a minute stop the loop.
+  let crashes: number[] = [];
+  wc.on("render-process-gone", (_e, d) => {
+    if (d.reason === "clean-exit" || wc.isDestroyed()) return;
+    logError("window crashed", d.reason);
+    crashes = [...crashes.filter((t) => Date.now() - t < 60_000), Date.now()];
+    if (crashes.length <= 3) wc.reload();
+  });
 }
 
 const appWinFile = () => join(app.getPath("userData"), "app-window.json");
@@ -86,7 +117,7 @@ function openAppWindow(): void {
     appView.handOff();
     try {
       const bounds = w.getNormalBounds();
-      writeFileSync(appWinFile(), JSON.stringify({ displayId: screen.getDisplayMatching(bounds).id, bounds, fullScreen: w.isFullScreen() }));
+      writeAtomicSync(appWinFile(), JSON.stringify({ displayId: screen.getDisplayMatching(bounds).id, bounds, fullScreen: w.isFullScreen() }));
     } catch {}
   });
   w.on("closed", () => {
@@ -142,6 +173,11 @@ for (const sig of ["SIGINT", "SIGTERM"] as const) process.on(sig, () => app.quit
 app.on("window-all-closed", () => app.quit());
 
 void app.whenReady().then(async () => {
+  if (!primary) return;
+  // Whatever a force-quit or crashed Shrike left running (and holding its ports) ends before anything new starts.
+  const groupsFile = join(app.getPath("userData"), "process-groups.json");
+  await reapOrphans(groupsFile).then((n) => n && logError("ended apps left running by the last Shrike", `${n} process group(s)`), (e) => logError("orphan check", e));
+  trackGroups(groupsFile);
   if (process.platform === "darwin" && !headless) app.dock?.setIcon(ICON);
   await adoptUserPath(); // before anything looks for git, gh, claude or node
   registerIpc(() => win, { get: () => appWin, open: openAppWindow, close: closeAppWindow });

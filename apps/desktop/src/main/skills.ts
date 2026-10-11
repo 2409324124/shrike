@@ -1,10 +1,11 @@
 import { createHash, randomBytes } from "node:crypto";
-import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { readdir, readFile, rm, stat } from "node:fs/promises";
 import { basename, dirname, join, relative, sep } from "node:path";
 import type { AgentRunInfo, AgentStep, Flow, Skill, SkillDraft, SkillEvent, SkillOutcome, SkillProposal, ShrikeEvents, StartPlan, StartReward } from "@shrike/schema";
 import { frontMatter, OUTCOME, outcomeOf, parseSkill, skillSteps, type SkillDoc, type SkillHost } from "@shrike/mcp-server";
 import { rankOf } from "../renderer/src/system/ranks.ts";
 import { questDone } from "./progress.ts";
+import { readJson, writeAtomic as atomicWrite } from "./state-file.ts";
 
 // S1–S5: skills from four places, merged. Electron-free so it tests with node:test; ipc.ts calls configureSkills.
 //   builtin  prompts/skills/*.md            (ships with Shrike)
@@ -41,7 +42,7 @@ const projectSkills = (root: string) => join(root, ".shrike", "skills");
 
 async function readState(d: SkillDirs): Promise<State> {
   try {
-    const s = JSON.parse(await readFile(statePath(d), "utf8")) as Partial<State>;
+    const s = ((await readJson(statePath(d))) ?? {}) as Partial<State>;
     const obj = <T>(v: T | undefined) => (v && typeof v === "object" && !Array.isArray(v) ? v : undefined);
     return { ...(typeof s.claude === "boolean" ? { claude: s.claude } : {}), uses: obj(s.uses) ?? {}, wins: obj(s.wins) ?? {}, ...(obj(s.seen) ? { seen: s.seen } : {}) };
   } catch {
@@ -49,13 +50,6 @@ async function readState(d: SkillDirs): Promise<State> {
   }
 }
 
-// Writes go through a temp file so a crash never leaves half a file.
-async function atomicWrite(file: string, text: string | Uint8Array): Promise<void> {
-  await mkdir(dirname(file), { recursive: true });
-  const tmp = `${file}.${randomBytes(4).toString("hex")}.tmp`;
-  await writeFile(tmp, text);
-  await rename(tmp, file);
-}
 
 let chain: Promise<unknown> = Promise.resolve(); // serialize state read-modify-write
 const serial = <T>(fn: () => Promise<T>): Promise<T> => {
@@ -177,7 +171,7 @@ const normBody = (s: string) => s.replace(/\r\n/g, "\n").replace(/[ \t]+$/gm, ""
 
 async function readDrafts(d: SkillDirs): Promise<DraftRec[]> {
   try {
-    const v: unknown = JSON.parse(await readFile(draftsPath(d), "utf8"));
+    const v = await readJson(draftsPath(d));
     return Array.isArray(v) ? v.filter((x): x is DraftRec => !!x && typeof x === "object" && typeof (x as DraftRec).id === "string" && typeof (x as DraftRec).skillId === "string" && typeof (x as DraftRec).after === "string") : [];
   } catch {
     return [];
@@ -523,7 +517,7 @@ const learned = new Map<string, { reason: string; draftId: string }>(); // skill
 
 export async function readLog(d: SkillDirs): Promise<SkillEvent[]> {
   try {
-    const v: unknown = JSON.parse(await readFile(logPath(d), "utf8"));
+    const v = await readJson(logPath(d));
     return Array.isArray(v) ? v.filter((e): e is SkillEvent => !!e && typeof e === "object" && typeof (e as SkillEvent).kind === "string" && typeof (e as SkillEvent).at === "number") : [];
   } catch {
     return [];

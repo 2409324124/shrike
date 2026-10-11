@@ -54,6 +54,31 @@ function shiftPlaces(p: ProjectInfo["declaredPlaces"]): ProjectInfo["declaredPla
   return p && o ? Object.fromEntries(Object.entries(p).map(([k, v]) => [shiftUrl(`http://${k}`, o)!.slice("http://".length), v])) : p;
 }
 
+// A flooding dev command mustn't swamp the renderer: output goes out at most every 50ms, the newest 64KB per stream.
+const OUT_EVERY_MS = 50;
+const OUT_MAX = 64 * 1024;
+const outBuf = new Map<string | null, { text: string; skipped: number }>(); // null: the merged "run:output" stream
+let outTimer: ReturnType<typeof setTimeout> | undefined;
+function queueOutput(name: string | null, chunk: string): void {
+  const b = outBuf.get(name) ?? { text: "", skipped: 0 };
+  b.text += chunk;
+  if (b.text.length > OUT_MAX) {
+    const cut = b.text.indexOf("\n", b.text.length - OUT_MAX) + 1 || b.text.length - OUT_MAX;
+    b.skipped += cut;
+    b.text = b.text.slice(cut);
+  }
+  outBuf.set(name, b);
+  outTimer ??= setTimeout(() => {
+    outTimer = undefined;
+    for (const [p, { text, skipped }] of outBuf) {
+      const chunk = `${skipped ? `\r\n[shrike] Skipped ${Math.ceil(skipped / 1024)} KB of output to keep up.\r\n` : ""}${text}`;
+      if (p === null) emit("run:output", chunk);
+      else emit("process:output", { process: p, chunk });
+    }
+    outBuf.clear();
+  }, OUT_EVERY_MS);
+}
+
 let prevState: RunStatus["state"] = "idle";
 export const runner = new Runner({
   onStatus: (s) => {
@@ -61,15 +86,15 @@ export const runner = new Runner({
     if (s.state === "running" && prevState !== "running") appView.load().catch(() => {});
     prevState = s.state;
   },
-  onOutput: (chunk) => emit("run:output", chunk),
-  onProcessOutput: (process, chunk) => emit("process:output", { process, chunk }),
+  onOutput: (chunk) => queueOutput(null, chunk),
+  onProcessOutput: (process, chunk) => queueOutput(process, chunk),
 });
 
 export const appView = new AppView({
   bundlePath: paths.browserAgentBundle,
   appUrl: () => (runner.status.state === "running" ? runner.status.url : undefined),
   onMessage: (msg) => store.handle(msg),
-  onWarning: (text) => emit("run:output", text),
+  onWarning: (text) => queueOutput(null, text),
 });
 
 const ingest = () => (ingestP ??= startIngest((msg) => store.handle(msg), inspector)); // inspector: I place inspector

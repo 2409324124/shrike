@@ -1,9 +1,10 @@
 // WS1/WS2: every project Shrike knows and all of its worktrees, grouped by status, and the Create workspace flow.
 // No Electron imports (tested with node:test): index wiring passes the Electron bits in.
-import { existsSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { basename, join, sep } from "node:path";
 import type { ApprovalRequest, CreateWorkspace, RunStatus, ShrikeEvents, Workspace, WorkspaceSources } from "@shrike/schema";
 import { groupOf, parsePorcelain, parseSmart, slugName } from "../renderer/src/workspaces/logic.ts";
+import { readJsonSync, writeAtomicSync } from "./state-file.ts";
 import * as wt from "./worktrees.ts";
 
 interface ExecResult {
@@ -41,14 +42,10 @@ export function createWorkspaces(d: WorkspaceDeps) {
   let timer: ReturnType<typeof setTimeout> | undefined;
 
   const read = (): Saved => {
-    try {
-      const v = JSON.parse(readFileSync(d.file, "utf8")) as Partial<Saved>;
-      return { projects: Array.isArray(v.projects) ? v.projects.filter((p): p is string => typeof p === "string") : [], labels: v.labels && typeof v.labels === "object" ? v.labels : {} };
-    } catch {
-      return { projects: [], labels: {} };
-    }
+    const v = (readJsonSync(d.file) ?? {}) as Partial<Saved>;
+    return { projects: Array.isArray(v.projects) ? v.projects.filter((p): p is string => typeof p === "string") : [], labels: v.labels && typeof v.labels === "object" ? v.labels : {} };
   };
-  const write = (s: Saved) => writeFileSync(d.file, JSON.stringify(s, null, 2));
+  const write = (s: Saved) => writeAtomicSync(d.file, JSON.stringify(s, null, 2));
 
   /** A project folder, remembered by its main checkout (plus the monorepo subfolder), most recent first. */
   async function remember(root: string): Promise<string> {

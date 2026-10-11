@@ -1,7 +1,6 @@
 import { app } from "electron";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { readFileSync, writeFileSync } from "node:fs";
 import type { ShrikeEvents, StartCategory, StartPlan, StartSettings } from "@shrike/schema";
 import { detectBrains } from "@shrike/agent";
 import { startMcpServer, type StartHost } from "@shrike/mcp-server";
@@ -13,6 +12,7 @@ import { notify } from "../notify.ts";
 import { paths } from "../paths.ts";
 import * as skills from "../skills.ts";
 import { adoptUserPath } from "../platform.ts";
+import { readJsonSync, writeAtomicSync } from "../state-file.ts";
 import { runStartBrain } from "./brain.ts";
 import { discoverRecipes } from "./recipes.ts";
 import { StartSession, type StartAnswer } from "./session.ts";
@@ -62,35 +62,28 @@ const startServer = () => (server ??= startMcpServer(host, { skillsDir: join(pat
 const ingest = () => (ingestP ??= startIngest((msg) => store.handle(msg), inspector));
 
 const policyFile = () => join(app.getPath("userData"), "start-policy.json");
+const readPolicy = (): Record<string, StartCategory[]> => {
+  const v = readJsonSync(policyFile());
+  return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, StartCategory[]>) : {};
+};
 function readAlways(root: string): Set<StartCategory> {
-  try {
-    const all = JSON.parse(readFileSync(policyFile(), "utf8")) as Record<string, StartCategory[]>;
-    return new Set(Array.isArray(all[root]) ? all[root].filter((c) => typeof c === "string") : []);
-  } catch {
-    return new Set();
-  }
+  const all = readPolicy();
+  return new Set(Array.isArray(all[root]) ? all[root].filter((c) => typeof c === "string") : []);
 }
 function saveAlways(root: string, cats: StartCategory[]): void {
-  let all: Record<string, StartCategory[]> = {};
-  try {
-    all = JSON.parse(readFileSync(policyFile(), "utf8")) as Record<string, StartCategory[]>;
-  } catch {}
+  const all = readPolicy();
   all[root] = cats;
   try {
-    writeFileSync(policyFile(), JSON.stringify(all, null, 2), { mode: 0o600 });
+    writeAtomicSync(policyFile(), JSON.stringify(all, null, 2), 0o600);
   } catch {}
 }
 
 const settingsFile = () => join(app.getPath("userData"), "start-settings.json");
 export function getStartSettings(): StartSettings {
-  try {
-    return { autoKeep: (JSON.parse(readFileSync(settingsFile(), "utf8")) as Partial<StartSettings>).autoKeep === true };
-  } catch {
-    return { autoKeep: false };
-  }
+  return { autoKeep: (readJsonSync(settingsFile()) as Partial<StartSettings> | undefined)?.autoKeep === true };
 }
 export function setStartSettings(s: StartSettings): void {
-  writeFileSync(settingsFile(), JSON.stringify({ autoKeep: s.autoKeep === true }), { mode: 0o600 });
+  writeAtomicSync(settingsFile(), JSON.stringify({ autoKeep: s.autoKeep === true }), 0o600);
 }
 
 export const getStartPlan = (): StartPlan | null => (session ? structuredClone(session.quest.plan) : null);

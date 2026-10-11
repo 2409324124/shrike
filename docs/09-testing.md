@@ -127,6 +127,30 @@ Starting set (15 bugs, covering what vibe-coded apps actually break on):
 
 Run the eval per brain (Claude Code, built-in, Codex, OpenCode) and record results in `fixtures/bugs/RESULTS.md` with the date, brain and model.
 
+## Reliability: process lifecycle and local state
+
+Each case was broken on purpose first. Unit checks run in `pnpm test`; e2e cases are `apps/desktop/e2e/reliability.test.ts` (run with `SHRIKE_HEADLESS=1`, since the crash probes would otherwise put windows or dialogs on screen).
+
+| Case | Before | After | Check |
+|---|---|---|---|
+| App port held by something that isn't a web server | Not noticed (the probe was HTTP); the app then died with Node's raw `EADDRINUSE` stack | Refused before starting (TCP probe); a later `EADDRINUSE` gets "Port N is already in use by another program. Stop that program, then press Run again." | `runner.test.ts` reliability tests (Node, uvicorn, Go, Vite wordings) |
+| Ingest or MCP port taken | Ingest listens on port 0, so it never collides; MCP falls back to a random port and rewrites `mcp.json` (already covered by MCP9) | Unchanged | `connect.test.ts` |
+| Two runs on one port (worktree offsets) | Refused with a plain reason (already covered) | Unchanged | `runner.test.ts` |
+| Two Shrikes on the same userData | Both ran, sharing state files and fighting for the MCP port | The second quits and focuses the first | e2e "a second Shrike" |
+| Dev command fails at once, exits later, hangs | Exit code plus the error line; 45 s timeout with the last error printed (already fine) | Unchanged | `runner.test.ts` |
+| Dev command prints a URL on another port than the one set | After 45 s: "didn't respond at <set address>" | Names both: "Your dev command says your app is at X, but Shrike expected it at Y. Open Setup and change your app's address to match." | manual probe (45 s wait) |
+| Dev command asks a question (`(Y/n)`) | stdin is closed, so it exits with code 1 and only the raw prompt | Adds "It stopped to ask a question, and Shrike can't answer one." with what to do | `runner.test.ts` |
+| Dev command floods stdout (`yes`) | The main process spent a full core trimming its line buffer (one splice per line), about 10 MB/s; the window got 438 messages in 3 s | The line buffer trims in batches; the window gets at most 20 messages a second, the newest 64KB each, with a "Skipped N KB" line (60 messages in 3 s); renderer timers stay within 2 ms, a round trip to main 1 ms | e2e "floods" |
+| Cmd+Q, window close | Every process group stopped (TERM, then KILL after 3 s) | Unchanged | e2e "closing the window" |
+| Shrike force-killed or crashed while the app runs | The app's process group (vite, the API) kept running and holding 5173/3001; the next Run said the port was taken by "another program" | Groups are saved with their leader's start time in `userData/process-groups.json`; the next launch ends them, and leaves alone a group whose leader started at another time (a reused pid) | e2e "force-killed", `runner.test.ts` |
+| Error thrown or promise rejected in main | Electron's "A JavaScript error occurred in the main process" dialog | Logged (redacted) to `userData/logs/main.log`; Shrike keeps running, no dialog | e2e "an error thrown in main" |
+| Window renderer crash | Blank window until restart | Reloads and re-reads state from main (three crashes in a minute stop the loop); the app pane's crash already said to press Reload | e2e "a crashed window" |
+| Damaged, empty or cut-off JSON in userData or `.shrike` | Read as empty and then saved over: saved projects, skill counts and drafts, start policy, chains, XP, API history were lost | Copied aside to `<file>.broken-<hash>` before falling back; saves are temp file + rename; read-only folder, no permission and a full disk give a plain reason | `state-file.test.ts` |
+| A click with 100k events, a server loop, giant bodies | Unbounded: +171 MB heap and a 42.8 MB update for one trip; 20k trips kept | 5,000 events a trip (errors up to 10,000) with a note, 500 trips, 100,000 events, bodies cut at 64KB | `store.test.ts` |
+| Sleep, wake or a clock jump during a start | The 45 s readiness deadline and the quiet-process wait used the wall clock, so a jump could fail a start at once or stall it | Both use a monotonic clock | code review only |
+
+Not verified: a clock jump in the middle of a trip (event times come from each agent's wall clock; the correlator's skew handling is tested only to ±300 ms), network interface changes (everything is loopback), a real full disk (only the read-only folder case is tested; the full-disk wording is mapped but not exercised), and orphan cleanup on Windows (not tracked there).
+
 ## Perf budgets
 
 | Budget | Limit |

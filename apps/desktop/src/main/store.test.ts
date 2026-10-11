@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { ActionView, DebugEvent } from "@shrike/schema";
-import { SERVER_OUTPUT_ID, Store, ZERO_TRACE } from "./store.ts";
+import { MAX_TRIP_EVENTS, MAX_TRIPS, SERVER_OUTPUT_ID, Store, ZERO_TRACE } from "./store.ts";
 
 const T = "1".repeat(32);
 const ev = (p: Partial<DebugEvent> & Pick<DebugEvent, "id" | "kind" | "name">): DebugEvent => ({ traceId: T, origin: "browser", startMs: Date.now(), status: "ok", ...p });
@@ -241,4 +241,30 @@ test("a cross-origin call's server side (and its CORS preflight) joins the click
   assert.equal(store.getEvent("a6".repeat(8))?.traceId, T, "later server events follow the join");
   assert.equal(store.getEvent(data.id)?.place?.id, "data:supabase:localhost:15421");
   assert.equal(store.getEvent(sneaky.id)?.place?.kind, "client");
+});
+
+test("floods stay bounded: a trip keeps MAX_TRIP_EVENTS, a note and later errors; old trips go first, a waited one stays; bodies are cut", async () => {
+  const { store } = make();
+  const root = ev({ id: "f".repeat(16), kind: "user_action", name: "Clicked", trigger: "click" });
+  store.handle({ type: "events", events: [root] });
+  const waited = store.waitForAction(root.id, 5000);
+  const fns = Array.from({ length: MAX_TRIP_EVENTS + 1000 }, (_, i) => ev({ id: `fn${i}`.padStart(16, "0"), parentId: root.id, origin: "server", kind: "function", name: `f${i}()` }));
+  store.handle({ type: "events", events: fns });
+  store.handle({ type: "events", events: [ev({ id: "e".repeat(16), parentId: root.id, origin: "server", kind: "error", name: "Boom", status: "error" })] });
+  assert.equal(store.getAction(root.id)!.summary.stats.functions, MAX_TRIP_EVENTS - 1);
+  assert.ok(store.getEvent("e".repeat(16)), "an error past the cap is still kept");
+  assert.match(store.searchEvents("too many steps")[0]?.log?.message ?? "", /kept the first 5,000 and skipped 1,001 more/);
+
+  const big = "x".repeat(200_000);
+  for (let i = 0; i < MAX_TRIPS + 50; i++) {
+    const tr = (i + 16).toString(16).padStart(32, "0");
+    store.handle({ type: "events", events: [ev({ id: `s${i}`.padStart(16, "0"), traceId: tr, origin: "server", kind: "http_request", name: "GET /poll", http: { method: "GET", url: "/poll", status: 200, resBody: big } })] });
+  }
+  assert.ok(store.listActions().length <= MAX_TRIPS);
+  assert.ok(store.getAction(root.id), "the trip an agent waits on is never dropped");
+  assert.equal(store.getEvent("s0".padStart(16, "0")), undefined, "the oldest trip went first");
+  const body = store.getEvent(`s${MAX_TRIPS + 49}`.padStart(16, "0"))!.http!.resBody!;
+  assert.ok(body.length < 70_000 && body.endsWith("…[truncated]"));
+  store.handle({ type: "action_end", actionId: root.id, at: Date.now() });
+  assert.equal((await waited)?.complete, true);
 });

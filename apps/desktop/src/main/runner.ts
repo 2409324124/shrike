@@ -1,10 +1,11 @@
 import type { ChildProcess } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { connect } from "node:net";
 import { delimiter, isAbsolute, join, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { ProcessSpec, ProjectInfo, RunStatus } from "@shrike/schema";
 import { readEnv } from "@shrike/scanner";
-import { killTree, spawnShell } from "./platform.ts";
+import { isWin, killTree, spawnShell, startTimeOf } from "./platform.ts";
 import { nodeAgentOk } from "./start/tools.ts";
 
 const MAX_LINES = 2000;
@@ -53,6 +54,7 @@ interface Proc {
   child: ChildProcess;
   state: ProcState["state"];
   startedAt: number;
+  born: number; // performance.now() at spawn
   url?: string;
   instrumented?: boolean;
   error?: string;
@@ -128,6 +130,59 @@ export function addPythonAgent(env: NodeJS.ProcessEnv, dir: string | undefined):
 
 // Runs with a live process; portTaken doesn't count their ports as "another program" (a worktree's run, W2).
 const live = new Set<Runner>();
+
+// Every live process group and when its leader started, kept in a file so the next launch can end what a force-quit or crashed Shrike left behind.
+const groups = new Map<number, string>();
+let groupsFile: string | undefined;
+export const trackGroups = (file: string): void => void (groupsFile = file);
+function saveGroups(): void {
+  if (!groupsFile) return;
+  try {
+    writeFileSync(`${groupsFile}.tmp`, JSON.stringify(Object.fromEntries(groups)));
+    renameSync(`${groupsFile}.tmp`, groupsFile);
+  } catch {}
+}
+function noteGroup(child: ChildProcess): void {
+  const pid = child.pid;
+  if (!pid || isWin || !groupsFile) return; // ponytail: Windows has no process groups to find again; taskkill /T needs the living parent
+  void startTimeOf(pid).then((t) => {
+    if (t && child.exitCode === null && child.signalCode === null) groups.set(pid, t), saveGroups();
+  });
+  child.once("close", () => groups.delete(pid) && saveGroups());
+}
+
+/** Ends the process groups a previous Shrike left running. A group counts only when its leader still has the start time we saved,
+ * or the leader is gone and the group lives on (a pid can't be reused while its group exists), so nobody else's process is touched. */
+export async function reapOrphans(file: string): Promise<number> {
+  let saved: Record<string, unknown>;
+  try {
+    saved = JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>;
+  } catch {
+    return 0;
+  }
+  let n = 0;
+  for (const [key, started] of Object.entries(saved ?? {})) {
+    const pid = Number(key);
+    if (!Number.isInteger(pid) || pid <= 1 || typeof started !== "string") continue;
+    const now = await startTimeOf(pid);
+    if (now === started || (now === undefined && groupAlive(pid))) {
+      killTree(pid, "SIGTERM");
+      setTimeout(() => killTree(pid, "SIGKILL"), 1500).unref();
+      n++;
+    }
+  }
+  rmSync(file, { force: true });
+  return n;
+}
+
+function groupAlive(pid: number): boolean {
+  try {
+    process.kill(-pid, 0);
+    return true;
+  } catch {
+    return false; // ESRCH gone, EPERM not ours
+  }
+}
 
 export class Runner {
   status: RunStatus = { state: "idle" };
@@ -235,8 +290,9 @@ export class Runner {
         return this.fail(`Couldn't start "${spec.command}": ${(err as Error).message}`);
       }
       let done!: () => void;
-      const p: Proc = { spec, cwd, root: project.root, child, state: "starting", startedAt: Date.now(), url, lines: [], partial: "", atLineStart: true, exited: new Promise((r) => (done = r)) };
+      const p: Proc = { spec, cwd, root: project.root, child, state: "starting", startedAt: Date.now(), born: performance.now(), url, lines: [], partial: "", atLineStart: true, exited: new Promise((r) => (done = r)) };
       this.procs.push(p);
+      noteGroup(child);
       child.stdout?.on("data", (b: Buffer) => this.emitOutput(p, b.toString("utf8")));
       child.stderr?.on("data", (b: Buffer) => this.emitOutput(p, b.toString("utf8")));
       child.once("error", (err) => this.emitOutput(p, `\r\n${err.message}\r\n`));
@@ -262,7 +318,7 @@ export class Runner {
     if (p.managed) {
       // R3: the start agent reads why (service_logs) and fixes it; the other services keep running.
       p.state = this.stopping || p.stopRequested || code === 0 ? "stopped" : "error";
-      if (p.state === "error") p.error = `The "${p.spec.name}" service ${signal ? `was stopped by ${signal}` : `exited with code ${code}`}.${errorTail(p.lines) ? `\n${errorTail(p.lines)}` : ""}`;
+      if (p.state === "error") p.error = `The "${p.spec.name}" service ${signal ? `was stopped by ${signal}` : `exited with code ${code}`}.${errorTail(p.lines) ? `\n${errorTail(p.lines)}` : ""}${exitHint([...p.lines, p.partial])}`;
       return this.refresh();
     }
     const wasRunning = this.status.state === "running";
@@ -273,7 +329,7 @@ export class Runner {
       const why = signal ? `was stopped by ${signal}` : `exited with code ${code}`;
       const who = this.procs.length === 1 ? "Your dev command" : `The "${p.spec.name}" process`;
       p.state = "error";
-      p.error = `${who} ${why}.${tail ? `\n${tail}` : ""}${code === 127 && ![p.cwd, p.root].some((d) => existsSync(join(d, "node_modules"))) ? `\nYour project's packages aren't installed. Run your install command (like npm install) in ${p.spec.cwd ?? "the project folder"}, then press Run.` : ""}`;
+      p.error = `${who} ${why}.${tail ? `\n${tail}` : ""}${exitHint([...p.lines, p.partial])}${code === 127 && ![p.cwd, p.root].some((d) => existsSync(join(d, "node_modules"))) ? `\nYour project's packages aren't installed. Run your install command (like npm install) in ${p.spec.cwd ?? "the project folder"}, then press Run.` : ""}`;
       // Once up, one failing process of several shows on that process only (O4); while starting it fails the run and stops the rest, so their ports are free for Run.
       if (!this.stopping && !(wasRunning && this.alive().length)) {
         this.set({ ...this.status, state: "error", error: p.error });
@@ -309,7 +365,7 @@ export class Runner {
 
   private onLine(p: Proc, line: string): void {
     p.lines.push(line);
-    if (p.lines.length > MAX_LINES) p.lines.splice(0, p.lines.length - MAX_LINES);
+    if (p.lines.length > MAX_LINES * 2) p.lines.splice(0, p.lines.length - MAX_LINES); // in batches: one splice per line pinned a core on a flooding command
     if (this.status.state !== "starting") return;
     const found = detectUrl(line);
     // Only this computer's URLs say where a service listens (Nix prints https://cache.nixos.org while it downloads).
@@ -326,7 +382,7 @@ export class Runner {
   }
 
   private async waitReady(gen: number, project: ProjectInfo, serverUrl?: string): Promise<void> {
-    const deadline = Date.now() + READY_TIMEOUT_MS;
+    const deadline = performance.now() + READY_TIMEOUT_MS; // monotonic: a clock jump (wake from sleep, NTP) mustn't end or stretch the wait
     const needPage = !!(project.appUrl || project.frontend);
     const live = () => gen === this.gen && this.status.state === "starting";
     while (live()) {
@@ -334,7 +390,7 @@ export class Runner {
       for (const p of this.procs) {
         if (p.state !== "starting") continue;
         // node-agent's hello comes before user code runs, so a URL-less process must also live a moment.
-        const up = p.url ? await responds(p.url) : Date.now() - p.startedAt >= QUIET_READY_MS;
+        const up = p.url ? await responds(p.url) : performance.now() - p.born >= QUIET_READY_MS;
         if (up && live() && p.state === "starting") {
           p.state = "running";
           changed = true;
@@ -348,13 +404,15 @@ export class Runner {
       const serverUp = !serverUrl || (await responds(serverUrl));
       if (!live()) return;
       if (pageUp && serverUp && this.procs.every((p) => p.state === "running" || p.state === "stopped")) return this.set({ ...this.status, state: "running", url: page });
-      if (Date.now() > deadline) {
+      if (performance.now() > deadline) {
         const slow = this.procs.find((p) => p.state === "starting");
         const error =
           needPage && !page
             ? "Couldn't find your app's URL in the dev command output within 45 seconds. Open Setup and type your app's address."
             : needPage && !pageUp
-              ? `Your app didn't respond at ${page} within 45 seconds. Check the Terminal tab.`
+              ? this.procs.length === 1 && this.firstUrl && portOf(this.firstUrl) !== portOf(page)
+                ? `Your dev command says your app is at ${this.firstUrl}, but Shrike expected it at ${page}. Open Setup and change your app's address to match.`
+                : `Your app didn't respond at ${page} within 45 seconds. Check the Terminal tab.`
               : slow
                 ? `The "${slow.spec.name}" process didn't respond at ${slow.url} within 45 seconds. Check the Terminal tab.`
                 : `Your API didn't respond at ${serverUrl} within 45 seconds. Check the Terminal tab.`;
@@ -398,8 +456,9 @@ export class Runner {
     }
     const child = spawnShell(spec.command, { cwd, env: childEnv, detached: true, stdio: ["ignore", "pipe", "pipe"] });
     let done!: () => void;
-    const p: Proc = { managed: true, spec, cwd, root: project.root, child, state: "starting", startedAt: Date.now(), url: spec.url, lines: [], partial: "", atLineStart: true, exited: new Promise((r) => (done = r)) };
+    const p: Proc = { managed: true, spec, cwd, root: project.root, child, state: "starting", startedAt: Date.now(), born: performance.now(), url: spec.url, lines: [], partial: "", atLineStart: true, exited: new Promise((r) => (done = r)) };
     this.procs.push(p);
+    noteGroup(child);
     this.stopping = false;
     const gen = this.gen;
     child.stdout?.on("data", (b: Buffer) => this.emitOutput(p, b.toString("utf8")));
@@ -501,6 +560,17 @@ export function errorTail(lines: string[]): string {
   return err ? err.trim() : clean.slice(-5).join("\n").trim();
 }
 
+/** Plain words for two exits people hit: the port is taken, or the command stopped to ask a question nobody can answer. */
+export function exitHint(lines: string[]): string {
+  const recent = lines.slice(-40).map((l) => l.replace(ANSI, ""));
+  const inUse = recent.findLast((l) => /address already in use|port \d+ is (already )?in use/i.test(l)) ?? recent.findLast((l) => /EADDRINUSE/.test(l));
+  if (inUse) {
+    const port = [...inUse.replace(/\[Errno \d+\]/g, "").matchAll(/(?<![\d.])(\d{2,5})(?![\d.])/g)].map((m) => Number(m[1])).findLast((n) => n <= 65535);
+    return `\n${port ? `Port ${port}` : "Its port"} is already in use by another program. Stop that program, then press Run again.`;
+  }
+  if (recent.slice(-3).some((l) => /\(y\/n\)|\[y\/n\]|\?\s*›/i.test(l))) return "\nIt stopped to ask a question, and Shrike can't answer one. Run it once in a terminal to answer it, or add the option that skips the question.";
+  return "";
+}
 
 /** The last line that names a problem and says something past "Error:" (a child that crashed while its parent kept running). */
 export function lastProblem(lines: string[]): string | undefined {
@@ -520,13 +590,28 @@ export async function responds(url: string): Promise<boolean> {
   }
 }
 
+/** Something accepts connections on the URL's port, HTTP or not (a database or a raw TCP server holds a port just as well). */
+function listening(url: string): Promise<boolean> {
+  return new Promise((ok) => {
+    let u: URL;
+    try {
+      u = new URL(url);
+    } catch {
+      return ok(false);
+    }
+    const s = connect({ host: u.hostname.replace(/^\[|\]$/g, ""), port: Number(u.port) || (u.protocol === "https:" ? 443 : 80), timeout: 1000 });
+    const done = (v: boolean) => (s.destroy(), ok(v));
+    s.once("connect", () => done(true)).once("error", () => done(false)).once("timeout", () => done(false));
+  });
+}
+
 /** The first URL whose port already answers (another program holds it), after giving a just-stopped run a moment to let go. */
 export async function portTaken(urls: (string | undefined)[], graceMs = 1500): Promise<string | undefined> {
   const deadline = Date.now() + graceMs;
   const ours = new Set([...live].flatMap((r) => r.urls.map(portOf)).filter(Boolean));
   for (;;) {
     let taken: string | undefined;
-    for (const u of urls) if (u && !taken && !ours.has(portOf(u)) && (await responds(u))) taken = u;
+    for (const u of urls) if (u && !taken && !ours.has(portOf(u)) && (await listening(u))) taken = u;
     if (!taken || Date.now() > deadline) return taken;
     await new Promise((r) => setTimeout(r, 250));
   }
