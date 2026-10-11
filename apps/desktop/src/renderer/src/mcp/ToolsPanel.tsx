@@ -120,6 +120,12 @@ function Connect() {
     <section aria-label="Use from your own Claude Code" className="mt-4">
       <h4 className="m-0 text-[12px] font-medium text-dim">Use from your own Claude Code</h4>
       <p className="m-0 mb-1.5 text-[11px] text-faint">Copy and paste. Shrike never edits Claude Code's files.</p>
+      <div className="mb-1.5 flex items-center gap-2">
+        <span className="min-w-0 flex-1 text-[11px] leading-snug text-faint">
+          Or install the plugin, which finds Shrike by itself: <span className="font-mono text-dim">/plugin marketplace add SumantxD/shrike</span>, then <span className="font-mono text-dim">/plugin install shrike@shrike</span>
+        </span>
+        <CopyButton text={"/plugin marketplace add SumantxD/shrike\n/plugin install shrike@shrike"} what="the plugin commands" small />
+      </div>
       <ol className="mc-connect m-0 list-none p-0">
         <li className="mc-step">
           <div className="flex items-center gap-2">
