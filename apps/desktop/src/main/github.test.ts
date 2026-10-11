@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { actionsIds, checkSummary, conflictHunks, failingLines, ghStatus, listPrs, mergeBlocker, prChecks, toPr, type Gh } from "./github.ts";
+import { actionsIds, checkSummary, conflictHunks, failingLines, ghError, ghStatus, ghTrouble, listPrs, mergeBlocker, prChecks, toPr, type Gh } from "./github.ts";
 
 const gh = (map: Record<string, { code: number; stdout: string }>): Gh => ({ run: async (args) => ({ stderr: "", ...(map[args.slice(0, 2).join(" ")] ?? map[args[0]!] ?? { code: 1, stdout: "" }) }) });
 
@@ -53,4 +53,21 @@ test("G3: conflict hunks with both sides, diff3 base dropped", () => {
     { line: 11, end: 14, ours: [], theirs: ["x"], oursLabel: "HEAD", theirsLabel: "main" },
   ]);
   assert.deepEqual(conflictHunks("no markers\n======="), []);
+});
+
+test("gh runtime failures: offline isn't signed out, and errors read as plain words", async () => {
+  // Real gh 2.97 output: offline, auth status calls the token invalid; only the API probe shows the network is down.
+  const authFails = (probe: { code: number; stdout: string; stderr: string }): Gh => ({
+    run: async (args) => (args[0] === "--version" ? { code: 0, stdout: "", stderr: "" } : args[0] === "auth" ? { code: 1, stdout: "", stderr: "X Failed to log in to github.com account me (keyring)\n- The token in keyring is invalid." } : probe),
+  });
+  assert.deepEqual(await ghStatus(authFails({ code: 1, stdout: "", stderr: 'Get "https://api.github.com/rate_limit": dial tcp: lookup api.github.com: no such host' }), "/"), { ready: false, problem: "offline" });
+  assert.deepEqual(await ghStatus(authFails({ code: 1, stdout: "", stderr: "gh: Bad credentials (HTTP 401)" }), "/"), { ready: false, problem: "signed-out" });
+  const err = (stderr: string) => ghError({ code: 1, stdout: "", stderr }, "Couldn't list pull requests");
+  assert.match(err("GraphQL: API rate limit exceeded for user ID 1. (https://api.github.com/graphql)"), /^Couldn't list pull requests\. GitHub's rate limit is used up/);
+  assert.match(err("gh didn't answer in 30 seconds."), /Check your internet connection/);
+  assert.match(err("no git remotes found"), /isn't connected to a GitHub repo/);
+  assert.match(err("none of the git remotes configured for this repository point to a known GitHub host. To tell gh about a new GitHub host, please use `gh auth login`"), /isn't connected to a GitHub repo/);
+  assert.match(err("HTTP 401: Bad credentials (https://api.github.com/graphql)"), /run gh auth login/);
+  assert.equal(err("something new"), "Couldn't list pull requests: something new");
+  assert.equal(ghTrouble({ code: 0, stdout: "rate limit", stderr: "" }), undefined);
 });

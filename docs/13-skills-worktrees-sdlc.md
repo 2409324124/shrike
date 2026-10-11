@@ -36,7 +36,7 @@ Skills are reusable, named playbooks the agent (and the user) can run. The owner
 
 ## G · Git and GitHub skills
 
-All through `gh` and `git` on the user's machine, shown as flows with plain words. Each is a built-in skill (S3), so it's visible, editable and evolvable.
+All through `gh` and `git` on the user's machine, shown as flows with plain words. Each is a built-in skill (S3), so it's visible, editable and evolvable. A `gh` call with no answer in 30 seconds (writes 2 minutes, logs 1) is stopped, and failures say why in plain words: offline (told apart from signed out), rate limit, signed out, or no GitHub remote.
 
 | ID | Skill | What the user sees | Status |
 |---|---|---|---|

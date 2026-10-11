@@ -248,7 +248,7 @@ export interface GitState { // G*
   base?: string; // the default branch ("main")
   operation?: "rebase" | "merge"; // a sync stopped part way (conflicts)
   incoming?: { sha: string; subject: string }[]; // commits on origin/<base> not in this branch, as of the last fetch (G6 preview)
-  ghProblem?: "missing" | "signed-out"; // why ghReady is false
+  ghProblem?: "missing" | "signed-out" | "offline"; // why ghReady is false
   onBranch?: number; // commits on this branch that its base doesn't have (Ship opens a PR for them)
 }
 
