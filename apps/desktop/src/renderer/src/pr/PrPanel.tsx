@@ -83,10 +83,16 @@ export function PrPanel({ docked = false }: { docked?: boolean }) {
 function OpenPrs() {
   const prs = useGit((s) => s.prs);
   const busy = useGit((s) => s.busy);
+  const note = useGit((s) => s.note);
   return (
     <section className="border-b border-hair px-4 py-3">
       <span className="lbl">Open pull requests</span>
-      {prs === null ? (
+      {prs === null && busy !== "prs" && note?.tone === "error" ? (
+        <div className="mt-2 flex flex-col gap-2">
+          <p role="status" className="m-0 text-[12.5px] text-fail">{note.text}</p>
+          <button type="button" className="hud-btn self-start" onClick={() => void useGit.getState().loadPrs()}>Try again</button>
+        </div>
+      ) : prs === null ? (
         <p className="lbl mt-2 flex items-center gap-2">{busy === "prs" && <Spinner size={10} />} Asking GitHub</p>
       ) : prs.length ? (
         <ul aria-label="Open pull requests" className="m-0 mt-2 flex list-none flex-col gap-0.5 p-0">

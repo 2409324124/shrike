@@ -432,8 +432,12 @@ function Review() {
             </button>
           )}
         </div>
+      ) : prs === null && busy !== "prs" ? (
+        <button type="button" className="hud-btn self-start" onClick={() => void useGit.getState().loadPrs()}>
+          Try again
+        </button>
       ) : prs === null ? (
-        <p className="lbl flex items-center gap-2">{busy === "prs" ? <Spinner size={10} /> : null} Loading pull requests</p>
+        <p className="lbl flex items-center gap-2"><Spinner size={10} /> Loading pull requests</p>
       ) : prs.length ? (
         <ul className="m-0 flex list-none flex-col gap-1 p-0">
           {prs.map((p) => (
