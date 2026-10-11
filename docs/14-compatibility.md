@@ -140,6 +140,23 @@ Plan, as built: Reddit users asked for Python. OpenTelemetry already gave a Pyth
 
 Checked with `apps/desktop/src/main/python.test.ts` (real servers through the Runner, ingest and store) and `packages/python-agent/test` on Python 3.12 and 3.14 (3.13 not installed here). Overhead on the FastAPI fixture endpoint (0.7 ms, Apple M4 Pro): +81 us per request (12%) one at a time, 24% fewer requests per second at 10 concurrent with the CPU saturated; Flask's dev server: within noise. A call into the project's own code costs about 0.15 us outside a request, a recorded step about 4 us, and past the cap of 2000 steps per request about 0.35 us.
 
+## Tested combinations
+
+### React + Python
+
+2026-10-12, Python 3.12 venvs, React 19.3, Vite 6, FastAPI 0.143 on uvicorn 0.54 (`--reload`), Django 6.1 `runserver` with django-cors-headers 4.9. Both fixtures have no `.shrike/config.json`; `apps/desktop/e2e/react-python.test.ts` runs each through the Vite proxy and cross-origin (4 of 4 pass).
+
+| Combination | Fixture | Setup finds both | Click and submit join | Python steps with values | SQLite query | Snap at the Python line | Notes |
+|---|---|---|---|---|---|---|---|
+| Vite React in `web/` + FastAPI in `api/`, Vite proxy | `fixtures/react-fastapi` | pass: `web` (`npm run dev` in `web`, :4510), `api` (`.venv/bin/uvicorn main:app --reload --port 4511` in `api`) | pass: `traceparent` through the proxy | pass: `discount_cents(subtotal_cents=1800, promo='SAVE10')` returning `18000` | pass: `data:sqlite:shop.db` | pass: `INSERT INTO orders` at `api/orders.py:35`, dive on `api/main.py:54` | Fixed: the API's port came from nowhere (8000); now the proxy target |
+| same, cross-origin (`VITE_API_URL`, CORS) | `fixtures/react-fastapi` | pass (port from `VITE_API_URL`) | pass: joined by method, host, path and time | pass | pass | pass | Fixed: the answered preflight was an `OPTIONS` station; FastAPI's 500 has no CORS headers, so the page saw "Failed to fetch" and the trip said "Your page never called the server", now "Server error (500)" |
+| Vite React at the root + Django in `backend/`, Vite proxy (`127.0.0.1` target, object form) | `fixtures/react-django` | pass: `app` (`npm run dev`, :4520), `api` (`.venv/bin/python manage.py runserver 4521` in `backend`) | pass, CSRF cookie and `X-CSRFToken` | pass: `starting_credits(plan='Pro')` returning `None` | pass after a fix: the ORM's queries were missing (Django passes its own cursor class) | pass: `INSERT INTO "accounts_account"` at `services.py:12`, dive on `views.py:31` | Fixed: Django's connection setup (`PRAGMA`, `sqlite_compileoption_used`) and DEBUG's `SELECT QUOTE(?)` after every query are left out |
+| same, cross-origin with credentials | `fixtures/react-django` | pass | pass | pass | pass | pass | django-cors-headers adds CORS headers to the 500 too |
+
+Also fixed on the way, for any React 19 page: a click had no component file:line (React 19 dropped `_debugSource`; its `_debugStack` is now mapped through the page's source maps), and a page served from `web/` named its files `src/...` instead of `web/src/...`. Enter in a form field now reads as `Submitted "Place order"` (it was a click on the button) and starts at `onSubmit`.
+
+Not covered: the Django ORM's statements show Django's `%s` placeholders (params alongside), the agent's own "Find the cause" run (checked through the MCP tools it uses: `get_action` names the Python line, `read_file` and `search_code` read `.py` files), apps deeper than one folder (`apps/web`), Django's DEBUG error page queries after a failure (shown as later steps), a returned value as a chip (args are shown; the return is in the step's dive).
+
 ## Operating systems
 
 Status on 2026-10-11 (roadmap Phase 9, Windows and Linux). Everything that differs by OS goes through `apps/desktop/src/main/platform.ts` and, in the renderer, `src/renderer/src/lib/platform.ts`.
