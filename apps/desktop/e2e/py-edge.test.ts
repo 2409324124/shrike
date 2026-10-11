@@ -30,7 +30,7 @@ function postgres(dir: string): boolean {
   return false;
 }
 
-test("py-edge: httpx calls in the outside lane, ORM writes Shrike can't read said plainly, background task and gather nest right", { timeout: 300_000, skip: !ready && "needs fixtures/py-edge/app/.venv (see its README)" }, async () => {
+test("py-edge: httpx calls in the outside lane, ORM writes with their rows in the declared Postgres lane, background task and gather nest right", { timeout: 300_000, skip: !ready && "needs fixtures/py-edge/app/.venv (see its README)" }, async () => {
   assert.equal(listening([...PORTS, 4622]), "", "py-edge ports must be free");
   const dir = fixtureCopy("py-edge"); // a temp copy: Shrike runs nothing under a .claude folder, and worktrees live in one
   const pg = postgres(dir);
@@ -68,12 +68,11 @@ test("py-edge: httpx calls in the outside lane, ORM writes Shrike can't read sai
     assert.ok(usd.t.stations.some((s) => s.lane === "service:api" && /send_receipt/.test(s.label)), "the background task is in the trip");
     const receipt = usd.t.stations.findIndex((s) => s.lane === "outside:localhost:4621" && /POST \/receipts/.test(s.label));
     assert.ok(receipt > usd.t.stations.findIndex((s) => /send_receipt/.test(s.label)), "the background task's httpx call, in the declared outside lane");
-    const dbLane = pg ? undefined : "data:sqlite:edge.db";
-    if (dbLane) assert.ok(usd.t.stations.some((s) => s.lane === dbLane), "SQLAlchemy over sqlite3 is recorded");
-    else assert.ok(!usd.t.stations.some((s) => s.kind === "data"), "psycopg isn't recorded");
+    const dbLane = pg ? "data:localhost:4622" : "data:sqlite:edge.db"; // Postgres joins the place .shrike/config.json declares
+    assert.ok(usd.t.stations.some((s) => s.lane === dbLane), `SQLAlchemy's queries are recorded\n${dump(usd.t)}`);
     await shot(app, "py-edge-02-usd");
 
-    // What this click changed: never "Nothing changed" for a write Shrike couldn't read.
+    // What this click changed: the order python-agent saw written, never "Nothing changed".
     const lane = win.locator(".th-lanehead button.th-lanebtn", { hasText: /DATABASE|POSTGRES|SQLITE/ });
     if (await lane.count()) {
       await lane.first().click();
@@ -81,8 +80,9 @@ test("py-edge: httpx calls in the outside lane, ORM writes Shrike can't read sai
       await sleep(500);
       const text = await panel(win).innerText();
       console.log(`--- inspector\n${text}`);
-      assert.doesNotMatch(text, /Nothing changed in the database/);
-      assert.match(text, /This click went through localhost:4620, where Shrike can't see row changes/);
+      assert.doesNotMatch(text, /Nothing changed in the database|can't see row changes/);
+      assert.match(text, /orders\s*1 added/);
+      assert.match(text, /item: mug/);
       await shot(app, "py-edge-03-usd-changes");
       await win.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
       await win.keyboard.press("0");

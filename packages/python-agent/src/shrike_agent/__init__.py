@@ -3,7 +3,7 @@ import os
 import sys
 import time
 
-from . import trace, web
+from . import db, trace, web
 
 # ponytail: request context comes from these framework entry points only (FastAPI and Starlette, Flask, Django).
 # Another ASGI or WSGI framework records its steps only as OpenTelemetry does; upgrade path: one more entry here.
@@ -49,6 +49,9 @@ def start():
 
             sqlite.patch(module)
             return
+        if name in db.PATCHES:
+            db.PATCHES[name](module)
+            return
         if name in OUTGOING:
             from . import outgoing
 
@@ -65,7 +68,7 @@ def start():
 
     if not trace.install():
         return
-    sys.meta_path.insert(0, _Finder(set(FRAMEWORKS) | set(OUTGOING) | {"sqlite3"}, patch))
+    sys.meta_path.insert(0, _Finder(set(FRAMEWORKS) | set(OUTGOING) | set(db.PATCHES) | {"sqlite3"}, patch))
     for name in OUTGOING:
         if name in sys.modules:  # http.client often loads before us
             trace.quietly(patch, name, sys.modules[name])

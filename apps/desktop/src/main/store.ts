@@ -521,10 +521,10 @@ export function callerPlace(kind: string): Place {
   return { id: `caller:${kind.toLowerCase()}`, kind: "caller", name: kind.toUpperCase() };
 }
 
-/** D8: a declared key ("localhost:4199", "events.db") matches a place's detail or the end of its id. */
+/** D8: a declared key ("localhost:4199", "events.db") matches a place's detail (a database's without its "/name") or the end of its id. */
 export function declare(p: Place, declared: Declared | undefined): Place {
   for (const [key, d] of Object.entries(declared ?? {})) {
-    if (normHost(p.detail) === normHost(key) || p.id.endsWith(`:${key}`)) return { id: `${d.kind}:${key}`, kind: d.kind, name: d.name, detail: p.detail ?? key };
+    if (normHost(p.detail) === normHost(key) || (p.kind === "data" && normHost(p.detail?.split("/")[0]) === normHost(key)) || p.id.endsWith(`:${key}`)) return { id: `${d.kind}:${key}`, kind: d.kind, name: d.name, detail: p.detail ?? key };
   }
   return p;
 }
