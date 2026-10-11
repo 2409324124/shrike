@@ -268,7 +268,7 @@ function errorStep(o: Json): StepInput {
 }
 
 const UPDATE = "Update Claude Code (run claude update in a terminal), then try again.";
-// A long tool call (MCP_TOOL_TIMEOUT 10 min) or a deep turn can be quiet for minutes; a run silent this long is stuck.
+// A deep turn can be quiet for minutes; a run silent this long with no tool call open is stuck.
 export const SILENCE = { noteMs: 3 * 60_000, stopMs: 15 * 60_000 };
 
 export function runClaudeCode(o: {
@@ -291,11 +291,12 @@ export function runClaudeCode(o: {
   let heard = Date.now();
   let noted = false;
   const watch = setInterval(() => {
+    if (parser.state.openTools) return void (heard = Date.now()); // a tool is working, or an approval card waits on you: Shrike's tools beat to Claude Code meanwhile
     const quiet = Date.now() - heard;
     if (quiet >= silence.stopMs) {
       stuck = true;
       kill();
-    } else if (quiet >= silence.noteMs && !noted && !parser.state.openTools) {
+    } else if (quiet >= silence.noteMs && !noted) {
       noted = true;
       o.emit({ kind: "message", text: "No word from Claude Code for a few minutes. It may be offline or stuck; you can stop it and try again." });
     }

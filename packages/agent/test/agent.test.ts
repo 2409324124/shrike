@@ -252,8 +252,12 @@ test("reliability: every way a Claude Code run can go wrong ends in one plain er
   assert.match(quiet.steps[0]!.text, /No word from Claude Code/);
   assert.match(quiet.steps[1]!.text, /stopped answering/);
   const busyTool = JSON.stringify({ type: "assistant", message: { id: "m1", content: [{ type: "tool_use", id: "t1", name: "mcp__shrike__run_scenario", input: {} }] } });
-  const inTool = await runFake(`echo '${busyTool}'\nexec sleep 30`, { noteMs: 1500, stopMs: 3000 });
-  assert.deepEqual(inTool.steps.map((s) => s.kind), ["tool_call", "error"]); // no "may be offline" note while a tool works
+  // A tool call open (an approval card waiting on lunch): never a note, never stopped.
+  const steps: StepInput[] = [];
+  const r = runClaudeCode({ bin: { path: await fakeBin(`echo '${busyTool}'\nexec sleep 30`), version: "0" }, args: [], cwd: os.tmpdir(), emit: (s) => steps.push(s), onExit: () => {}, silence: { noteMs: 1000, stopMs: 1500 } });
+  await new Promise((res) => setTimeout(res, 3500));
+  assert.deepEqual(steps.map((s) => s.kind), ["tool_call"]);
+  r.kill();
 });
 
 test("stop() kills the process", async () => {
