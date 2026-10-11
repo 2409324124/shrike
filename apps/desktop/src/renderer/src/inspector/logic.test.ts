@@ -114,7 +114,7 @@ test("fastapi: a click through a Python API Shrike can't see inside never claims
 test("python-agent: steps recorded but database writes it can't read never claim nothing changed", () => {
   const svc = { kind: "service" as const, id: "service:api", name: "API", detail: "localhost:4620" };
   const step = ev({ name: "create_order()", place: svc, source: { file: "app/main.py", line: 40, precision: "exact" } });
-  assert.equal(unseenWriter(view([step]), PG.id), "localhost:4620", "SQLAlchemy over psycopg: no query reached Shrike");
+  assert.equal(unseenWriter(view([step]), PG.id), "localhost:4620", "a driver python-agent doesn't hook (pg8000): no query reached Shrike");
   assert.equal(unseenWriter(view([step]), "data:sqlite:edge.db"), undefined, "python-agent sees every sqlite3 query");
   const SQ = { kind: "data" as const, id: "data:sqlite:shop.db", name: "SQLITE · shop.db" };
   const insert = ev({ kind: "db_query", place: SQ, name: "INSERT INTO orders (item) VALUES (?)", db: { system: "sqlite", statement: "INSERT INTO orders (item) VALUES (?)" } });
@@ -123,4 +123,19 @@ test("python-agent: steps recorded but database writes it can't read never claim
   assert.equal(unseenWriter(tree(insert), SQ.id), "localhost:4620", "a write seen without its rows");
   assert.equal(unseenWriter(tree({ ...insert, change: { op: "insert", table: "orders", count: 1 } }), SQ.id), undefined, "node-agent's writes carry their rows");
   assert.equal(unseenWriter(tree({ ...insert, name: "SELECT 1", db: { system: "sqlite", statement: "SELECT 1" } }), SQ.id), undefined, "reads change nothing");
+});
+
+test("python-agent: Postgres writes through psycopg carry their rows, a count it couldn't get stays can't tell", () => {
+  const svc = { kind: "service" as const, id: "service:api", name: "API", detail: "localhost:4620" };
+  const EDGE = { kind: "data" as const, id: "data:postgres:localhost:4623/edge", name: "POSTGRES · edge" };
+  const req = ev({ kind: "http_request", name: "POST /api/orders", place: svc });
+  const step = ev({ name: "create_order()", place: svc, source: { file: "main.py", line: 81, precision: "exact" } });
+  const stmt = "INSERT INTO orders (item, cents, currency, receipt_sent) VALUES (%(item)s::VARCHAR, %(cents)s::INTEGER, %(currency)s::VARCHAR, %(receipt_sent)s) RETURNING orders.id";
+  const insert = ev({ kind: "db_query", origin: "db", place: EDGE, name: stmt.slice(0, 60), db: { system: "postgres", statement: stmt }, change: { table: "orders", op: "insert", count: 1, rows: [{ pk: "1", after: { item: "mug", cents: 1200, currency: "USD", receipt_sent: false, id: 1 } }] } });
+  const tree = (...qs: DebugEvent[]) => ({ ...view([]), tree: [{ event: req, children: [{ event: step, children: qs.map((event) => ({ event, children: [] })) }] }] });
+  assert.equal(unseenWriter(tree(insert), EDGE.id), undefined, "SQLAlchemy over psycopg: the write and its rows reached Shrike");
+  assert.deepEqual(dataChanges(tree(insert), EDGE.id).map((g) => [g.table, g.added, g.rows[0]?.after?.item]), [["orders", 1, "mug"]]);
+  const blind = ev({ kind: "db_query", origin: "db", place: EDGE, name: "UPDATE orders SET receipt_sent = true", db: { system: "postgres", statement: "UPDATE orders SET receipt_sent = true WHERE item = $1 RETURNING *" } });
+  assert.equal(unseenWriter(tree(insert, blind), EDGE.id), "localhost:4620", "asyncpg's fetchrow can't say how many rows a non-key UPDATE changed");
+  assert.equal(unseenWriter(tree({ ...insert, change: { table: "orders", op: "update", count: 0 } }), EDGE.id), undefined, "a write that matched nothing changed nothing");
 });

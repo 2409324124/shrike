@@ -104,7 +104,7 @@ export function unseenWriter(view: ActionView | undefined, placeId: string): str
   if (!view) return undefined;
   const events = allEvents(view);
   const queries = events.filter((e) => e.kind === "db_query" && !e.otel && e.place?.id === placeId);
-  // A write seen without its rows (python-agent's sqlite3, a statement a driver couldn't parse): the server that sent it.
+  // A write seen without its rows (a count the driver couldn't give, like sqlite3 with RETURNING): the server that sent it.
   const blind = queries.find((e) => !e.change && e.status !== "error" && WRITE.test(e.db?.statement ?? e.name));
   if (blind) {
     const by = (nodes: TimelineNode[], svc?: DebugEvent): DebugEvent | undefined => {
@@ -119,7 +119,8 @@ export function unseenWriter(view: ActionView | undefined, placeId: string): str
     return serviceHost(by(view.tree ?? [])) ?? "your server";
   }
   if (queries.length) return undefined;
-  // python-agent records steps but only sqlite3 queries, so a Python server may have written to any other database unseen.
+  // python-agent records sqlite3, psycopg, psycopg2, asyncpg, PyMySQL and mysqlclient queries, but through another driver
+  // (pg8000, aiomysql, pymongo) a Python server that sent nothing here may still have written here.
   const py = placeId.startsWith("data:sqlite") ? undefined : events.find((e) => e.origin === "server" && !e.otel && /\.py$/.test((e.source ?? e.callSite)?.file ?? ""));
   if (py) return serviceHost(py) ?? "your Python server";
   const find = (nodes: TimelineNode[]): string | undefined => {

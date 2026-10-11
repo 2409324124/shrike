@@ -156,6 +156,7 @@ function Changes({ view, groups, unseen }: { view?: ActionView; groups: ReturnTy
           {!g.rows.length && <p className="px-2.5 py-2 text-[11.5px] text-dim">Shrike counted the rows but couldn't tell which ones.</p>}
         </section>
       ))}
+      {unseen && <p className="px-2.5 text-[11.5px] text-dim">This click also went through {unseen}, where Shrike couldn't see every row change, so there may be more.</p>}
     </div>
   );
 }
