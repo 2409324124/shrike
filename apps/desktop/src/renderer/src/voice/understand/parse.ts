@@ -237,6 +237,16 @@ export function agentText(text: string): string | null {
   return out.split(" ").length >= 2 ? out : null;
 }
 
+// "Yes, ship it" as the recognizer runs it together ("Yeshipper", "yesship it"): the whole utterance snapped to a go-ahead.
+const GO_AHEAD = ["yes ship it", "yeah ship it", "yes please", "go ahead", "yes do it"];
+const GO_WORDS = new Set(["yes", "create", "pr", "ship"]);
+
+/** A go-ahead: words that only say yes ("ship it", "Yeshipper"). No other command word, so "yes stop it" never is one. */
+export function goAhead(text: string): boolean {
+  const n = normalize(text);
+  return n.words.length > 0 && n.words.every((w) => GO_WORDS.has(w) || !known(w)) && GO_AHEAD.some((p) => nameScore(n.roman, p) >= 0.87);
+}
+
 const QUEUE = /^(?:up next|queue|after (?:it finishes|it's done|it is done|this))[,:]?\s+(.{3,})$/i;
 const OPTIONS = /^(?:show|give)(?: me)?(?: some)? options(?:\s+(?:for|on|about))?[,:]?\s*(.*)$/i;
 const LONE = new Set(["show", "open", "go", "do"]);
@@ -266,7 +276,7 @@ export function parse(text: string, ctx: LiveContext): Parsed {
   const cands: Cand[] = [];
   for (const c of clauses) {
     const m = matchClause(c, ctx);
-    if (!m) return { kind: "none", clauses: clauses.length, known: knownCount };
+    if (!m) return goAhead(raw) ? { kind: "plan", steps: [{ action: "confirm.yes", slots: {} }] } : { kind: "none", clauses: clauses.length, known: knownCount };
     cands.push(m);
   }
   const steps = cands.map((c) => c.step);

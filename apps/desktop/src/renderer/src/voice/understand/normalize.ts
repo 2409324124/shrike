@@ -318,6 +318,7 @@ export function normalize(text: string): Norm {
       words.splice(i, 2, words[i] === "pull" ? "pr" : words[i]!);
       src.splice(i, 2, `${src[i]} ${src[i + 1]}`);
     }
+  if (words[0] === "yes" && words[1] === "then") (words.splice(1, 1), src.splice(1, 1)); // "Yes, ship it" is one yes, not two clauses
   while (words.at(-1) === "then") (words.pop(), src.pop());
   const out = { words, src, roman };
   if (cache.size > 500) cache.clear();

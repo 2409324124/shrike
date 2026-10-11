@@ -30,6 +30,6 @@ export async function understand(text: string, ctx: LiveContext, plan?: PlanFn):
   return { kind: "plan", steps: checked.steps, source: "planner", ms: performance.now() - t, dropped: checked.dropped };
 }
 
-export { parse, nearest, stepTitle, agentText, clauseCount } from "./parse.ts";
+export { parse, nearest, stepTitle, agentText, clauseCount, goAhead } from "./parse.ts";
 export { checkPlan, plannerContext, plannerSchema, PLANNER_PREFIX } from "./plan.ts";
 export { normalize } from "./normalize.ts";

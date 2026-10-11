@@ -18,5 +18,13 @@
  {"id": "nm17", "lang": "hinglish-roman", "text": "wapas karo", "plan": [{"action": "plan.undo", "slots": {}}]},
  {"id": "nm18", "lang": "en", "text": "open PR 99", "plan": []},
  {"id": "nm19", "lang": "en", "text": "banana", "plan": []},
- {"id": "nm20", "lang": "en", "text": "discard my changes", "plan": [{"action": "git.discard", "slots": {}}]}
+ {"id": "nm20", "lang": "en", "text": "discard my changes", "plan": [{"action": "git.discard", "slots": {}}]},
+ {"id": "nm21", "lang": "en", "text": "Yeshipper", "plan": [{"action": "confirm.yes", "slots": {}}]},
+ {"id": "nm22", "lang": "en", "text": "yeshipit", "plan": [{"action": "confirm.yes", "slots": {}}]},
+ {"id": "nm23", "lang": "en", "text": "yes shipper", "plan": [{"action": "confirm.yes", "slots": {}}]},
+ {"id": "nm24", "lang": "en", "text": "yesship it", "plan": [{"action": "confirm.yes", "slots": {}}]},
+ {"id": "nm25", "lang": "en", "text": "yes stop it", "plan": []},
+ {"id": "nm26", "lang": "en", "text": "don't ship it", "plan": []},
+ {"id": "nm27", "lang": "en", "text": "Yes, ship it.", "plan": [{"action": "confirm.yes", "slots": {}}]},
+ {"id": "nm28", "lang": "en", "text": "yeah ship it", "plan": [{"action": "confirm.yes", "slots": {}}]}
 ]

@@ -1,7 +1,7 @@
 import type { VoiceChip } from "@shrike/schema";
 import { BY_ID, type LiveContext } from "../actions/registry.ts";
 import type { ExecState } from "./understand/executor.ts";
-import { normalize, parse, stepTitle, understand, type PlanFn, type Step } from "./understand/index.ts";
+import { goAhead, normalize, parse, stepTitle, understand, type PlanFn, type Step } from "./understand/index.ts";
 
 // One turn (docs/16 §2.4, §2.7): grammar on live partials for safe actions, the cascade on the final words,
 // plan-control words (yes, no, stop, undo, again) answered here. No length rule sends anything to the agent.
@@ -111,6 +111,7 @@ export class Turn {
       if (d.agentBusy()) d.stopAgent();
       return d.show({ heard, echo: "Stopped", tone: "ok" });
     }
+    if (d.exec.waiting && goAhead(heard)) return this.yes(heard); // "ship it" with a card up means yes, whatever the card
     const one = g.kind === "plan" && g.steps.length === 1 ? g.steps[0]!.action : "";
     switch (one) {
       case "confirm.yes": {
@@ -120,7 +121,7 @@ export class Turn {
         // nothing waits: "haan push kar do" is the command itself, which then gets its own card
         const rest = words.filter((w) => w !== "yes" && w !== "do").join(" ");
         const r = rest ? parse(rest, ctx) : null;
-        if (r?.kind !== "plan") return d.show({ heard, echo: "Nothing to approve", tone: "ok" });
+        if (r?.kind !== "plan" || r.steps.some((s) => s.action === "confirm.yes")) return d.show({ heard, echo: "Nothing to approve", tone: "ok" });
         g = r;
         break;
       }

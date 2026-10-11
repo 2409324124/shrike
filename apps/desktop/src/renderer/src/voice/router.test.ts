@@ -157,3 +157,24 @@ test("haan push kar do: confirms the card when it's up, starts its own card when
   await r.turn().final("nahi rehne do");
   assert.equal(r.shown.at(-1)?.echo, "Okay");
 });
+
+test("a spoken go-ahead, even run together by the recognizer, confirms the card; never acts without one", async () => {
+  for (const said of ["Yes, ship it.", "yes ship it", "ship it", "yeah ship it", "yes please", "go ahead", "do it", "yeshipit", "Yeshipper", "yes shipper", "yesship it"]) {
+    const r = rig();
+    await r.turn().final("merge PR 42");
+    await r.turn().final(said);
+    assert.deepEqual(r.ran, ["pr.merge:42"], said);
+  }
+  for (const said of ["no", "nahi", "cancel", "stop"]) {
+    const r = rig();
+    await r.turn().final("merge PR 42");
+    await r.turn().final(said);
+    assert.deepEqual(r.ran, [], said);
+  }
+  for (const said of ["Yeshipper", "yesship it", "yes shipper"]) {
+    const r = rig();
+    await r.turn().final(said);
+    assert.deepEqual(r.ran, [], said);
+    assert.notEqual(r.shown.at(-1)?.tone, "card", said);
+  }
+});

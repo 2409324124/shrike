@@ -181,3 +181,8 @@ test("speed: tier 0 + 1 far under a millisecond", () => {
   const per = (performance.now() - t) / 2000;
   assert.ok(per < 1, `${per.toFixed(3)}ms per parse`);
 });
+
+test("a go-ahead the recognizer ran together snaps to yes; another command word never does", () => {
+  for (const t of ["Yes, ship it.", "yes ship it", "yeah ship it", "yeshipit", "Yeshipper", "yes shipper", "yesship it", "yes, discard"]) assert.equal(ids(t), "confirm.yes", t);
+  for (const t of ["ship it", "yes stop it", "don't ship it", "nahi ship it", "yes, show it", "she bit"]) assert.notEqual(ids(t), "confirm.yes", t);
+});
