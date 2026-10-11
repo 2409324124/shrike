@@ -215,6 +215,17 @@ pnpm i
 pnpm dev
 ```
 
+### Use it from Claude Code
+
+Install the plugin and the Claude Code in your terminal reads Shrike's recordings while Shrike is open:
+
+```
+/plugin marketplace add SumantxD/shrike
+/plugin install shrike@shrike
+```
+
+It adds Shrike's tools, a debugging skill, the latest trip in a line above the prompt and `/shrike`. Code still changes only after you click Apply in Shrike. See [integrations/claude-code](integrations/claude-code/README.md). For Cursor or another MCP client, copy the one-line setup from Shrike's Tools panel instead.
+
 <details>
 <summary><b>Requirements</b></summary>
 

@@ -237,3 +237,10 @@ Tools → **Use from your own Claude Code** (MCP9) gives one command to copy, `c
 ```
 
 Everything is copied to the clipboard; Shrike never writes `~/.claude`, `~/.claude.json` or `.mcp.json`. See [packages/mcp-server/README.md](../packages/mcp-server/README.md).
+
+**The Claude Code plugin** ([integrations/claude-code](../integrations/claude-code/README.md)) is the route with nothing to paste: `/plugin marketplace add SumantxD/shrike`, then `/plugin install shrike@shrike` (the repo root is the marketplace, `.claude-plugin/marketplace.json`). Claude Code installs it, so Shrike still writes none of its files. It holds:
+
+- **Shrike's tools** through a stdio bridge with no dependencies that reads userData `mcp.json` on each new session and forwards to `127.0.0.1` only, so a restart or **New token** needs nothing redone. With Shrike closed, `/mcp` says "Shrike isn't running" and how to reconnect.
+- **The skill** `/shrike:debug`, a copy of `prompts/connect/SKILL.md` kept equal by a test.
+- **A mod** (Claude Code 2.1.287 or later): a line above the prompt with the latest trip (name, worked or broke, where it broke), fed by polling `list_trips` every 4 seconds and redrawn only when it changes, and `/shrike` with the same summary as text. `list_trips` adds `at file:line` to a trip that broke for this. Read-only.
+- **An opt-in guard** (`edits_through_shrike`, off by default): while Shrike is connected, Claude's own Edit and Write on project files are turned back toward `propose_patch`. A reminder, not a lock; the deny settings above are the lock.
