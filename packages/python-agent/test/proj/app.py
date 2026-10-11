@@ -78,4 +78,5 @@ environ = {"REQUEST_METHOD": "POST", "PATH_INFO": "/echo", "QUERY_STRING": "", "
 result = wsgi.wsgi_app(environ, lambda status, headers: None)
 print(b"".join(result).decode(), file=sys.stderr)
 getattr(result, "close", lambda: None)()
+getattr(wsgi.wsgi_app({**environ, "PATH_INFO": "/echo-into", "wsgi.input": io.BytesIO(b"hi there")}, lambda status, headers: None), "close", lambda: None)()
 print(f"requests_ms={(time.perf_counter() - t0) * 1000:.0f}")

@@ -167,6 +167,12 @@ class _Input:
     def read(self, *a):
         return self._keep(self._stream.read(*a))
 
+    def readinto(self, b):  # werkzeug's LimitedStream (Flask) reads this way
+        n = self._stream.readinto(b)
+        if n:
+            quietly(self._body.add, bytes(memoryview(b)[:n]))
+        return n
+
     def readline(self, *a):
         return self._keep(self._stream.readline(*a))
 

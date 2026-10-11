@@ -124,6 +124,7 @@ class Agent(unittest.TestCase):
     def test_wsgi_request(self):
         req = self.by_name["POST /echo"][0]
         self.assertEqual((req["http"]["status"], req["http"]["reqBody"], req["http"]["resBody"]), (201, "hi there", "HI THERE"))
+        self.assertEqual(self.by_name["POST /echo-into"][0]["http"]["reqBody"], "hi there", "a body read with readinto (werkzeug) is kept too")
         echo = self.by_name["echo()"][0]
         self.assertEqual((echo["parentId"], echo["args"], echo["returned"]), (req["id"], ["body=b'hi there'"], "b'HI THERE'"))
 
