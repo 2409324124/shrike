@@ -3,7 +3,8 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
-import type { DebugEvent, ProcessSpec, TimelineNode } from "@shrike/schema";
+import type { ActionView, DebugEvent, ProcessSpec, TimelineNode } from "@shrike/schema";
+import { dataChanges, unseenWriter } from "../renderer/src/inspector/logic.ts";
 import { startIngest } from "./ingest.ts";
 import { Runner } from "./runner.ts";
 import { Store } from "./store.ts";
@@ -43,7 +44,7 @@ async function trips(command: (c: string) => string, clicks: { name: string; met
     for (let i = 0; i < 600 && runner.status.state === "starting"; i++) await wait(100);
     assert.equal(runner.status.state, "running", runner.status.error);
     store.handle({ type: "hello", source: "browser", url: "http://localhost:4620/", at: Date.now() });
-    const out: Record<string, { status: number; tree: TimelineNode[] }> = {};
+    const out: Record<string, { status: number; tree: TimelineNode[]; view?: ActionView; body: string }> = {};
     let k = 0;
     for (const c of clicks) {
       const B = (++k).toString(16).repeat(32).slice(0, 32);
@@ -52,7 +53,8 @@ async function trips(command: (c: string) => string, clicks: { name: string; met
       store.handle({ type: "events", events: [click, call] });
       const res = await fetch(`http://localhost:4620${c.path}`, { method: c.method, headers: { "content-type": "application/json", traceparent: `00-${B}-${call.id}-01` }, body: c.body ? JSON.stringify(c.body) : undefined });
       await wait(1500); // the background task runs after the response
-      out[c.name] = { status: res.status, tree: store.getAction(click.id)?.tree ?? [] };
+      const view = store.getAction(click.id);
+      out[c.name] = { status: res.status, tree: view?.tree ?? [], view, body: await res.text() };
     }
     return { out, db: db.url, labels: store.listActions().map((a) => a.label) };
   } finally {
@@ -68,7 +70,7 @@ const clicks = [
   { name: "Dashboard", method: "GET", path: "/api/dashboard" },
 ];
 
-test("fixtures/py-edge live under python-agent: httpx calls recorded, psycopg queries unseen, background task and gather keep their parents", { skip, timeout: 120_000 }, async () => {
+test("fixtures/py-edge live under python-agent: httpx calls, SQLAlchemy's queries and their row changes, background task and gather keep their parents", { skip, timeout: 120_000 }, async () => {
   const { out, db } = await trips((c) => c, clicks);
   const msg = Object.entries(out).map(([k, v]) => `--- ${k} ${v.status}\n${dump(v.tree)}`).join("");
   console.log(`database ${db}\n${msg}`);
@@ -85,9 +87,20 @@ test("fixtures/py-edge live under python-agent: httpx calls recorded, psycopg qu
   assert.equal(byId("Order in USD").get(receipt.parentId!)?.id, req.id, "it nests under the request that queued it");
   const receiptCall = usd.find((e) => e.kind === "external_call")!;
   assert.deepEqual([receiptCall?.name, receiptCall?.http?.status, byId("Order in USD").get(receiptCall?.parentId ?? "")?.name], ["POST localhost:4621/receipts", 202, "send_receipt()"], msg);
-  const queries = usd.filter((e) => e.kind === "db_query");
-  if (db.startsWith("postgres")) assert.deepEqual(queries, [], "psycopg is not recorded");
-  else assert.ok(queries.some((q) => /^INSERT INTO orders/.test(q.name)), "SQLAlchemy over sqlite3 is recorded");
+  // SQLAlchemy's INSERT and the background task's UPDATE, once each, with the rows they changed (psycopg on Postgres, else sqlite3, where booleans bind as 0 and 1).
+  const pg = db.startsWith("postgres");
+  const lane = pg ? "data:postgres:localhost:4623/edge" : "data:sqlite:edge.db";
+  const writes = (re: RegExp) => usd.filter((e) => e.kind === "db_query" && re.test(e.db?.statement ?? ""));
+  const [ins, upd] = [writes(/^INSERT INTO orders/), writes(/^UPDATE orders/)];
+  assert.deepEqual([ins.length, upd.length], [1, 1], msg);
+  const id = JSON.parse(out["Order in USD"]!.body).id;
+  assert.deepEqual([ins[0]!.place?.id, ins[0]!.db?.system, byId("Order in USD").get(ins[0]!.parentId!)?.name, ins[0]!.source?.file], [lane, pg ? "postgres" : "sqlite", "create_order()", "app/main.py"], msg);
+  assert.deepEqual(ins[0]!.change, { table: "orders", op: "insert", count: 1, rows: [{ pk: String(id), after: { id, item: "mug", cents: 1200, currency: "USD", receipt_sent: pg ? false : 0 } }] });
+  assert.deepEqual(upd[0]!.change, { table: "orders", op: "update", count: 1, rows: [{ pk: String(id), after: { id, receipt_sent: pg ? true : 1 } }] });
+  assert.equal(byId("Order in USD").get(upd[0]!.parentId!)?.name, "send_receipt()");
+  const changed = dataChanges(out["Order in USD"]!.view, lane);
+  assert.deepEqual(changed.map((g) => [g.table, g.added, g.changed, g.rows.map((r) => `${r.kind} ${r.pk}`)]), [["orders", 1, 1, [`added ${id}`, `changed ${id}`]]], "What this click changed: the real rows");
+  assert.equal(unseenWriter(out["Order in USD"]!.view, lane), undefined, "no can't-tell note once the rows are seen");
 
   // EUR: the outside API's string rate is visible only as usd_rate()'s return value; convert() fails on it.
   assert.equal(out["Order in EUR"]!.status, 500);
