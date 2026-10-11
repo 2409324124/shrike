@@ -200,5 +200,19 @@ class Safety(unittest.TestCase):
         out.queue.clear()
 
 
+class Files(unittest.TestCase):
+    def test_a_virtualenv_in_a_subfolder_is_not_project_code(self):
+        sys.path.insert(0, SRC)
+        from shrike_agent import trace
+
+        with tempfile.TemporaryDirectory() as root:
+            trace.project, trace._files = os.path.realpath(root), {}
+            at = lambda *p: os.path.join(root, *p)
+            self.assertEqual(trace.user_file(at("app", "main.py")), "app/main.py")
+            self.assertIsNone(trace.user_file(at("app", ".venv", "bin", "uvicorn")), "the venv's entry script calls into the app")
+            self.assertIsNone(trace.user_file(at(".venv", "lib", "x.py")))
+            self.assertEqual(trace.user_file(at("app", ".hidden.py")), "app/.hidden.py", "only folders count")
+
+
 if __name__ == "__main__":
     unittest.main()

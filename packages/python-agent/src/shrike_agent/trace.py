@@ -97,7 +97,7 @@ def user_file(filename):
         if filename and not filename.startswith("<"):
             r = os.path.relpath(os.path.realpath(filename), project)
             parts = r.split(os.sep)
-            if not r.startswith("..") and not os.path.isabs(r) and not parts[0].startswith(".") and not SKIP_DIRS.intersection(parts):
+            if not r.startswith("..") and not os.path.isabs(r) and not any(d.startswith(".") for d in parts[:-1]) and not SKIP_DIRS.intersection(parts):
                 rel = "/".join(parts)
     except Exception:
         pass
