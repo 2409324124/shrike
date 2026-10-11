@@ -75,6 +75,7 @@ def _begin(method, url, headers, port):
 
 
 def _finish(rec, body_in, body_out, resp, err):
+    trace.finish_open(rec)
     e = rec.event
     h = e["http"]
     e["durationMs"] = trace.elapsed(rec)

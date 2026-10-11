@@ -70,6 +70,8 @@ function install(): void {
   installRecord(actionTarget);
   window.addEventListener("click", onClick, true);
   window.addEventListener("submit", onSubmit, true);
+  // A key press is a new task even before onClick's timer runs (Chromium runs input ahead of timers): Enter's submit is its own action.
+  window.addEventListener("keydown", () => (clickInProgress = false), true);
 }
 
 try {

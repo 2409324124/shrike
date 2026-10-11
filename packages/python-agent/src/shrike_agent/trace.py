@@ -32,7 +32,7 @@ DISABLE = getattr(_M, "DISABLE", None)
 
 # A request (root) or a function step in it.
 class Rec:
-    __slots__ = ("trace_id", "id", "parent", "event", "t0", "saved", "root", "depth", "steps", "error", "notes")
+    __slots__ = ("trace_id", "id", "parent", "event", "t0", "saved", "root", "depth", "steps", "error", "notes", "paused")
 
     def __init__(self, trace_id, id, parent=None, event=None):
         self.trace_id, self.id, self.parent, self.event, self.t0 = trace_id, id, parent, event, time.perf_counter()
@@ -40,6 +40,7 @@ class Rec:
         self.root = parent.root if parent else self
         self.depth = parent.depth + 1 if parent else 0
         self.steps, self.error, self.notes = 0, None, None  # root only
+        self.paused = None  # perf_counter when it last suspended (generators, coroutines)
 
 
 _rng = random.Random(os.urandom(16))  # ids only; os.urandom per event costs a syscall
@@ -293,14 +294,25 @@ def _on_unwind(code, offset, exc):
 def _on_yield(code, offset, value):
     rec = _frames.get(sys._getframe(1)) if _frames else None
     if rec is not None:
+        rec.paused = time.perf_counter()
         cur.set(rec.saved)
 
 
 def _on_resume(code, offset, exc=None):
     rec = _frames.get(sys._getframe(1)) if _frames else None
     if rec is not None:
+        rec.paused = None
         rec.saved = cur.get()
         cur.set(rec)
+
+
+# Steps still open when their request ends are recorded as they stood when they last suspended, and let go: a generator
+# abandoned to the garbage collector, or closed without running (3.12.3's close() fires no event when it isn't in a try).
+def finish_open(root):
+    for frame, rec in list(_frames.items()):
+        if rec.root is root and _frames.pop(frame, None) is rec:
+            rec.event["durationMs"] = round(((rec.paused or time.perf_counter()) - rec.t0) * 1000, 2)
+            emit(rec.event)
 
 
 _tool = None

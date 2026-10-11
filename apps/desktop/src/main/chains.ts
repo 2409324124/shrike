@@ -415,6 +415,8 @@ export function createChains(deps: ChainDeps) {
       timer ??= setInterval(() => void tick().catch(() => {}), TICK_MS);
       timer.unref?.();
     },
+    /** Resolves once every change so far is on disk. */
+    saved: (): Promise<void> => saving,
     dispose(): void {
       clearInterval(timer);
       timer = undefined;

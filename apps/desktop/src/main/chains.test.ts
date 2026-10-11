@@ -112,7 +112,7 @@ test("schedules: a time fires when due; it survives a restart, and one missed wh
     await h.chains.tick();
     assert.deepEqual(h.started.map((s) => s.prompt), ["nightly check"]);
     await h.end("r1");
-    await flush();
+    await h.chains.saved();
 
     clock.t += 7_200_000; // Shrike was closed past "later check"
     const again = harness({ file, clock });
@@ -242,6 +242,7 @@ test("relaunch: run-gated items ask instead of firing, and a chain cut off by a 
     await h.chains.queue("after", { on: "finished" });
     await h.chains.startChain(def());
     await flush();
+    await h.chains.saved();
     const again = harness({ file });
     const st = await again.chains.state();
     await again.chains.tick();
