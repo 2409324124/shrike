@@ -29,7 +29,7 @@ test("buildActionView: Add Todo tree, status, duration, framework", () => {
 test("buildActionView: one query under two OpenTelemetry instrumentations shows once; repeats and node-agent's stay", () => {
   const root = ev({ kind: "user_action", origin: "browser", name: "Clicked", startMs: 0, durationMs: 50 });
   const req = ev({ kind: "http_request", name: "POST /api/orders", startMs: 1, durationMs: 40, otel: true });
-  const q = (p: Partial<DebugEvent>) => ev({ kind: "db_query", origin: "db", otel: true, parentId: req.id, db: { system: "postgres", statement: "INSERT INTO orders (item) VALUES (%(item)s)" }, ...p });
+  const q = (p: Partial<DebugEvent>) => ev({ kind: "db_query", origin: "db", name: "INSERT", startMs: 0, otel: true, parentId: req.id, db: { system: "postgres", statement: "INSERT INTO orders (item) VALUES (%(item)s)" }, ...p });
   const orm = q({ name: "INSERT edge", startMs: 5, durationMs: 4 });
   const driver = q({ name: "INSERT", startMs: 5.5, durationMs: 3 });
   const nested = q({ name: "INSERT", startMs: 6, durationMs: 1, parentId: orm.id });
