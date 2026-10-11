@@ -216,4 +216,12 @@ These feed the What happened? card and flow review. The AI explains them; it doe
 
 ## Outside Shrike: MCP for any agent
 
-The same MCP server can be added to Cursor, Claude Code or any MCP client running *outside* Shrike, while the Shrike app is open. A user in Cursor can ask "what happened when I clicked Add Todo?" and get the real trace. External clients get Recordings, Code, API and App tools; Fix tools stay inside Shrike where the diff UI lives. Marketing line: *give your coding agent eyes*. See [packages/mcp-server/README.md](../packages/mcp-server/README.md).
+The same MCP server can be added to Cursor, Claude Code or any MCP client running *outside* Shrike, while the Shrike app is open. A user in Cursor can ask "what happened when I clicked Add Todo?" and get the real trace. Outside clients get Recordings, Code, API, App and Fix tools, plus tools that drive Shrike itself (`run_app`, `list_trips`, `focus_trip`, flows). Fixes still go through the diff UI: `propose_patch` waits for the user's click in Shrike, and the approval card says who sent it ("From claude-code"). The start agent's shell and preflight tools are never offered to outside clients. Marketing line: *give your coding agent eyes*.
+
+Tools → **Use from your own Claude Code** (MCP9) gives one command to copy, `claude mcp add --transport http --scope user shrike http://127.0.0.1:<port>/mcp --header "Authorization: Bearer <token>"`. The address and token are saved in userData `mcp.json` (0600) and reused on the next launch, so it keeps working after Shrike restarts; **New token** rotates the token. It also offers a skill ([prompts/connect/SKILL.md](../prompts/connect/SKILL.md), saved by the user as `~/.claude/skills/shrike/SKILL.md`) and settings that turn off Claude Code's own edit and shell tools, since Shrike can't switch those off for a Claude Code it didn't start:
+
+```json
+{ "permissions": { "deny": ["Edit", "Write", "MultiEdit", "NotebookEdit", "Bash"] } }
+```
+
+Everything is copied to the clipboard; Shrike never writes `~/.claude`, `~/.claude.json` or `.mcp.json`. See [packages/mcp-server/README.md](../packages/mcp-server/README.md).

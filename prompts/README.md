@@ -4,6 +4,8 @@
 |---|---|---|
 | `agent/` | The product, at runtime | System and task prompts for Shrike's debug agent. `packages/agent` bundles them as raw text at build time (Vite `?raw`), so edits here ship with the next build. |
 | `build/` | You, while building Shrike | Paste-ready prompts for your coding agent, one per roadmap phase. |
+| `skills/` | The product, at runtime | Built-in skills Shrike's agent can load. |
+| `connect/` | The user's own Claude Code | `SKILL.md` the user copies from Tools (MCP9) into `~/.claude/skills/shrike/`. Not part of the agent eval. |
 
 Rules for runtime prompts:
 

@@ -170,7 +170,7 @@ Try a fix in a git worktree copy with its own ports and its own agent. Race two 
 </td>
 <td valign="top">
 
-**MCP hub**<br>Shrike's tools are an MCP server, so Claude Code or Cursor outside Shrike can read the same recordings. Add your own servers too.
+**MCP hub**<br>Shrike's tools are an MCP server: paste one line and the Claude Code in your terminal reads the same recordings, and still changes code only after you click Apply. Add your own servers too.
 
 </td>
 </tr>
