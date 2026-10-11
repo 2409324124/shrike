@@ -2,6 +2,7 @@
 import contextvars
 import linecache
 import os
+import random
 import re
 import reprlib
 import sys
@@ -14,6 +15,8 @@ MAX = 2048
 SKIP_DIRS = {"site-packages", "dist-packages", "node_modules", "__pypackages__"}
 MAX_STEPS = 2000  # function steps per request; past it a hot loop costs a dict lookup per call, not an event
 MAX_DEPTH = 64  # deep recursion records its first levels only
+STEPS_NOTE = f"Shrike recorded the first {MAX_STEPS} steps of this request and skipped the rest."
+DEPTH_NOTE = f"Shrike skipped steps nested more than {MAX_DEPTH} calls deep."
 
 cur = contextvars.ContextVar("shrike_parent", default=None)  # the Rec new events nest under; None outside a request
 _local = threading.local()
@@ -39,12 +42,16 @@ class Rec:
         self.steps, self.error, self.notes = 0, None, None  # root only
 
 
+_rng = random.Random(os.urandom(16))  # ids only; os.urandom per event costs a syscall
+os.register_at_fork(after_in_child=lambda: _rng.seed(os.urandom(16)))
+
+
 def new_id():
-    return os.urandom(8).hex()
+    return f"{_rng.getrandbits(64):016x}"
 
 
 def new_trace_id():
-    return os.urandom(16).hex()
+    return f"{_rng.getrandbits(128):032x}"
 
 
 def now_ms():
@@ -163,8 +170,14 @@ class _Repr(reprlib.Repr):
 _repr = _Repr(maxlevel=3, maxstring=200, maxlist=20, maxtuple=20, maxset=20, maxfrozenset=20, maxdeque=20, maxarray=20, maxdict=20, maxlong=60, maxother=400)
 
 
+_PLAIN = (int, float, bool, type(None))
+
+
 def preview(v):
     try:
+        t = type(v)
+        if t in _PLAIN or (t is str and len(v) <= 200):
+            return repr(v)
         return cut(_repr.repr(v))
     except Exception:
         return "[unavailable]"
@@ -201,12 +214,7 @@ def _note(root, message):
 
 
 def _begin(code, rel, parent, frame):
-    root = parent.root
-    if root.steps >= MAX_STEPS:
-        return _note(root, f"Shrike recorded the first {MAX_STEPS} steps of this request and skipped the rest.")
-    if parent.depth >= MAX_DEPTH:
-        return _note(root, f"Shrike skipped steps nested more than {MAX_DEPTH} calls deep.")
-    root.steps += 1
+    parent.root.steps += 1
     name = code.co_qualname
     event = {
         "id": new_id(),
@@ -224,6 +232,7 @@ def _begin(code, rel, parent, frame):
     if site:
         event["callSite"] = site
     rec = Rec(parent.trace_id, event["id"], parent, event)
+    _hook(code)
     _frames[frame] = rec
     cur.set(rec)
     rec.t0 = time.perf_counter()
@@ -250,8 +259,14 @@ def _on_start(code, offset):
     if rel is None:
         return DISABLE
     parent = cur.get()
-    if parent is not None and not getattr(_local, "busy", False):
+    if parent is None or getattr(_local, "busy", False):
+        return
+    root = parent.root
+    note = STEPS_NOTE if root.steps >= MAX_STEPS else DEPTH_NOTE if parent.depth >= MAX_DEPTH else None
+    if note is None:
         quietly(_begin, code, rel, parent, sys._getframe(1))
+    elif root.notes is None or note not in root.notes:
+        quietly(_note, root, note)
 
 
 def _leave(frame, failed, value):
@@ -261,13 +276,13 @@ def _leave(frame, failed, value):
         quietly(_end, rec, failed, value, frame)
 
 
+# Return, yield and resume are watched only on code that has been a step (_hook), so the app's other code pays nothing for them.
 def _on_return(code, offset, value):
-    if user_code(code) is None:
-        return DISABLE
-    _leave(sys._getframe(1), False, value)
+    if _frames:
+        _leave(sys._getframe(1), False, value)
 
 
-# PY_UNWIND and PY_THROW can't be disabled per code location: these two stay cheap for everyone else's code.
+# PY_UNWIND and PY_THROW can only be watched everywhere: they stay a dict check for everyone else's code.
 def _on_unwind(code, offset, exc):
     if _frames:
         _leave(sys._getframe(1), True, exc)
@@ -276,38 +291,37 @@ def _on_unwind(code, offset, exc):
 # A generator or coroutine that suspends gives `cur` back, and takes it again when resumed, from whoever resumes it
 # (a generator closed by the garbage collector inside another request leaves that request's context as it was).
 def _on_yield(code, offset, value):
-    if user_code(code) is None:
-        return DISABLE
-    rec = _frames.get(sys._getframe(1))
+    rec = _frames.get(sys._getframe(1)) if _frames else None
     if rec is not None:
         cur.set(rec.saved)
 
 
-def _take(frame):
-    rec = _frames.get(frame)
+def _on_resume(code, offset, exc=None):
+    rec = _frames.get(sys._getframe(1)) if _frames else None
     if rec is not None:
         rec.saved = cur.get()
         cur.set(rec)
 
 
-def _on_resume(code, offset):
-    if user_code(code) is None:
-        return DISABLE
-    _take(sys._getframe(1))
+_tool = None
+_hooked = set()
 
 
-def _on_throw(code, offset, exc):
-    if _frames:
-        _take(sys._getframe(1))
+def _hook(code):
+    if code not in _hooked:
+        _hooked.add(code)
+        E = _M.events
+        _M.set_local_events(_tool, code, E.PY_RETURN | E.PY_YIELD | E.PY_RESUME)
 
 
 def install():
-    tool = next((i for i in (4, 3, 2) if _M.get_tool(i) is None), None)
-    if tool is None:
+    global _tool
+    _tool = next((i for i in (4, 3, 2) if _M.get_tool(i) is None), None)
+    if _tool is None:
         return False
     E = _M.events
-    _M.use_tool_id(tool, "shrike")
-    for ev, fn in ((E.PY_START, _on_start), (E.PY_RETURN, _on_return), (E.PY_UNWIND, _on_unwind), (E.PY_YIELD, _on_yield), (E.PY_RESUME, _on_resume), (E.PY_THROW, _on_throw)):
-        _M.register_callback(tool, ev, fn)
-    _M.set_events(tool, E.PY_START | E.PY_RETURN | E.PY_UNWIND | E.PY_YIELD | E.PY_RESUME | E.PY_THROW)
+    _M.use_tool_id(_tool, "shrike")
+    for ev, fn in ((E.PY_START, _on_start), (E.PY_RETURN, _on_return), (E.PY_UNWIND, _on_unwind), (E.PY_YIELD, _on_yield), (E.PY_RESUME, _on_resume), (E.PY_THROW, _on_resume)):
+        _M.register_callback(_tool, ev, fn)
+    _M.set_events(_tool, E.PY_START | E.PY_UNWIND | E.PY_THROW)
     return True
