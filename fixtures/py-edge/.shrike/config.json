@@ -1,0 +1,11 @@
+{
+  "appUrl": "http://localhost:4620",
+  "processes": [
+    { "name": "rates", "command": "python3 stub/rates.py", "url": "http://localhost:4621/health" },
+    { "name": "api", "command": ".venv/bin/uvicorn main:app --port 4620", "cwd": "app", "url": "http://localhost:4620/health" }
+  ],
+  "places": {
+    "localhost:4621": { "kind": "outside", "name": "Rates API (stub)" },
+    "localhost:4622": { "kind": "data", "name": "Postgres" }
+  }
+}
