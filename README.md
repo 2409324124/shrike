@@ -121,7 +121,7 @@ Postgres, MySQL, SQLite, MongoDB, Redis, DynamoDB, Firestore, Supabase. [Tested 
 
 ### API client
 
-A Bruno-style request editor. Routes are found for you, collections are plain files in your repo, and you can import from Bruno, OpenAPI and cURL. Every request you send becomes a trip, so you see what the server did with it.
+A Bruno-style request editor. Routes are found for you, collections are plain files in your repo, and you can import from Bruno, OpenAPI and cURL. Every request you send becomes a trip, so you see what the server did with it. The Routes page is a Swagger-like reference for backend-only projects: filled exactly from your OpenAPI spec when there is one (a file in the repo, or FastAPI, NestJS and Spring's own spec URL), and otherwise from examples your agent guesses from the handler code, which you check before they're saved. Bodies are checked against the schema before you send.
 
 </td>
 <td width="50%"><img src="docs/media/shot-api-client.webp" alt="API client sending GET /api/todos with the JSON response" width="100%"></td>

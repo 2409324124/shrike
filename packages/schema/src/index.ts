@@ -936,6 +936,52 @@ export interface ApiHistoryEntry {
 export type ApiImportKind = "curl" | "postman" | "openapi" | "bruno" | "routes";
 export type ApiCodeLang = "curl" | "fetch" | "axios" | "python" | "httpie";
 
+// AP20: the Routes page. One entry per method + path, from the OpenAPI spec, the code scan and accepted guesses.
+export type JsonSchema = Record<string, unknown>; // dereferenced, depth-bounded
+export type RouteSource = "spec" | "code" | "guess";
+export interface RouteParam {
+  name: string;
+  in: "path" | "query" | "header";
+  required: boolean;
+  type?: string;
+  enum?: string[];
+  description?: string;
+  example?: string;
+}
+export interface RouteResponse {
+  status: string; // "200", "4XX", "default"
+  description?: string;
+  schema?: JsonSchema;
+  example?: string; // JSON text
+}
+export interface RouteDoc {
+  method: string;
+  path: string; // "/orders/:order_id"
+  tag: string; // the spec's first tag, else the first path segment
+  sources: RouteSource[];
+  summary?: string;
+  description?: string;
+  deprecated?: boolean;
+  params: RouteParam[];
+  body?: { contentType: string; required: boolean; schema?: JsonSchema; example?: string };
+  responses: RouteResponse[];
+  handler?: SourceLocation;
+}
+export interface RoutesView {
+  routes: RouteDoc[];
+  spec?: { from: string; title?: string; version?: string }; // a repo-relative file or the local URL it came from
+  notes: string[]; // plain words, e.g. a Swagger 2 file Shrike can't read yet
+}
+/** AP22: what the agent guessed for one route from its handler code, before the user accepts it. */
+export interface RouteGuess {
+  method: string;
+  path: string;
+  summary?: string;
+  params: RouteParam[];
+  body?: { example: string; schema: JsonSchema };
+  responses: RouteResponse[];
+}
+
 export interface AppElement {
   ref: string; // stable within a page load, e.g. "e7"
   role: string; // "button" | "textbox" | "link" | "checkbox" | ...
@@ -1347,6 +1393,9 @@ export interface ShrikeApi {
   apiImport(kind: ApiImportKind, text?: string, name?: string): Promise<ApiCollection | ApiRequest>; // curl returns a request; the rest a new owned collection (bruno: folder dialog; text absent: file dialog)
   apiCode(req: ApiRequest, lang: ApiCodeLang, opts?: ApiSendOptions): Promise<string>;
   apiPickFile(): Promise<string | null>; // a file for a multipart field
+  apiRoutes(refresh?: boolean): Promise<RoutesView>; // AP20: spec (repo file or the app's own well-known URL) merged with scanned routes and accepted guesses
+  apiGuessRoutes(routes: { method: string; path: string }[]): Promise<RouteGuess[]>; // AP22: a read-only agent run; nothing is saved
+  apiSaveGuess(guess: RouteGuess): Promise<RoutesView>; // AP22: the user accepted it: .shrike/api/guessed-routes.json and a request in the project's collection
   // G: git and GitHub
   gitState(): Promise<GitState>;
   shipFix(opts: { actionId?: string; title?: string; files?: string[] }): Promise<PullRequest>; // G1: needs approval for push

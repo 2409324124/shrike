@@ -1,6 +1,6 @@
 // zod for API client payloads crossing into main (renderer IPC and MCP).
 import { z } from "zod";
-import type { ApiRequest } from "@shrike/schema";
+import type { ApiRequest, RouteGuess } from "@shrike/schema";
 
 const s = (max = 8192) => z.string().max(max);
 export const kvZ = z.object({ name: s(1024), value: s(1024 * 1024), enabled: z.boolean(), secret: z.boolean().optional() });
@@ -44,3 +44,17 @@ export const idZ = z.string().regex(/^[0-9a-f]{12}$/);
 export const relZ = z.string().max(1024);
 export const importKindZ = z.enum(["curl", "postman", "openapi", "bruno", "routes"]);
 export const codeLangZ = z.enum(["curl", "fetch", "axios", "python", "httpie"]);
+const methodZ = z.string().regex(/^[A-Za-z]{3,7}$/);
+const routePathZ = s(1024).regex(/^\//);
+export const routeRefsZ = z.array(z.object({ method: methodZ, path: routePathZ }).strict()).min(1).max(100);
+const schemaZ = z.record(z.string(), z.unknown()).refine((v) => JSON.stringify(v).length < 256 * 1024, "schema too big");
+export const routeGuessZ: z.ZodType<RouteGuess> = z
+  .object({
+    method: methodZ,
+    path: routePathZ,
+    summary: s(300).optional(),
+    params: z.array(z.object({ name: s(200).min(1), in: z.enum(["path", "query", "header"]), required: z.boolean(), type: s(60).optional(), enum: z.array(s(200)).max(50).optional(), description: s(500).optional(), example: s(2000).optional() }).strict()).max(40),
+    body: z.object({ example: s(64 * 1024), schema: schemaZ }).strict().optional(),
+    responses: z.array(z.object({ status: s(16), description: s(500).optional(), schema: schemaZ.optional(), example: s(64 * 1024).optional() }).strict()).max(20),
+  })
+  .strict() as z.ZodType<RouteGuess>;

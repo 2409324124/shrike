@@ -32,7 +32,7 @@ export const ASIDE_RULE =
   "This is a side question. Answer it in a few sentences from what you already know or can read. Don't propose or apply patches, and don't click, type or send requests.";
 /** Shrike tools that change code, drive the app, move your view or write state: denied to asides and read-only branches, not just asked. */
 export const WRITE_TOOLS = [
-  "propose_patch", "propose_skill_update", "remember", "app_click", "app_type", "app_navigate", "send_request", "run_scenario",
+  "propose_patch", "propose_skill_update", "remember", "app_click", "app_type", "app_navigate", "send_request", "save_request", "run_scenario",
   "run_flow", "record_flow", "run_app", "stop_app", "open_project", "ask_agent", "focus_trip", "open_file",
 ] as const;
 

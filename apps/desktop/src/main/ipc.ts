@@ -117,7 +117,7 @@ import { XP_TABLE as mcpXp } from "../renderer/src/progress/xp.ts";
 // api: AP the API client (Bruno-compatible collections, sends, history, imports)
 import { app as apiApp, dialog as apiDialog, safeStorage as apiSafe } from "electron";
 import { createApi } from "./api/index.ts";
-import { codeLangZ, envZ, idZ, importKindZ, relZ, requestZ, sendOptsZ } from "./api/zod.ts";
+import { codeLangZ, envZ, idZ, importKindZ, relZ, requestZ, routeGuessZ, routeRefsZ, sendOptsZ } from "./api/zod.ts";
 let mcpObserve: ((step: AgentStep) => void) | undefined;
 let mcpHub: ReturnType<typeof createMcpHub> | undefined;
 
@@ -1159,6 +1159,20 @@ export function registerIpc(win: () => BrowserWindow | undefined, appWin: AppWin
     getAction: (id) => store.getAction(id),
     pickFolder: (title) => pick(title, ["openDirectory"]),
     pickFile: (title, exts) => pick(title, ["openFile"], exts),
+    // AP22: one-shot and read-only, like the critic (send_request and save_request are write tools)
+    async ask(prompt) {
+      const brain = await anyBrain();
+      if (!brain) throw new Error("No agent is set up. Install Claude Code, or set ANTHROPIC_API_KEY.");
+      return new Promise<string>((done, fail) => {
+        let text = "";
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const quiet = {
+          onStep: (st: AgentStep) => void ((st.kind === "message" && !st.tool) || st.kind === "done" ? (text += `\n${st.kind === "done" ? (st.detail ?? "") : st.text}`) : 0),
+          onEnd: (status: AgentRunInfo["status"]) => (clearTimeout(timer), status === "done" && text.trim() ? done(text) : fail(new Error("Your agent didn't answer. Try again."))),
+        };
+        startAgent(prompt, brain, emit, { readOnly: true, quiet }).then((info) => void (timer = setTimeout(() => void stopAgent(info.id), 5 * 60_000)), fail);
+      });
+    },
   });
   hostExtras.host.api = apiSvc.host;
   const apiName = z.string().trim().min(1).max(200);
@@ -1183,5 +1197,8 @@ export function registerIpc(win: () => BrowserWindow | undefined, appWin: AppWin
   handle("apiCode", z.union([z.tuple([requestZ, codeLangZ]), z.tuple([requestZ, codeLangZ, sendOptsZ])]), (req, lang, opts) => apiSvc.code(req, lang, opts));
   // ponytail: the picked path goes back to the page and returns in a multipart field; main reads whatever path the page sends. Upgrade: hand out file tokens.
   handle("apiPickFile", none, async () => (await pick("Pick a file to send", ["openFile"])) ?? null);
+  handle("apiRoutes", z.union([none, z.tuple([z.boolean().optional()])]), (refresh) => apiSvc.routes(refresh));
+  handle("apiGuessRoutes", z.tuple([routeRefsZ]), (routes) => apiSvc.guessRoutes(routes));
+  handle("apiSaveGuess", z.tuple([routeGuessZ]), (g) => apiSvc.saveGuess(g));
   // ---- end api ----
 }

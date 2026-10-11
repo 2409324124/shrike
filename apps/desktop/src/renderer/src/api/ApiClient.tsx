@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Globe, PanelLeft, Plus, X } from "lucide-react";
+import { BookOpen, Globe, PanelLeft, Plus, X } from "lucide-react";
 import { MethodTag, cx } from "../components/ui.tsx";
 import { useUi } from "../stores/ui.ts";
 import { useAgent } from "../stores/agent.ts";
@@ -10,6 +10,7 @@ import { Tree } from "./Tree.tsx";
 import { RequestTabs, UrlBar } from "./RequestPane.tsx";
 import { EmptyResponse, ResponsePane } from "./ResponsePane.tsx";
 import { CodeDialog, EnvDialog, ImportDialog } from "./Dialogs.tsx";
+import { RoutesPage } from "./RoutesPage.tsx";
 import "./api.css";
 import { keys } from "../lib/platform.ts";
 
@@ -53,14 +54,20 @@ function EnvPicker() {
 function TabStrip({ onTree, treeOpen }: { onTree(): void; treeOpen: boolean }) {
   const tabs = useApi((s) => s.tabs);
   const active = useApi((s) => s.active);
+  const routes = useApi((s) => s.view === "routes");
   return (
     <div className="ap-tabs">
-      <button type="button" className="ap-icon" aria-label={treeOpen ? "Hide collections" : "Show collections"} aria-pressed={treeOpen} title="Collections" onClick={onTree}>
-        <PanelLeft size={13} />
+      {!routes && (
+        <button type="button" className="ap-icon" aria-label={treeOpen ? "Hide collections" : "Show collections"} aria-pressed={treeOpen} title="Collections" onClick={onTree}>
+          <PanelLeft size={13} />
+        </button>
+      )}
+      <button type="button" className="hud-btn ap-routes-btn" aria-pressed={routes} title="Every route with its params, body and responses" onClick={() => useApi.setState({ view: routes ? "requests" : "routes" })}>
+        <BookOpen size={11} aria-hidden /> Routes
       </button>
       <div role="tablist" aria-label="Open requests" className="ap-tablist">
         {tabs.map((t) => (
-          <div key={t.id} className={cx("ap-tab", t.id === active && "on")} onAuxClick={(e) => e.button === 1 && useApi.getState().close(t.id)}>
+          <div key={t.id} className={cx("ap-tab", t.id === active && !routes && "on")} onAuxClick={(e) => e.button === 1 && useApi.getState().close(t.id)}>
             <button role="tab" type="button" aria-selected={t.id === active} className="ap-tab-main" title={t.draft.url} onClick={() => useApi.getState().focus(t.id)}>
               <MethodTag method={t.draft.method} className="w-auto! pr-1 text-[9px]!" />
               <span className="truncate">{t.draft.name.startsWith(`${t.draft.method} `) ? t.draft.name.slice(t.draft.method.length + 1) : t.draft.name}</span>
@@ -85,6 +92,7 @@ let seenDraft = 0;
 export function ApiClient({ docked }: { docked?: boolean }) {
   const active = useApi((s) => s.tabs.find((t) => t.id === s.active));
   const dialog = useApi((s) => s.dialog);
+  const routes = useApi((s) => s.view === "routes");
   const draft = useUi((s) => s.explorerDraft);
   const box = useRef<HTMLDivElement>(null);
   const [w, setW] = useState(docked ? 600 : 1200);
@@ -97,7 +105,7 @@ export function ApiClient({ docked }: { docked?: boolean }) {
     return () => ro.disconnect();
   }, []);
   const narrow = w < 980;
-  const tree = pinned ?? !narrow;
+  const tree = !routes && (pinned ?? !narrow);
   useEffect(() => setTree(null), [narrow]);
 
   useEffect(() => {
@@ -129,6 +137,7 @@ export function ApiClient({ docked }: { docked?: boolean }) {
         e.stopPropagation();
         fn();
       };
+      if (s.view === "routes" && (k === "enter" || k === "s")) return; // the request behind the Routes page is out of sight
       if (k === "enter" && id) run(() => void s.send(id));
       else if (k === "s" && id) run(() => void s.save(id));
       else if (k === "b") run(() => s.newTab());
@@ -157,7 +166,9 @@ export function ApiClient({ docked }: { docked?: boolean }) {
       {tree && narrow && <button type="button" className="ap-tree-scrim" aria-label="Hide collections" onClick={() => setTree(false)} />}
       <div className="ap-main">
         <TabStrip treeOpen={tree} onTree={() => setTree(!tree)} />
-        {active ? (
+        {routes ? (
+          <RoutesPage />
+        ) : active ? (
           <div className="ap-work" key={active.id}>
             <UrlBar tab={active} />
             <div className="ap-split">

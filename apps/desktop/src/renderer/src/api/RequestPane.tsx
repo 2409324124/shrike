@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Code2, Save, Send, X } from "lucide-react";
+import { Code2, Save, Send, TriangleAlert, X } from "lucide-react";
 import { cx, Spinner } from "../components/ui.tsx";
 import { Markdown } from "../components/Markdown.tsx";
 import { toast } from "../stores/ui.ts";
@@ -7,6 +7,7 @@ import { api, errorMessage } from "../lib/api.ts";
 import { BUILTINS, METHODS, OPERATORS, UNARY, fromApi, hasBody, isRedacted, looksLikeCurl, paramsFromUrl, pathParams, redactedVar, uid, urlWithParams, type Auth, type BodyMode, type Req, type Row, type Scope } from "./model.ts";
 import { CodeArea, KvTable, SecretInput, VarInput } from "./parts.tsx";
 import { appAddress, colFor, isDirty, scopeFor, useApi, type Tab } from "./store.ts";
+import { checkBody, docFor } from "./routes.ts";
 import { keys } from "../lib/platform.ts";
 
 // AP-url and AP3: the URL bar and the request's tabs.
@@ -144,8 +145,22 @@ function AuthFields({ auth, onChange, scope, allowInherit }: { auth: Auth; onCha
   );
 }
 
+/** AP23: what the JSON body gets wrong against the route's schema, in plain words. Never blocks Send. */
+function useBodyCheck(r: Req): string[] {
+  const schema = useApi((s) => (hasBody(r.method) && r.body.mode === "json" ? docFor(s.routes?.routes, r.method, r.url)?.body?.schema : undefined));
+  return useMemo(() => {
+    if (!schema || !r.body.text.trim()) return [];
+    try {
+      return checkBody(schema, JSON.parse(r.body.text.replace(/\{\{[^{}]+\}\}/g, "0")));
+    } catch {
+      return [];
+    }
+  }, [schema, r.body.text]);
+}
+
 function BodyPanel({ r, edit, scope }: { r: Req; edit(fn: (r: Req) => Req): void; scope: Scope }) {
   const b = r.body;
+  const warnings = useBodyCheck(r);
   const setBody = (patch: Partial<Req["body"]>) => edit((x) => ({ ...x, body: { ...x.body, ...patch } }));
   const jsonError = useMemo(() => {
     if (b.mode !== "json" || !b.text.trim()) return null;
@@ -191,6 +206,17 @@ function BodyPanel({ r, edit, scope }: { r: Req; edit(fn: (r: Req) => Req): void
       </div>
       {(b.mode === "json" || b.mode === "text" || b.mode === "xml") && (
         <CodeArea value={b.text} onChange={(text) => setBody({ text })} lang={b.mode === "json" ? "json" : "text"} label="Body" placeholder={b.mode === "json" ? '{ "title": "buy milk" }' : ""} className="min-h-[120px] flex-1" />
+      )}
+      {warnings.length > 0 && (
+        <ul className="ap-check" aria-label="Doesn't match the API's schema">
+          {warnings.slice(0, 4).map((w) => (
+            <li key={w}>
+              <TriangleAlert size={11} aria-hidden />
+              {w}
+            </li>
+          ))}
+          {warnings.length > 4 && <li className="more">and {warnings.length - 4} more</li>}
+        </ul>
       )}
       {b.mode === "form" && <KvTable rows={b.form} onChange={(form) => setBody({ form })} scope={scope} label="Form fields" />}
       {b.mode === "multipart" && (
@@ -289,6 +315,7 @@ export function RequestTabs({ tab }: { tab: Tab }) {
     if (wantsBody && which === "params" && !r.params.length) setWhich("body"); // switching to POST: the body is what you'll edit next
   }, [wantsBody]);
   const failed = result?.assertions.filter((a) => !a.ok).length ?? 0;
+  const bodyOff = useBodyCheck(r).length > 0;
 
   return (
     <div className="ap-req">
@@ -298,7 +325,7 @@ export function RequestTabs({ tab }: { tab: Tab }) {
           <button key={t.id} role="tab" type="button" aria-selected={which === t.id} className={cx("ap-subtab", which === t.id && "on")} onClick={() => setWhich(t.id)}>
             {t.label}
             {!!t.n && <sup className={cx(t.id === "assert" && result?.assertions.length ? (failed ? "text-fail" : "text-ok") : undefined)}>{t.n}</sup>}
-            {!t.n && t.dot && <i className="ap-dot" aria-hidden />}
+            {!t.n && t.dot && <i className={cx("ap-dot", t.id === "body" && bodyOff && "warn")} aria-hidden />}
           </button>
         ))}
         </div>

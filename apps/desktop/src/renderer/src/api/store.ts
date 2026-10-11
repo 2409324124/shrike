@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { ActionView, ApiCodeLang, ApiCollection, ApiHistoryEntry, ApiImportKind, ApiKv, ApiSendResult, ApiTreeNode, Route } from "@shrike/schema";
+import type { ActionView, ApiCodeLang, ApiCollection, ApiHistoryEntry, ApiImportKind, ApiKv, ApiSendResult, ApiTreeNode, Route, RouteDoc, RouteGuess, RoutesView } from "@shrike/schema";
 import { api, errorMessage } from "../lib/api.ts";
 import { allEvents } from "../lib/format.ts";
 import { useActions } from "../stores/actions.ts";
@@ -8,6 +8,7 @@ import { useRun } from "../stores/run.ts";
 import { toast, useUi } from "../stores/ui.ts";
 import { useDock } from "../dock/store.ts";
 import { blankReq, fromApi, fromRoute, hiddenSecret, looksLikeCurl, makeScope, nameFor, paramsFromUrl, row, sameReq, scrubReq, toApi, uid, type Captured, type Req, type Scope } from "./model.ts";
+import { reqFromDoc } from "./routes.ts";
 
 // AP: tabs, environments and sends over main's API (main/api: Bruno-format collections in .shrike/api/ and linked folders,
 // secrets in the keychain, history). Only the open tabs and the chosen environment live here, per project, in this profile.
@@ -35,6 +36,15 @@ interface ApiState extends Local {
   sending: Record<string, string>; // tab id -> send id
   history: ApiHistoryEntry[];
   dialog: null | "env" | "import" | "code";
+  view: "requests" | "routes"; // AP20
+  routes: RoutesView | null;
+  guessing: boolean; // AP22: the agent is reading handlers
+  guesses: RouteGuess[]; // waiting for Accept or Skip
+  loadRoutes(refresh?: boolean): Promise<void>;
+  guess(routes: RouteDoc[]): Promise<void>;
+  acceptGuess(g: RouteGuess): Promise<void>;
+  skipGuess(g: RouteGuess): void;
+  saveTest(req: Req, folder: string): Promise<void>;
   load(root: string | null): void;
   refresh(): Promise<void>;
   open(req: Req, o?: { colId?: string; resendOf?: string }): string;
@@ -119,10 +129,14 @@ export const useApi = create<ApiState>((set, get) => {
     sending: {},
     history: [],
     dialog: null,
+    view: "requests",
+    routes: null,
+    guessing: false,
+    guesses: [],
 
     load(root) {
       if (root === get().root) return;
-      set({ ...(root ? read(root) : EMPTY), root, collections: [], envVars: {}, runtime: {}, results: {}, sending: {}, history: [] });
+      set({ ...(root ? read(root) : EMPTY), root, collections: [], envVars: {}, runtime: {}, results: {}, sending: {}, history: [], routes: null, guesses: [], guessing: false });
       if (root) void get().refresh();
     },
     async refresh() {
@@ -130,6 +144,7 @@ export const useApi = create<ApiState>((set, get) => {
       if (!a?.apiCollections) return;
       const [collections, history] = await Promise.all([a.apiCollections().catch(() => get().collections), a.apiHistory().catch(() => get().history)]);
       set({ collections, history });
+      void get().loadRoutes(); // the body check (AP23) needs the schemas too
       // saved tabs come back from their files: what's kept between restarts has its secrets hidden
       for (const t of get().tabs)
         if (t.colId && t.draft.path && !isDirty(t) && collections.some((c) => c.id === t.colId))
@@ -147,12 +162,12 @@ export const useApi = create<ApiState>((set, get) => {
     open(req, o = {}) {
       const hit = req.path && o.colId ? get().tabs.find((t) => t.colId === o.colId && t.draft.path === req.path) : undefined;
       if (hit) {
-        set({ active: hit.id });
+        set({ active: hit.id, view: "requests" });
         return hit.id;
       }
       const tab: Tab = { id: uid(), draft: req, base: req, ...(o.colId ? { colId: o.colId } : {}), ...(o.resendOf ? { resendOf: o.resendOf } : {}) };
       const untouched = (t: Tab) => !t.draft.url && !t.draft.path && !isDirty(t) && !get().results[t.id] && !get().sending[t.id]; // a blank tab nobody typed in gives way
-      set((s) => ({ tabs: [...s.tabs.filter((t) => !untouched(t)), tab], active: tab.id }));
+      set((s) => ({ tabs: [...s.tabs.filter((t) => !untouched(t)), tab], active: tab.id, view: "requests" }));
       return tab.id;
     },
     async openItem(colId, path) {
@@ -175,7 +190,7 @@ export const useApi = create<ApiState>((set, get) => {
         return { tabs, results, sending, active: s.active === tabId ? (tabs[Math.min(i, tabs.length - 1)]?.id ?? null) : s.active };
       });
     },
-    focus: (active) => set({ active }),
+    focus: (active) => set({ active, view: "requests" }),
     edit(tabId, fn) {
       set((s) => ({ tabs: s.tabs.map((t) => (t.id === tabId ? { ...t, draft: fn(t.draft) } : t)) }));
     },
@@ -320,6 +335,36 @@ export const useApi = create<ApiState>((set, get) => {
       const env = col ? (get().envByCol[col.id] ?? undefined) : undefined;
       return (await ask(() => api().apiCode(toApi(t.draft), lang, { ...(col ? { collectionId: col.id } : {}), ...(env ? { environment: env } : {}) }), "Couldn't make the code")) ?? "";
     },
+
+    async loadRoutes(refresh) {
+      const root = get().root;
+      const v = await api()?.apiRoutes?.(refresh).catch(() => undefined);
+      if (v && get().root === root) set({ routes: v });
+    },
+    async guess(routes) {
+      if (get().guessing || !routes.length) return;
+      set({ guessing: true });
+      const got = await ask(() => api().apiGuessRoutes(routes.map((r) => ({ method: r.method, path: r.path }))), "Couldn't fill in examples");
+      set({ guessing: false, ...(got ? { guesses: got } : {}) });
+    },
+    async acceptGuess(g) {
+      const v = await ask(() => api().apiSaveGuess(g), "Couldn't save that");
+      if (!v) return;
+      set((s) => ({ routes: v, guesses: s.guesses.filter((x) => x !== g) }));
+      void get().refresh();
+    },
+    skipGuess: (g) => set((s) => ({ guesses: s.guesses.filter((x) => x !== g) })),
+    async saveTest(req, folder) {
+      let col = get().collections.find((c) => c.owned) ?? (await ask(() => api().apiCreateCollection(useProject.getState().project?.name ?? "Requests"), "Couldn't make a collection"));
+      if (!col) return;
+      if (folder && !col.tree.some((n) => n.type === "folder" && n.name === folder)) col = await ask(() => api().apiCreateFolder(col!.id, folder), "Couldn't make the folder");
+      if (!col) return;
+      const dir = col.tree.find((n) => n.type === "folder" && n.name === folder)?.path;
+      const r = await ask(() => api().apiSaveRequest(col!.id, toApi(req), dir), "Couldn't save the test");
+      if (!r) return;
+      setCol(r.collection);
+      toast(`Saved ${req.name} as a test in ${r.collection.name}. Flows can replay it.`, "ok");
+    },
   };
 });
 
@@ -377,6 +422,12 @@ export function capturedCalls(byId: Record<string, ActionView>, order: string[])
 export function openRoute(route: Route): void {
   const { byId, order } = useActions.getState();
   openInClient(fromRoute(route, capturedCalls(byId, order)));
+}
+
+/** AP20 Try it: a documented route in a new tab, examples filled. Never sends. */
+export function tryRoute(doc: RouteDoc): void {
+  const { byId, order } = useActions.getState();
+  openInClient(reqFromDoc(doc, capturedCalls(byId, order)));
 }
 
 /** The history entry's request (redacted) in a new tab. */
