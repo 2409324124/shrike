@@ -59,7 +59,7 @@ export async function fetchSpec(base: string | undefined, f: typeof fetch = fetc
   for (const p of SPEC_PATHS) {
     const url = `${origin.origin}${p}`;
     try {
-      const res = await f(url, { signal: AbortSignal.timeout(timeoutMs), redirect: "error", headers: { accept: "application/json" } });
+      const res = await f(url, { signal: AbortSignal.timeout(timeoutMs), redirect: "error", headers: { accept: "application/json", "x-shrike-internal": "1" } }); // Shrike's own look, kept off the Thread
       if (!res.ok) continue;
       const text = await res.text();
       if (text.length > 5 * 1024 * 1024) continue;
