@@ -101,7 +101,7 @@ Verification levels:
 | DynamoDB | client-dynamodb, lib-dynamodb | Fake (DynamoDB Local container not run) |
 | In-process caches | lru-cache | In-process (fixtures) |
 | In-process caches | node-cache, keyv | Not yet: no hook |
-| SQLite | Python sqlite3 (python-agent) | In-process (`fixtures/py-app` FastAPI, Flask and Django, `python.test.ts`; `packages/python-agent/test`) |
+| SQLite | Python sqlite3 (python-agent), SQLAlchemy over it | In-process (`fixtures/py-app` FastAPI, Flask and Django, `python.test.ts`; `fixtures/py-edge` without Docker; `packages/python-agent/test`) |
 | Any engine from .NET, Python, Go, Java | the SDK's OpenTelemetry database instrumentation, sent to `/v1/traces` | In-process for Python sqlite3 (`fixtures/py-app` under `opentelemetry-instrument`, the real SDK, a test in `otlp.test.ts`); other SDKs and engines not tested. Python drivers other than sqlite3 (psycopg, SQLAlchemy, pymongo, redis-py) show queries only this way |
 
 ### Look inside (direct read-only connections)
@@ -130,6 +130,7 @@ Plan, as built: Reddit users asked for Python. OpenTelemetry already gave a Pyth
 3. **Requests**: an import hook wraps the app's entry point when its framework loads (`Starlette.__call__` for FastAPI, `Flask.wsgi_app`, Django's `WSGIHandler` and `ASGIHandler`); a `contextvars` variable carries the trip across `await`, tasks and FastAPI's threadpool.
 4. **Queries**: `sqlite3.connect` returns a recording `Connection` subclass; place `data:sqlite:<file>` like node-agent.
 5. **Exporter**: a daemon thread posts batches to `/ingest` every 100ms; the `hello` (place `service:<name>`) also makes the ingest drop that service's OTLP spans, so an app with its own OpenTelemetry SDK is recorded once. Under `opentelemetry-instrument`, OpenTelemetry's `sitecustomize` wins and records the process alone.
+6. **Outgoing calls** (2026-10-12): httpx (sync and async) and `http.client` (urllib, requests) calls inside a request are `external_call` steps with a `traceparent`, so a Python service calling another recorded service stays one trip.
 
 | Framework | Fixture | Join to the click | Steps with values | Error at its line | sqlite3 lane |
 |---|---|---|---|---|---|
@@ -139,6 +140,41 @@ Plan, as built: Reddit users asked for Python. OpenTelemetry already gave a Pyth
 | Django ASGI, other ASGI or WSGI frameworks | none | not tested (Django ASGI is hooked) | | | |
 
 Checked with `apps/desktop/src/main/python.test.ts` (real servers through the Runner, ingest and store) and `packages/python-agent/test` on Python 3.12 and 3.14 (3.13 not installed here). Overhead on the FastAPI fixture endpoint (0.7 ms, Apple M4 Pro): +81 us per request (12%) one at a time, 24% fewer requests per second at 10 concurrent with the CPU saturated; Flask's dev server: within noise. A call into the project's own code costs about 0.15 us outside a request, a recorded step about 4 us, and past the cap of 2000 steps per request about 0.35 us.
+
+## Tested combinations
+
+### Polyglot and edge Python
+
+Run on 2026-10-12, macOS, Python 3.12.14 and 3.14.6, Node 24.9, Postgres 16 in Docker (OrbStack), `opentelemetry-instrument` 0.66b1. Each row was run through the Runner, ingest and store (`main/polyglot.test.ts`, `main/py-edge.test.ts`) and in the built app headless (`e2e/polyglot.test.ts`, `e2e/py-edge.test.ts`), with screenshots looked at.
+
+| Stack | Fixture | What was checked | Result |
+|---|---|---|---|
+| React (Vite) to Express (node-agent) to FastAPI (python-agent) to SQLite | `fixtures/polyglot` | One trip: click, fetch, Express request and functions, the gateway's `fetch` (with its `traceparent`), the Python request nested under it, `price(sku='book', qty=2)`, the query, `with_tax()` red; the dive opens `pricing/main.py:47` with `with_tax(cents=2400, tax_class='reduced')`; one trip per click | pass |
+| Python to Node or Python, the other way | `packages/python-agent/test` | A urllib call from a request sends `traceparent: 00-<trip>-<call>-01`, so the callee's request joins the trip | pass (unit; no Python-to-Node fixture) |
+| FastAPI with httpx to an outside API (sync, async, in a background task) | `fixtures/py-edge` | Each call is an `external_call` in the declared outside lane under the function that made it, with the response body (`"EUR": "0.92"`) | pass, after python-agent's outgoing hooks |
+| FastAPI with SQLAlchemy 2.0 on psycopg 3 to Postgres 16 | `fixtures/py-edge` | No query station (psycopg isn't recorded); the Postgres lane's "What this click changed" says Shrike can't tell, never "Nothing changed"; the lane reads its rows through `compose.yaml` | pass, after three fixes (below) |
+| FastAPI with SQLAlchemy on SQLite | `fixtures/py-edge` without Docker | SQLAlchemy's statements land on `data:sqlite:edge.db` (python-agent's sqlite3 hook) | pass |
+| FastAPI `BackgroundTasks` | `fixtures/py-edge` | `send_receipt()` runs after the response but inside the ASGI call, so it nests under the request in the same trip | pass |
+| `asyncio.gather` of two httpx coroutines and `asyncio.to_thread` | `fixtures/py-edge` | `fetch_rates()` twice and `count_orders()` sit directly under `dashboard()`, each rates call under its own coroutine | pass |
+| The same app under `opentelemetry-instrument` | `fixtures/py-edge` | The request, the rates and receipts calls, the background task and the Postgres INSERT and UPDATE once each; python-agent stays out | pass, after the doubled-span fix |
+
+Found and fixed on the way (each with a test):
+
+- A Python `KeyError` read as `with_tax() failed: 'reduced'`; it now says `KeyError: 'reduced'` (and an empty message names its type).
+- "What this click changed" said "Nothing changed in the database" after a Python server wrote to Postgres through psycopg, or wrote to SQLite (python-agent records the statement but not the rows). It now says Shrike can't tell what changed.
+- A database lane declared by host and port in `.shrike/config.json` (`"localhost:4622"`) couldn't be read; it now matches the project's settings by host and port.
+- A compose `environment:` map lost its first key, so `POSTGRES_USER` was dropped and the read was refused.
+- With both OpenTelemetry instrumentations (SQLAlchemy and psycopg) every query showed twice; the inner span is folded.
+- A virtualenv in a subfolder (`app/.venv`) counted as project code: async endpoints showed `called at uvicorn:6`.
+
+Gaps, most often hit first:
+
+1. Python Postgres, MySQL and Mongo queries (psycopg, asyncpg, SQLAlchemy over them) aren't recorded by python-agent; they show only under `opentelemetry-instrument`, without values or steps. Hook psycopg's cursor next, like `sqlite3`.
+2. No row changes from Python at all, so "What this click changed" can only say it can't tell.
+3. OpenTelemetry's SQLAlchemy instrumentation (0.66b1) refuses SQLAlchemy 2.1 and records nothing; add `opentelemetry-instrumentation-psycopg` or pin `sqlalchemy<2.1`.
+4. Under OpenTelemetry, SQLAlchemy's pool `connect` spans show as queries.
+5. aiohttp and raw sockets aren't recorded as outgoing calls; `http.client` bodies are left out.
+6. "This click went through localhost:4620, where Shrike can't see row changes" names the server, not the driver it can't see.
 
 ## Operating systems
 
@@ -234,7 +270,7 @@ At the start every project ran but none had a working database lane, and only on
 | Login's writes (sessions, refresh tokens, last sign-in) don't show in "what this click changed" | nextjs-supabase | `packages/browser-agent/src/data.ts` only builds a change for sign up; GoTrue writes inside Supabase, so Shrike only sees the HTTP reply |
 | Mongo queries have no source line | express-mongoose | `drivers/mongodb.mjs` reads the stack from the driver's command event and doesn't use the approximate fallback yet |
 | Prisma INSERT placed at the middleware's await (trpc.ts:91), not post.ts | nextjs-prisma-t3 | Prisma's query is lazy and starts at the first await. That frame is real app code, so the fallback never runs |
-| Python 3.12+ backends now get function steps and values (python-agent), but queries only for sqlite3, and "what this click changed" stays empty. .NET, Go, Java and older Python get basic tracing through OpenTelemetry only | fastapi-sqlalchemy-pg (not re-run since python-agent or `/v1/traces` landed; its psycopg queries need OpenTelemetry) | python-agent hooks sqlite3 only and captures no row data. Checked on `fixtures/py-app` (FastAPI, Flask, Django) only |
+| Python 3.12+ backends now get function steps, values and outgoing HTTP (python-agent), but queries only for sqlite3, and "what this click changed" can't list rows (it says so instead of "Nothing changed"). .NET, Go, Java and older Python get basic tracing through OpenTelemetry only | fastapi-sqlalchemy-pg (not re-run since python-agent or `/v1/traces` landed; its psycopg queries need OpenTelemetry) | python-agent hooks sqlite3 only and captures no row data. Checked on `fixtures/py-app` (FastAPI, Flask, Django) only |
 | A real Firebase project can't be read (emulator only), and server-side firebase-admin isn't hooked | vite-react-firebase | Needs firebase-admin and a service account; marked as the upgrade path in `datasources/firestore.ts` |
 | nestjs detection not re-checked without the typed `.env` command | nestjs-typeorm-mysql | The runner now passes `.env` to every process (unit test), but the real project wasn't re-run without the hint |
 | Drizzle insert without RETURNING shows no generated id | hono-drizzle-pg | pg doesn't return the key in that case |
