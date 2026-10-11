@@ -66,7 +66,7 @@ That loop (reproduce, observe, hypothesise, probe, fix, verify) is what makes it
 | 8 | **Flow review.** On working flows, the agent flags slow steps, N+1 queries, sequential awaits and request waterfalls. | v1 |
 | 9 | **MCP server.** The same tools the in-app agent uses, available to Cursor or Claude Code sessions outside Shrike. (The server itself ships in MVP because the in-app agents use it.) | MVP |
 | 10 | **Share a recording.** Redacted `.shriketrace` file or a private link for a friend or mentor. | v1 |
-| 11 | Python/FastAPI support | v2 |
+| 11 | **Python backends.** FastAPI, Flask and Django on Python 3.12+ get the same function steps as Node, through python-agent (`packages/python-agent`). | v2, shipped early |
 
 ## Non-goals
 

@@ -32,7 +32,7 @@ Every phase has a "done when" check run against the fixtures. Don't start a phas
 
 1. Flow review polish and "make this page faster" agent goal
 2. Vite SSR, Remix/React Router, SvelteKit, Nuxt frontends
-3. Python/FastAPI backend (`sys.monitoring` on 3.12+)
+3. Python backends (`sys.monitoring` on 3.12+): done for FastAPI, Flask and Django with sqlite3 (`packages/python-agent`, docs/14 "Python backends"); next: outgoing calls, logs, more database drivers
 4. Mobile companion: get notified when an agent run finishes, approve patches from your phone (Orca has this; same pattern)
 5. Team history: shared recordings, comments on timeline rows
 6. Parallel hypotheses: run two agent brains on the same bug in separate worktrees and compare (Orca-style fan-out)

@@ -22,7 +22,10 @@
 | `scanner` | Finds every route in both fixtures with handler file:line |
 | `node-agent` transform | Wrapped function keeps behaviour, `this`, generators, async, and source-map line numbers |
 | `node-agent` place inspector (`test/inspect.test.mjs`) | SQLite file and `:memory:`, PGlite, lru-cache (LRU order unchanged), ioredis read commands only; no trip events; I3 write capture; secret columns masked; responses byte-identical |
-| desktop OTLP ingest (`main/otlp.test.ts`) | A hand-encoded protobuf payload and an OTLP/JSON one map to the right requests, queries, outside calls and functions with errors and source; `/v1/traces` checks the token, takes gzip and answers in OTLP; a node-agent service isn't doubled; an OpenTelemetry server span joins the page's cross-origin call; with `fixtures/py-app/api/.venv` present, the real FastAPI app's 500 and its query join a click (skipped otherwise) |
+| python-agent (`packages/python-agent/test`, run by `test/agent.test.mjs` on every Python 3.12+ found; matrix below) | Function steps nested under the request with argument and return previews, secrets masked, only project files, sqlite3 queries, exceptions on the step and the request, WSGI; Python semantics; inert without the env and before 3.12; a down or silent ingest never blocks; the queue keeps the newest 10,000; the shadowed `sitecustomize` still runs |
+| desktop Python live (`main/python.test.ts`) | With `fixtures/py-app/api/.venv` present: the FastAPI, Flask and Django APIs run through the Runner's env, the ingest and the store; a click's cross-origin call joins each server's request, its steps carry values, the query lands on `data:sqlite:shop.db`, the ZeroDivisionError points at its line, nothing is recorded twice; under `opentelemetry-instrument` OpenTelemetry records alone (skipped otherwise) |
+| desktop runner env (`main/runner.test.ts`) | python-agent goes first on `PYTHONPATH` with the project's own entries kept after it; a declared outside process runs plain |
+| desktop OTLP ingest (`main/otlp.test.ts`) | A hand-encoded protobuf payload and an OTLP/JSON one map to the right requests, queries, outside calls and functions with errors and source; `/v1/traces` checks the token, takes gzip and answers in OTLP; a node-agent service isn't doubled; an OpenTelemetry server span joins the page's cross-origin call; with `fixtures/py-app/api/.venv` present, the real FastAPI app under `opentelemetry-instrument`: its 500 and its query join a click (skipped otherwise) |
 | desktop `inspector` hub (`main/inspector.test.ts`) | Routes to the process holding the place, redacts replies, plain reasons when it can't read |
 | renderer `inspector/logic` | Row highlight from statement + params, what-this-click-changed grouping, cache marks, outside calls |
 | heuristics | N+1, sequential awaits, waterfall, duplicates fire on their fixtures and stay quiet on the clean flows |
@@ -53,6 +56,19 @@
 | Layout audit (e2e `e2e/layout-audit.test.ts`, helpers `e2e/layout.ts`; fake brain and `fake-gh-journey.mjs`) | Drives the built app through every screen and state at 1100x700, 1440x900 and 1920x1200 (Abyss and Daylight at every size, all six themes at 1440x900) and saves a screenshot of each; the screenshot is the evidence, read by a person. In-page box checks then point at what it shows: overlapping text and controls, a control whose centre hits something else, text under an opaque or blurred layer, clipped text without an ellipsis or full text nearby, controls cut off or under 4px apart, floating layers colliding, sideways scroll. Intentional layers are allowlisted with a reason; a marked copy outlines each finding. `LAYOUT_ONLY=a,b` reshoots some states, `LAYOUT_QUICK=1` shoots two themes, `LAYOUT_STRICT=1` fails on overlap, floating, off-screen, cut-off, clipped and zero-size findings. Run it headless against a build kept apart from `out/` so a running dev instance is not disturbed: `npx electron-vite build --outDir <dir>/apps/desktop/out` (with `<dir>/apps/desktop` holding `package.json` and links to `node_modules` and `resources`), then from `apps/desktop`: `SHRIKE_E2E_APP=<dir>/apps/desktop SHRIKE_E2E_SHOTS=<shots> LAYOUT_STRICT=1 node --test e2e/layout-audit.test.ts`. Shots, marked copies, `results.jsonl` and `summary.md` land in `<shots>/layout-audit` |
 | Packaged build (e2e `e2e/packaged.test.ts`, `SHRIKE_PACKAGED_APP=<Shrike.app>`; docs/RELEASING.md) | The signed app from `scripts/release/build-mac.sh`: `app.isPackaged`, the sample opens from Resources on free ports, Run, Add Todo fails, FOUND IT on `todos.controller.ts:18` from the recorded Claude stream, the bundled ShrikeVoice.app hears two WAVs into a final transcript with no voice error, and the planner (node-llama-cpp) loads in its utilityProcess |
 
+### Python test matrix
+
+`packages/python-agent/test`, standard library only, against a fake ingest. Last run 2026-10-11:
+
+| Suite | What | Python 3.12.14 | Python 3.14.6 |
+|---|---|---|---|
+| `test_agent.py` `Agent` | stand-in Starlette and Flask app: hello and token, nesting and previews, masking, only project files, sqlite3, exceptions, WSGI, inert without env, chained `sitecustomize` | 8/8 | 8/8 |
+| `test_agent.py` `Safety` | inert on Python 3.9, ingest down, ingest that never answers, queue cap | 4/4 | 4/4 |
+| `test_semantics.py` | classes and qualnames, decorators, recursion cap (64), step cap (2000), caught and re-raised errors, generators and async generators, threads, huge, cyclic and unprintable values, secrets, concurrent requests | 10/10 | 10/10 |
+| `main/python.test.ts` (live, fixture venv on 3.14.6) | FastAPI, Flask, Django, OpenTelemetry alone | n/a | 4/4 |
+
+Python 3.13 was not installed on the machine that ran it. Re-run on every python-agent change; `pnpm test` runs the Python suite on each Python 3.12+ it finds and skips when there is none.
+
 ## Fixtures
 
 | Fixture | Stack | Contains |
@@ -62,6 +78,7 @@
 | `fixtures/big-app` | Vite React + nine node:http services, a queue, a cron worker, PGlite (3 databases), lru-cache (3 caches), node:sqlite outbox, Stripe and email test doubles | The showcase: one Place order click charges, saves, emails, then the receipt's per-line tax isn't rounded to whole cents and `money()` throws at `services/orders/src/domain/totals.ts:25` |
 | `fixtures/api-only` | node:http + node:sqlite, no web page, a nightly script | Case-sensitive "already registered?" check vs a case-insensitive unique index: 409 |
 | `fixtures/next-app` | Next.js app router + Prisma + SQLite | Same scenarios in Next.js, React 19 |
+| `fixtures/py-app` | Plain page + the same shop API on FastAPI, Flask and Django, SQLite | A gift card's pack size of 0 divides by zero (`api/main.py:47`, `api/shop.py:27`); recorded by python-agent, or by OpenTelemetry under `opentelemetry-instrument` |
 | `fixtures/bugs` | Variants of the two apps, one bug each | The agent eval corpus |
 
 ## Agent eval corpus (`fixtures/bugs`)
@@ -112,7 +129,7 @@ Run the eval per brain (Claude Code, built-in, Codex, OpenCode) and record resul
 
 | Budget | Limit |
 |---|---|
-| Added latency per fixture request (full tracing) | < 15% |
+| Added latency per fixture request (full tracing) | < 15% (python-agent on the FastAPI fixture: +81 us, 12%, one request at a time; docs/14) |
 | Dev server startup overhead | < 2s |
 | Events per typical Action | < 2,000 |
 | Timeline render with 50k events | 60fps scroll (virtualised) |
