@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import type { RunStatus } from "@shrike/schema";
-import { detectUrl, portTaken, Runner } from "./runner.ts";
+import { detectUrl, exitHint, portTaken, reapOrphans, Runner, trackGroups } from "./runner.ts";
+import { startTimeOf } from "./platform.ts";
 
 /** A killed group can linger a moment on Linux while its children are reaped. */
 async function groupGone(pid: number): Promise<boolean> {
@@ -356,4 +359,50 @@ test("a service's URL comes only from this computer's addresses in its output (n
   await new Promise((done) => setTimeout(done, 1200));
   assert.equal(r.services()[0]!.url, "http://localhost:5433");
   await r.stop();
+});
+
+test("reliability: plain reasons for a taken port and a question nobody can answer", () => {
+  const port = /^\nPort (\d+) is already in use by another program\./;
+  assert.match(exitHint(["Error: listen EADDRINUSE: address already in use :::3000", "    at Server.setupListenHandle", "  code: 'EADDRINUSE',", "  port: 3000"]), port);
+  assert.equal(port.exec(exitHint(["Error: listen EADDRINUSE: address already in use 127.0.0.1:5391", "  code: 'EADDRINUSE',"]))![1], "5391");
+  assert.equal(port.exec(exitHint(["ERROR:    [Errno 48] error while attempting to bind on address ('127.0.0.1', 8000): address already in use"]))![1], "8000");
+  assert.equal(port.exec(exitHint(["listen tcp :8080: bind: address already in use"]))![1], "8080");
+  assert.equal(port.exec(exitHint(["error when starting dev server:", "Error: Port 5173 is already in use"]))![1], "5173");
+  assert.match(exitHint(["OSError: [Errno 98] Address already in use"]), /^\nIts port is already in use/);
+  assert.match(exitHint(["Something is already running on port 3000.", "Would you like to run the app on another port instead? › (Y/n)"]), /stopped to ask a question/);
+  assert.equal(exitHint(["TypeError: x is not a function"]), "");
+});
+
+test("reliability: a port held by something that isn't a web server counts as taken", async () => {
+  const srv = createServer((s) => s.destroy()).listen(0, "127.0.0.1");
+  await new Promise((r) => srv.once("listening", r));
+  const url = `http://localhost:${(srv.address() as { port: number }).port}`;
+  try {
+    assert.equal(await portTaken([url], 0), url);
+  } finally {
+    srv.close();
+  }
+});
+
+test("reliability: the next launch ends process groups a killed Shrike left running, and nobody else's", { skip: process.platform === "win32" }, async () => {
+  const dir = mkdtempSync(join(tmpdir(), "shrike-reap-"));
+  const file = join(dir, "process-groups.json");
+  trackGroups(file);
+  const r = new Runner({ onStatus: () => {}, onOutput: () => {} });
+  await r.start({ root: dir, name: "t", devCommand: "sleep 300 & sleep 300; wait", routes: [], processes: [], expectedPlaces: [] }, { nodeAgentRegister: "/x.mjs", ingestUrl: "http://127.0.0.1:1", token: "t" });
+  const pid = r.status.processes![0]!.pid!;
+  await until("the group to be saved", () => existsSync(file) && pid in JSON.parse(readFileSync(file, "utf8")));
+  // A stranger: a live group whose leader's start time doesn't match what was saved (a reused pid).
+  const other = spawn("sh", ["-c", "sleep 300 & sleep 300; wait"], { detached: true, stdio: "ignore" });
+  const saved = JSON.parse(readFileSync(file, "utf8")) as Record<string, string>;
+  writeFileSync(file, JSON.stringify({ ...saved, [other.pid!]: "Thu Jan  1 00:00:00 1970" }));
+  try {
+    assert.equal(await reapOrphans(file), 1);
+    assert.ok(await groupGone(pid));
+    assert.ok(await startTimeOf(other.pid!), "the stranger keeps running");
+    assert.ok(!existsSync(file));
+  } finally {
+    process.kill(-other.pid!, "SIGKILL");
+    r.killNow();
+  }
 });

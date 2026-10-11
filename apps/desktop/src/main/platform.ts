@@ -38,6 +38,12 @@ export function killTree(pid: number | undefined, signal: NodeJS.Signals = "SIGT
   } catch {}
 }
 
+/** When `pid` started, as `ps` says it (to the second); undefined when it isn't running or on Windows. */
+export function startTimeOf(pid: number, os: Os = process.platform, run: typeof execFile = execFile): Promise<string | undefined> {
+  if (os === "win32") return Promise.resolve(undefined);
+  return new Promise((ok) => void run("ps", ["-o", "lstart=", "-p", String(pid)], { env: { ...process.env, LC_ALL: "C" } }, (err, out) => ok(err ? undefined : String(out).trim() || undefined)));
+}
+
 /** Links a folder (a junction on Windows, which needs no admin rights); copies it when linking isn't allowed. */
 export function linkDir(from: string, to: string, os: Os = process.platform): void {
   try {
