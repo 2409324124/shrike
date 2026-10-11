@@ -116,5 +116,14 @@ export function apiClientMock(sendRequest: (r: HttpRequestSpec) => Promise<{ res
     async apiPickFile() {
       return null;
     },
+    async apiRoutes() {
+      return { routes: [{ method: "GET", path: "/api/todos", tag: "todos", sources: ["code"], params: [], responses: [] }], notes: [] };
+    },
+    async apiGuessRoutes() {
+      throw new Error("The browser mock has no agent.");
+    },
+    async apiSaveGuess() {
+      return { routes: [], notes: [] };
+    },
   };
 }

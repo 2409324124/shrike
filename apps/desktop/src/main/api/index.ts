@@ -1,12 +1,16 @@
 // AP: the API client service. Electron-free; main passes in the keychain, dialogs and the store.
+import { lstatSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import type { ActionView, ApiCodeLang, ApiCollection, ApiHistoryEntry, ApiHost, ApiImportKind, ApiRequest, ApiSendOptions, ApiSendResult, DebugEvent, Route, TimelineNode } from "@shrike/schema";
+import { basename, join } from "node:path";
+import type { ActionView, ApiCodeLang, ApiCollection, ApiHistoryEntry, ApiHost, ApiImportKind, ApiRequest, ApiSendOptions, ApiSendResult, DebugEvent, Route, RouteGuess, RoutesView, TimelineNode } from "@shrike/schema";
+import { readJsonSync } from "../state-file.ts";
 import type { Store } from "../store.ts";
 import { toCode } from "./codegen.ts";
-import { blankRequest, createCollections, type Keychain } from "./collections.ts";
+import { atomicWrite, blankRequest, createCollections, type Keychain } from "./collections.ts";
 import { CookieJar, execute, isLoopback, prepare, type SendContext } from "./exec.ts";
 import { createHistory } from "./history.ts";
 import { importOpenApi, importPostman, importRoutes, parseCurl, pathParamsOf, splitQuery, type ImportDraft } from "./import.ts";
+import { fetchSpec, guessPrompt, guessRequest, mergeRoutes, parseGuesses, redactDoc, routeKey, specDocs, specFromFiles } from "./routes.ts";
 import type { Scope } from "./vars.ts";
 
 export interface ApiDeps {
@@ -19,6 +23,7 @@ export interface ApiDeps {
   getAction: (id: string) => ActionView | undefined;
   pickFolder?: (title: string) => Promise<string | undefined>;
   pickFile?: (title: string, exts?: string[]) => Promise<string | undefined>;
+  ask?: (prompt: string) => Promise<string>; // AP22: a read-only, one-shot run of the user's agent; its whole answer
 }
 
 export function createApi(d: ApiDeps) {
@@ -129,8 +134,85 @@ export function createApi(d: ApiDeps) {
     },
   };
 
+  // AP20: a spec found at the app's URL is kept until the address changes; a miss is retried at most every 10s
+  let netSpec: { key: string; from: string; spec: Record<string, unknown> } | undefined;
+  let missed = { key: "", at: 0 };
+  const guessFile = () => {
+    const root = d.projectRoot();
+    if (!root) throw new Error("Open a project first.");
+    return join(root, ".shrike", "api", "guessed-routes.json");
+  };
+  const readGuesses = (): RouteGuess[] => {
+    try {
+      const v = readJsonSync(guessFile());
+      return Array.isArray(v) ? (v as RouteGuess[]) : [];
+    } catch {
+      return [];
+    }
+  };
+  async function routesView(refresh = false): Promise<RoutesView> {
+    const root = d.projectRoot();
+    if (!root) return { routes: [], notes: [] };
+    const key = `${root}|${d.baseUrl() ?? ""}`;
+    if (refresh || netSpec?.key !== key) netSpec = undefined;
+    let found: { from: string; spec: Record<string, unknown> } | undefined = specFromFiles(root) ?? netSpec;
+    if (!found && (refresh || missed.key !== key || Date.now() - missed.at > 10_000)) {
+      const net = await fetchSpec(d.baseUrl());
+      if (net) {
+        netSpec = { ...net, key };
+        found = net;
+      } else missed = { key, at: Date.now() };
+    }
+    const notes: string[] = [];
+    let spec: ReturnType<typeof specDocs> | undefined;
+    if (found) {
+      try {
+        spec = specDocs(found.spec);
+      } catch (e) {
+        notes.push(`Found ${found.from}, but ${(e as Error).message}, so routes come from your code.`);
+      }
+    }
+    const routes = mergeRoutes(spec?.routes ?? [], d.routes(), readGuesses()).map(redactDoc);
+    return { routes, ...(spec && found ? { spec: { from: found.from, ...(spec.title ? { title: spec.title } : {}), ...(spec.version ? { version: spec.version } : {}) } } : {}), notes };
+  }
+
   return {
     collections: async () => cols.list(),
+    routes: routesView,
+    async guessRoutes(asked: { method: string; path: string }[]): Promise<RouteGuess[]> {
+      if (!d.ask) throw new Error("No agent is set up. Install Claude Code, or set ANTHROPIC_API_KEY.");
+      const scanned = d.routes();
+      const withHandler = asked.map((r) => ({ ...r, handler: scanned.find((s) => routeKey(s.method, s.path) === routeKey(r.method, r.path))?.handler }));
+      const guesses = parseGuesses(await d.ask(guessPrompt(withHandler)), asked);
+      if (!guesses.length) throw new Error("Your agent couldn't work out any of those routes from the code.");
+      return guesses;
+    },
+    async saveGuess(g: RouteGuess): Promise<RoutesView> {
+      const root = d.projectRoot();
+      if (!root) throw new Error("Open a project first.");
+      try {
+        if (lstatSync(join(root, ".shrike")).isSymbolicLink()) throw new Error("This project's .shrike folder is a link to somewhere else, so Shrike won't write into it.");
+      } catch (e) {
+        if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
+      }
+      const clean = redactDoc(g);
+      const k = routeKey(clean.method, clean.path);
+      await atomicWrite(guessFile(), `${JSON.stringify([...readGuesses().filter((x) => routeKey(x.method, x.path) !== k), clean], null, 2)}\n`);
+      const folder = (await routesView()).routes.find((r) => routeKey(r.method, r.path) === k)?.tag ?? "";
+      let owned = cols.list().find((c) => c.owned) ?? (await cols.create(basename(root)));
+      if (folder && !owned.tree.some((n) => n.type === "folder" && n.name === folder)) owned = await cols.createFolder(owned.id, folder);
+      const dir = owned.tree.find((n) => n.type === "folder" && n.name === folder)?.path;
+      const req = guessRequest(clean);
+      const same = (nodes: ApiCollection["tree"]): string | undefined => {
+        for (const n of nodes) {
+          const hit = n.type === "folder" ? same(n.children) : n.name === req.name ? n.path : undefined;
+          if (hit) return hit;
+        }
+        return undefined;
+      };
+      await cols.saveRequest(owned.id, { ...req, path: same(owned.tree) ?? "" }, dir);
+      return routesView();
+    },
     createCollection: (name: string) => cols.create(name),
     async linkCollection(dir?: string): Promise<ApiCollection | null> {
       const picked = dir ?? (await d.pickFolder?.("Open a Bruno collection"));

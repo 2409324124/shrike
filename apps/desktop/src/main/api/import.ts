@@ -323,7 +323,7 @@ export function importPostman(text: string): ImportDraft {
 
 // ---- OpenAPI 3 ----
 
-function skeleton(schema: Obj, root: Obj, depth = 0): unknown {
+export function skeleton(schema: Obj, root: Obj, depth = 0): unknown {
   const ref = str(schema.$ref);
   if (ref.startsWith("#/")) {
     const target = ref.slice(2).split("/").reduce<unknown>((cur, k) => o(cur)[k.replace(/~1/g, "/").replace(/~0/g, "~")], root);
@@ -418,11 +418,14 @@ export function importOpenApi(text: string): ImportDraft {
 
 // ---- scanned routes ----
 
+/** Next's [id] and [...rest], OpenAPI's {id}, Flask's <int:id> as Express-style :id. */
+export const colonPath = (p: string): string => p.replace(/\[\.\.\.(\w+)\]/g, ":$1").replace(/\[(\w+)\]/g, ":$1").replace(/\{(\w+)\}/g, ":$1").replace(/<(?:\w+:)?(\w+)>/g, ":$1");
+
 export function importRoutes(routes: Route[], appUrl: string | undefined, name: string): ImportDraft {
   const draft: ImportDraft = { name, requests: [], folders: [], vars: [], auth: { type: "none" }, headers: [], environments: [{ name: "Local", vars: [kvOn("baseUrl", (appUrl ?? "http://localhost:3000").replace(/\/$/, ""))] }], notes: [] };
   const seen = new Set<string>();
   for (const r of routes) {
-    const path = r.path.replace(/\[\.\.\.(\w+)\]/g, ":$1").replace(/\[(\w+)\]/g, ":$1").replace(/\{(\w+)\}/g, ":$1").replace(/<(?:\w+:)?(\w+)>/g, ":$1");
+    const path = colonPath(r.path);
     const method = r.method.toUpperCase() === "ALL" || r.method === "*" ? "GET" : r.method.toUpperCase();
     const key = `${method} ${path}`;
     if (seen.has(key)) continue;
