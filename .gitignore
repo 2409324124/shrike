@@ -11,7 +11,8 @@ fixtures/**/*.db
 /release/
 *.dmg
 apps/desktop/src/renderer/vite-cache/
-fixtures/*/.shrike/issues/
+fixtures/*/.shrike/*
+!fixtures/*/.shrike/config.json
 fixtures/*/.data/
 fixtures/voice/recordings/*
 fixtures/voice/recordings/.transcripts.json
@@ -22,4 +23,8 @@ packages/node-agent/test/drivers/prisma/*.db
 # web-sourced photo (Google Images thumbnail per its download metadata): kept local until its licence is confirmed
 design-system/brand/shrike.jpeg
 __pycache__/
-packages/python-agent/test/.venv/
+*.py[cod]
+.venv/
+.pytest_cache/
+Thumbs.db
+.claude/worktrees/
