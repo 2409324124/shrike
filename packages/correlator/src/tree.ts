@@ -27,6 +27,14 @@ export function buildActionView(rootEvent: DebugEvent, events: DebugEvent[], com
     if (e.kind === "http_request" && e.origin === "server" && e.status === "error" && (e.http?.status ?? 0) < 500 && byId.get(e.parentId ?? "")?.error?.type === "AbortError") byId.set(id, { ...e, status: "ok" });
   }
 
+  // One query under two OpenTelemetry instrumentations (SQLAlchemy's and psycopg's): keep the span around the other.
+  // ponytail: two identical queries running at once with one inside the other's time would also fold; only OpenTelemetry's.
+  const otelQueries = [...byId.values()].filter((e) => e.otel && e.kind === "db_query" && e.db?.statement);
+  for (const e of otelQueries) {
+    const outer = otelQueries.find((o) => o !== e && byId.has(o.id) && (o.parentId === e.parentId || o.id === e.parentId) && o.db!.statement === e.db!.statement && o.startMs <= e.startMs && endOf(o) >= endOf(e));
+    if (outer) byId.delete(e.id);
+  }
+
   const nodes = new Map<string, TimelineNode>();
   for (const [id, e] of byId) nodes.set(id, { event: e, children: [] });
   const tree: TimelineNode[] = [];
