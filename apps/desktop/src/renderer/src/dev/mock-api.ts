@@ -806,10 +806,6 @@ export const mockApi: ShrikeApi = {
   async getActions() {
     return [...actions.values()];
   },
-  async clearActions() {
-    actions.clear();
-    emit("actions:cleared", null);
-  },
   async sendRequest(req) {
     const t0 = Date.now();
     await wait(60 + Math.random() * 60);
@@ -897,12 +893,6 @@ export const mockApi: ShrikeApi = {
   },
   async getMemory() {
     return memory;
-  },
-  async addMemory(note) {
-    const m: MemoryNote = { ...note, id: hex(8), createdAt: Date.now() };
-    memory = [...memory, m];
-    emit("memory:update", memory);
-    return m;
   },
   async removeMemory(id) {
     memory = memory.filter((m) => m.id !== id);
@@ -1230,9 +1220,6 @@ export const mockApi: ShrikeApi = {
   // ---- V: voice (the helper is native, so the browser mock can't hear) ----
   async voiceSend(cmd) {
     if (cmd.cmd === "start") emit("voice:event", { type: "error", id: cmd.id, message: "Voice works in the desktop app." });
-  },
-  async voiceDecide() {
-    return null;
   },
   async openVoiceSettings() {},
   async voiceModels() {

@@ -103,9 +103,6 @@ export function apiClientMock(sendRequest: (r: HttpRequestSpec) => Promise<{ res
     async apiHistory() {
       return history.slice(0, 200);
     },
-    async apiClearHistory() {
-      history.length = 0;
-    },
     async apiImport(kind, text) {
       if (kind === "curl") {
         const url = /https?:\/\/[^\s'"]+/.exec(text ?? "")?.[0] ?? "";
@@ -115,9 +112,6 @@ export function apiClientMock(sendRequest: (r: HttpRequestSpec) => Promise<{ res
     },
     async apiCode(req) {
       return `curl -X ${req.method} '${req.url}'`;
-    },
-    async apiFromTrip() {
-      return blank({ name: "POST /api/todos", method: "POST", url: "/api/todos", body: { type: "json", data: '{"title":""}' } });
     },
     async apiPickFile() {
       return null;

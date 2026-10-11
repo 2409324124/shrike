@@ -7,7 +7,6 @@ import * as files from "./files.ts";
 import {
   answerApproval,
   appView,
-  clearActions,
   getProject,
   openProject,
   requireProject,
@@ -193,7 +192,6 @@ export function registerIpc(win: () => BrowserWindow | undefined, appWin: AppWin
   handle("readFile", z.tuple([str]), (path) => files.readFile(requireProject().root, path));
   handle("writeFile", z.tuple([str, z.string().max(20 * 1024 * 1024)]), (path, content) => files.writeFile(requireProject().root, path, content));
   handle("getActions", none, async () => store.listActions());
-  handle("clearActions", none, async () => clearActions());
   handle("sendRequest", z.tuple([httpSpec]), (req) => sendRequest(req, "explorer"));
   handle("detectBrains", none, () => detectBrains());
   handle("startAgent", z.tuple([z.string().trim().min(1).max(4000), z.enum(["claude-code", "builtin"])]), (goal, brain) => startAgent(goal, brain, emit));
@@ -237,7 +235,6 @@ export function registerIpc(win: () => BrowserWindow | undefined, appWin: AppWin
   // ---- agent: A4 skills, A5 memory, A6 checkpoints, A11 watched-by, A13 diff comments ----
   handle("listSkills", none, () => agentExtras.listSkills());
   handle("getMemory", none, () => hostExtras.getMemory());
-  handle("addMemory", z.tuple([z.object({ text: z.string().trim().min(1).max(300), file: z.string().min(1).max(4096).optional(), line: z.number().int().min(1).max(10_000_000).optional(), by: z.enum(["agent", "user"]) })]), (note) => hostExtras.addMemory(note));
   handle("removeMemory", z.tuple([str]), (id) => hostExtras.removeMemory(id));
   handle("getCheckpoints", none, async () => getCheckpoints());
   handle("rewindTo", z.tuple([str]), (id) => hostExtras.rewindTo(id));
@@ -1179,13 +1176,11 @@ export function registerIpc(win: () => BrowserWindow | undefined, appWin: AppWin
   handle("apiSend", z.union([z.tuple([requestZ]), z.tuple([requestZ, sendOptsZ])]), (req, opts) => apiSvc.send(req, opts));
   handle("apiCancel", z.tuple([z.string().min(1).max(128)]), (id) => apiSvc.cancel(id));
   handle("apiHistory", none, () => apiSvc.history());
-  handle("apiClearHistory", none, () => apiSvc.clearHistory());
   // bruno always goes through the folder dialog; a path from the page is never trusted
   handle("apiImport", z.union([z.tuple([importKindZ]), z.tuple([importKindZ, z.string().max(20 * 1024 * 1024).optional()]), z.tuple([importKindZ, z.string().max(20 * 1024 * 1024).optional(), apiName.optional()])]), (kind, text, name) =>
     apiSvc.import(kind, kind === "bruno" ? undefined : text, name),
   );
   handle("apiCode", z.union([z.tuple([requestZ, codeLangZ]), z.tuple([requestZ, codeLangZ, sendOptsZ])]), (req, lang, opts) => apiSvc.code(req, lang, opts));
-  handle("apiFromTrip", z.tuple([str]), (id) => apiSvc.fromTrip(id));
   // ponytail: the picked path goes back to the page and returns in a multipart field; main reads whatever path the page sends. Upgrade: hand out file tokens.
   handle("apiPickFile", none, async () => (await pick("Pick a file to send", ["openFile"])) ?? null);
   // ---- end api ----
