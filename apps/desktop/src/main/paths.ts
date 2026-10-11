@@ -1,8 +1,9 @@
 import { app } from "electron";
 import { join, resolve } from "node:path";
-import { cp, mkdir, readdir, rm, symlink } from "node:fs/promises";
+import { cp, mkdir, readdir, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { execFile } from "node:child_process";
+import { isMac, linkDir } from "./platform.ts";
 
 // Packaged, electron-builder's extraResources mirror the repo layout under Resources (apps/desktop/electron-builder.yml).
 const repo = app.isPackaged ? process.resourcesPath : resolve(app.getAppPath(), "../..");
@@ -31,11 +32,11 @@ export async function sampleCopy(): Promise<string> {
   if (!keepShrike) await cp(join(src, ".shrike/config.json"), join(dst, ".shrike/config.json")); // config only: no notes that give the demo away
   const mods = join(dst, "node_modules");
   if (existsSync(mods)) return dst;
-  if (!app.isPackaged) await symlink(join(src, "node_modules"), mods, "dir");
+  if (!app.isPackaged) linkDir(join(src, "node_modules"), mods);
   else {
     await cp(join(src, "node_modules"), mods, { recursive: true, verbatimSymlinks: true });
     // A downloaded app's files carry quarantine; copied out of the bundle, esbuild would hit Gatekeeper on its own.
-    await new Promise((ok) => execFile("xattr", ["-dr", "com.apple.quarantine", mods], ok));
+    if (isMac) await new Promise((ok) => execFile("xattr", ["-dr", "com.apple.quarantine", mods], ok));
   }
   return dst;
 }

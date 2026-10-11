@@ -32,6 +32,7 @@ export async function resolveClaude(): Promise<ClaudeBinary | undefined> {
     "/opt/homebrew/bin/claude",
     "/usr/local/bin/claude",
     path.join(home, ".local/bin/claude"),
+    path.join(home, ".local/bin/claude.exe"), // Windows native installer
   ];
   for (const p of candidates) {
     if (!p || !(await access(p, constants.X_OK).then(() => true, () => false))) continue;
@@ -51,13 +52,15 @@ let pathOnce: Promise<string | undefined> | undefined;
 export const loginPath = (): Promise<string | undefined> => (pathOnce ??= fromLoginShell().then((r) => r.loginPath));
 
 async function fromLoginShell(): Promise<{ found?: string; loginPath?: string }> {
+  // Windows: no login shell, the app already has the full PATH. spawn can't run the npm .cmd shim without a shell, so only an .exe counts.
+  if (process.platform === "win32") return exec("where.exe", ["claude"], { timeout: 5000 }).then(({ stdout }) => ({ found: stdout.split(/\r?\n/).find((l) => /\.exe$/i.test(l.trim()))?.trim() }), () => ({}));
   try {
-    const shell = process.env.SHELL || "/bin/zsh";
+    const shell = process.env.SHELL || (process.platform === "darwin" ? "/bin/zsh" : "/bin/sh"); // NixOS has no /bin/zsh
     const { stdout } = await exec(shell, ["-lc", 'printf "\\n__SHRIKE__%s\\n" "$(command -v claude)" "$PATH"'], { timeout: 5000 });
     const [cmd, p] = [...stdout.matchAll(/^__SHRIKE__(.*)$/gm)].map((m) => m[1]!.trim());
     const alias = /^alias claude=['"]?(.+?)['"]?$/.exec(cmd ?? "")?.[1];
     const found = alias ?? cmd;
-    return { found: found?.startsWith("/") ? found : undefined, loginPath: p || undefined };
+    return { found: found && path.isAbsolute(found) ? found : undefined, loginPath: p || undefined };
   } catch {
     return {};
   }
