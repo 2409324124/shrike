@@ -299,13 +299,6 @@ section[aria-label="Shrike"] .glass {
 .agentcard.ok {
   border-color: color-mix(in srgb, var(--ok) 50%, transparent);
 }
-.conf {
-  font: 600 11px var(--f-display);
-  letter-spacing: 0.02em;
-  border: 1px solid;
-  border-radius: var(--r-chip);
-  padding: 1px 6px;
-}
 .diff {
   font: 400 12px/1.6 var(--f-mono);
   border-radius: var(--r-chip);
