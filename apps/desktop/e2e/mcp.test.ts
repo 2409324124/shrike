@@ -4,11 +4,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import type { Page } from "playwright";
-import { fakeClaude, fixtureCopy, launch, openFolder, shot, sleep, waitFor } from "./helpers.ts";
+import { fakeClaude, fixtureCopy, launch, mcpClient, openFolder, shot, sleep, waitFor } from "./helpers.ts";
 
 const echo = join(import.meta.dirname, "../../../packages/agent/test/fixtures/echo-mcp.mjs");
 const echoProcs = () => {
@@ -143,4 +143,96 @@ test("MCP: the tools tab checks your servers, the run gets them, the X-ray shows
     rmSync(home, { recursive: true, force: true });
   }
   await waitFor("no MCP server left running after quit", () => !echoProcs(), 10_000);
+});
+
+test("MCP9: your own Claude Code keeps the same address and token after a restart; a new token cuts the old one", { timeout: 240_000 }, async () => {
+  const home = mkdtempSync(join(tmpdir(), "shrike-e2e-home-"));
+  const userData = mkdtempSync(join(tmpdir(), "shrike-e2e-data-"));
+  const proj = fixtureCopy("todo-app");
+  const file = join(userData, "mcp.json");
+  const saved = () => waitFor("mcp.json", () => existsSync(file) && (JSON.parse(readFileSync(file, "utf8")) as { mcpServers: { shrike: { url: string; headers: { Authorization: string } } } }).mcpServers.shrike);
+  const openConnect = async (win: Page) => {
+    await openFolder(win);
+    const closeSetup = win.getByRole("button", { name: "Close setup" });
+    if (await closeSetup.isVisible({ timeout: 2000 }).catch(() => false)) await closeSetup.click();
+    const box = win.getByRole("region", { name: "Use from your own Claude Code" });
+    // the dock remembers the Tools tab across a restart
+    if (!(await box.isVisible({ timeout: 3000 }).catch(() => false))) await win.getByRole("button", { name: "Tools", exact: true }).first().click();
+    await box.waitFor({ timeout: 15_000 });
+    return box;
+  };
+  let run = await launch({ HOME: home, SHRIKE_OPEN_FOLDER: proj }, userData);
+  let first: Awaited<ReturnType<typeof saved>>;
+  try {
+    await run.win.emulateMedia({ reducedMotion: "reduce" });
+    first = await saved();
+    assert.equal(statSync(file).mode & 0o777, 0o600);
+    const box = await openConnect(run.win);
+    assert.match(await box.innerText(), /Nothing connected yet/);
+    const c = await mcpClient(run.app, "claude-code");
+    assert.match(await c.call("list_trips"), /No trips yet|\d/);
+    await waitFor("claude-code to show as connected", async () => /claude-code/.test(await box.innerText()), 10_000);
+    const token = first.headers.Authorization.slice("Bearer ".length);
+    assert.doesNotMatch(await box.innerText(), new RegExp(token), "the token stays hidden until you show it");
+    await run.win.evaluate(() => {
+      const w = window as unknown as { copied: string[] };
+      w.copied = [];
+      navigator.clipboard.writeText = async (t: string) => void w.copied.push(t); // the real clipboard is left alone
+    });
+    await box.getByRole("button", { name: "Copy the command" }).click();
+    await box.getByRole("button", { name: "Copy the skill" }).click();
+    await box.getByRole("button", { name: "Copy the settings" }).click();
+    const copied = await run.win.evaluate(() => (window as unknown as { copied: string[] }).copied);
+    assert.equal(copied[0], `claude mcp add --transport http --scope user shrike ${first.url} --header "Authorization: Bearer ${token}"`);
+    assert.match(copied[1]!, /^---\nname: shrike\n[\s\S]*propose_patch/);
+    assert.deepEqual(JSON.parse(copied[2]!).permissions.deny, ["Edit", "Write", "MultiEdit", "NotebookEdit", "Bash"]);
+    await box.scrollIntoViewIfNeeded();
+    await sleep(300);
+    await shot(run.app, "connect", "mcp");
+    await c.close();
+  } finally {
+    await run.cleanup(); // userData is kept for the restart
+  }
+
+  run = await launch({ HOME: home, SHRIKE_OPEN_FOLDER: proj }, userData);
+  try {
+    const again = await saved();
+    await waitFor("the server on the saved address", async () => (await fetch(first.url, { method: "POST" }).catch(() => null))?.status === 401, 15_000);
+    assert.deepEqual(again, first, "same address and token after a restart");
+    const c = await mcpClient(run.app, "claude-code"); // the config Claude Code saved the first time
+    assert.ok((await c.call("list_trips")).length > 0);
+    const box = await openConnect(run.win);
+
+    // A patch from your own Claude Code still waits for your click, and the card says who sent it.
+    const line = readFileSync(join(proj, "server/todos.controller.ts"), "utf8").split("\n").find((l) => l.trim().length > 8)!;
+    const before = readFileSync(join(proj, "server/todos.controller.ts"), "utf8");
+    const proposed = c.call("propose_patch", { files: [{ path: "server/todos.controller.ts", edits: [{ oldText: line, newText: `${line} // e2e` }] }], rationale: "A test change from outside." });
+    const card = run.win.getByRole("region", { name: "Fix" });
+    await card.getByText("From claude-code").waitFor({ timeout: 15_000 });
+    await sleep(300);
+    await shot(run.app, "connect-approval", "mcp");
+    await card.getByRole("button", { name: "Not now" }).click();
+    assert.match(await proposed, /rejected/);
+    assert.equal(readFileSync(join(proj, "server/todos.controller.ts"), "utf8"), before, "nothing changes without your click");
+
+    await box.getByRole("button", { name: "New token" }).click();
+    await box.getByText(/New token made/).waitFor();
+    const rotated = await waitFor("a new token in mcp.json", async () => {
+      const s = await saved();
+      return s.headers.Authorization !== first.headers.Authorization && s;
+    });
+    assert.equal(rotated.url, first.url, "the address stays");
+    const init = { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "x", version: "0" } } };
+    const post = (auth: string) => fetch(first.url, { method: "POST", headers: { "content-type": "application/json", accept: "application/json, text/event-stream", authorization: auth }, body: JSON.stringify(init) });
+    assert.equal((await post(first.headers.Authorization)).status, 401, "the old token is cut off");
+    assert.equal((await post(rotated.headers.Authorization)).status, 200);
+    await c.close().catch(() => {});
+    assert.equal(existsSync(join(home, ".claude")), false, "Shrike never writes Claude Code's files");
+    assert.equal(existsSync(join(home, ".claude.json")), false);
+  } finally {
+    await run.cleanup();
+    rmSync(userData, { recursive: true, force: true });
+    rmSync(dirname(proj), { recursive: true, force: true });
+    rmSync(home, { recursive: true, force: true });
+  }
 });

@@ -2,7 +2,7 @@ import { app } from "electron";
 import { createHash } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
-import type { AgentOptions, AgentRunInfo, AgentStep, BrainId, BrainInfo, Finding, ShrikeEvents, Skill } from "@shrike/schema";
+import type { AgentOptions, AgentRunInfo, AgentStep, BrainId, BrainInfo, ConnectInfo, Finding, ShrikeEvents, Skill } from "@shrike/schema";
 import {
   ASIDE_RULE,
   branchFinding,
@@ -24,6 +24,7 @@ import {
 import { formatActionTree } from "@shrike/correlator";
 import { redactText } from "@shrike/redact";
 import { listSkills as readSkillList, startMcpServer } from "@shrike/mcp-server";
+import { addCommand, configCommand, denySettings, readSaved, saveConfig } from "./connect.ts";
 import { getMemory, host, rejectWithFeedback, requireProject, runner, store } from "./host.ts";
 import { noteAgentStep } from "./issue.ts";
 import { notify } from "./notify.ts";
@@ -54,19 +55,45 @@ export const useMcpHub = (fn: typeof myMcp): void => void (myMcp = fn);
 
 export const listSkills = (): Promise<Skill[]> => allSkills().catch(() => readSkillList(skillsDir)); // skills: every source, merged
 
-/** One MCP server per app session; external clients find it in <userData>/mcp.json (A11). */
+/** One MCP server per app session, on the address and token saved in <userData>/mcp.json, so outside clients keep working (A11, MCP9). */
 export function ensureMcp(): ReturnType<typeof startMcpServer> {
   if (!mcp) {
-    mcp = startMcpServer(host, { skillsDir, skills: skillHost });
-    mcp.then(
-      (s) => {
-        const config = { mcpServers: { shrike: { type: "http", url: s.url, headers: { Authorization: `Bearer ${s.token}` } } } };
-        return writeFile(join(app.getPath("userData"), "mcp.json"), JSON.stringify(config, null, 2), { mode: 0o600 });
-      },
-      () => (mcp = undefined),
-    ).catch(() => {});
+    mcp = readSaved(mcpFile()).then((saved) => startMcpServer(host, { skillsDir, skills: skillHost, ...saved, onClient: sawClient }));
+    mcp.then((s) => saveConfig(mcpFile(), s.url, s.token), () => (mcp = undefined)).catch(() => {});
   }
   return mcp;
+}
+
+// MCP9: outside clients by name and their last call, since Shrike opened.
+const mcpFile = () => join(app.getPath("userData"), "mcp.json");
+const clients = new Map<string, number>();
+let pushConnect: () => void = () => {};
+export const useConnectPush = (fn: () => void): void => void (pushConnect = fn);
+function sawClient(name: string): void {
+  const before = clients.get(name);
+  clients.set(name, Date.now());
+  if (!before || Date.now() - before > 30_000) pushConnect();
+}
+
+export async function connectInfo(): Promise<ConnectInfo> {
+  const s = await ensureMcp();
+  return {
+    url: s.url,
+    token: s.token,
+    command: addCommand(s.url, s.token),
+    configCommand: configCommand(mcpFile()),
+    skill: await readFile(join(paths.repo, "prompts/connect/SKILL.md"), "utf8"),
+    settings: denySettings(),
+    clients: [...clients].map(([name, at]) => ({ name, at })).sort((a, b) => b.at - a.at),
+  };
+}
+
+export async function resetConnectToken(): Promise<ConnectInfo> {
+  const s = await ensureMcp();
+  await s.rotateToken();
+  clients.clear();
+  await saveConfig(mcpFile(), s.url, s.token);
+  return connectInfo();
 }
 void app.whenReady().then(() => ensureMcp());
 

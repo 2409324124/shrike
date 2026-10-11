@@ -379,6 +379,7 @@ function Cards({ stage }: { stage: RefObject<HTMLElement | null> }) {
             {showFinding && (
               <span className="text-[12px] text-dim">{finding.confidence}</span>
             )}
+            {!showFinding && pending?.patch && pending.from && <span className="max-w-[40%] shrink-0 truncate text-[12px] text-dim">From {pending.from}</span>}
             {patch?.status === "applied" && !doneStep && <Elapsed />}
             <span className="flex-1" />
             {showFinding && where ? (

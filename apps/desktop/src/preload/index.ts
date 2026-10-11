@@ -110,7 +110,7 @@ const ciMethods = ["ciLessons", "ciLearn", "preflight", "stopPreflight", "ciFixL
 for (const m of ciMethods) api[m] = (...args: unknown[]) => ipcRenderer.invoke(`shrike:${m}`, ...args);
 
 // mcp: MCP1 to MCP8 the tools hub
-const mcpMethods = ["mcpState", "mcpCheck", "mcpSetEnabled", "mcpTrust", "mcpAdd", "mcpRemove", "mcpFix", "mcpDismiss"] as const satisfies readonly Exclude<keyof ShrikeApi, "on">[];
+const mcpMethods = ["mcpState", "mcpCheck", "mcpSetEnabled", "mcpTrust", "mcpAdd", "mcpRemove", "mcpFix", "mcpDismiss", "connectInfo", "connectResetToken"] as const satisfies readonly Exclude<keyof ShrikeApi, "on">[];
 for (const m of mcpMethods) api[m] = (...args: unknown[]) => ipcRenderer.invoke(`shrike:${m}`, ...args);
 
 // api: AP the API client

@@ -51,10 +51,12 @@ test("proposePatch: approve writes, revert restores, reject leaves file alone", 
   const updates: Patch["status"][] = [];
   let answer = true;
   let hellos = 0;
+  const froms: (string | undefined)[] = [];
   const deps: PatchDeps = {
     root,
     requestApproval: async (req) => {
       assert.equal(req.kind, "patch");
+      froms.push(req.from);
       assert.equal(req.patch?.files[0]?.after.includes("userId"), true);
       return answer;
     },
@@ -63,7 +65,7 @@ test("proposePatch: approve writes, revert restores, reject leaves file alone", 
   };
   const edits = [{ path: "server/a.ts", edits: [{ oldText: "req.body.user", newText: "req.body.userId" }] }];
 
-  const r = await proposePatch(deps, edits, "use userId");
+  const r = await proposePatch(deps, edits, "use userId", "claude-code");
   assert.equal(r.status, "applied");
   assert.equal(hellos, 1);
   assert.match(readFileSync(file, "utf8"), /req\.body\.userId/);
@@ -75,6 +77,7 @@ test("proposePatch: approve writes, revert restores, reject leaves file alone", 
   answer = false;
   assert.equal((await proposePatch(deps, edits, "x")).status, "rejected");
   assert.equal(readFileSync(file, "utf8"), original);
+  assert.deepEqual(froms, ["claude-code", undefined], "the approval card names who proposed it");
 
   await assert.rejects(proposePatch(deps, [{ path: ".env", edits: [{ oldText: "1", newText: "2" }] }], "x"), /doesn't change/);
 });

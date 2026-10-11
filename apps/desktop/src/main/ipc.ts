@@ -1086,6 +1086,10 @@ export function registerIpc(win: () => BrowserWindow | undefined, appWin: AppWin
     return mcpView();
   });
   handle("mcpDismiss", z.tuple([mcpName]), async (id) => (await hub.dismiss(mcpRoot(), id), mcpView()));
+  // MCP9: use Shrike from your own Claude Code. Text to copy only; nothing here writes Claude Code's files.
+  handle("connectInfo", none, () => agentExtras.connectInfo());
+  handle("connectResetToken", none, () => agentExtras.resetConnectToken());
+  agentExtras.useConnectPush(() => void agentExtras.connectInfo().then((c) => emit("connect:update", c), () => {}));
   handle("mcpRemove", z.tuple([mcpName]), async (name) => (await hub.remove(mcpRoot(), name), mcpView()));
   handle("mcpAdd", z.tuple([z.unknown()]), async (req) => {
     const root = mcpRoot();
