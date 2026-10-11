@@ -22,6 +22,7 @@
 | `scanner` | Finds every route in both fixtures with handler file:line |
 | `node-agent` transform | Wrapped function keeps behaviour, `this`, generators, async, and source-map line numbers |
 | `node-agent` place inspector (`test/inspect.test.mjs`) | SQLite file and `:memory:`, PGlite, lru-cache (LRU order unchanged), ioredis read commands only; no trip events; I3 write capture; secret columns masked; responses byte-identical |
+| desktop OTLP ingest (`main/otlp.test.ts`) | A hand-encoded protobuf payload and an OTLP/JSON one map to the right requests, queries, outside calls and functions with errors and source; `/v1/traces` checks the token, takes gzip and answers in OTLP; a node-agent service isn't doubled; an OpenTelemetry server span joins the page's cross-origin call; with `fixtures/py-app/api/.venv` present, the real FastAPI app's 500 and its query join a click (skipped otherwise) |
 | desktop `inspector` hub (`main/inspector.test.ts`) | Routes to the process holding the place, redacts replies, plain reasons when it can't read |
 | renderer `inspector/logic` | Row highlight from statement + params, what-this-click-changed grouping, cache marks, outside calls |
 | heuristics | N+1, sequential awaits, waterfall, duplicates fire on their fixtures and stay quiet on the clean flows |

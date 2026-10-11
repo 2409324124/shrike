@@ -19,7 +19,8 @@ src/
 │   ├── project.ts              # open folder, .shrike/config.json
 │   ├── runner.ts               # spawn dev command, inject node-agent, URL detection, pty
 │   ├── browser-collector.ts    # CDP on the app pane, inject browser-agent
-│   ├── ingest.ts               # 127.0.0.1 OTLP/JSON + WS, token
+│   ├── ingest.ts               # 127.0.0.1 HTTP: /ingest (agents' JSON), /v1/traces (OTLP), token
+│   ├── otlp.ts                 # OTLP traces (protobuf or JSON) to DebugEvents: basic tracing for any backend
 │   └── git.ts                  # SHA, dirty state, snapshots
 ├── preload/
 │   └── index.ts                # contextBridge, typed API
