@@ -9,7 +9,7 @@ Use the latest stable version of everything at the time each package is created,
 | Area | Choice | Why | Rejected |
 |---|---|---|---|
 | Language | TypeScript, `strict` | One language across desktop, agents, cloud | |
-| Runtime | Node 22 LTS (minimum supported for user apps: Node 20) | `module.register`, stable `--import`, `AsyncLocalStorage` | |
+| Runtime | Node 22.18+ for Shrike itself (user apps: Node 18.19+, database hooks 22.15+, see [14-compatibility.md](14-compatibility.md)) | `module.register`, stable `--import`, `AsyncLocalStorage` | |
 | Package manager | pnpm workspaces | Fast, strict, good monorepo support | npm, yarn |
 | Task runner | Turborepo | Cached builds across packages | Nx (heavier) |
 | Validation | zod | Runtime-checked contracts at every process boundary | io-ts |

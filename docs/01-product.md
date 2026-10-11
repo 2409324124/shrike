@@ -29,7 +29,7 @@ That loop (reproduce, observe, hypothesise, probe, fix, verify) is what makes it
 
 ## Philosophy (borrowed from Orca, applied to debugging)
 
-1. **Bring your own agent.** Shrike is the environment, not the model. It runs the agent you already pay for (Claude Code, Codex, OpenCode) on your own subscription and hands it Shrike's tools over MCP. No second AI bill. A built-in agent using your own API key exists for people with no agent installed.
+1. **Bring your own agent.** Shrike is the environment, not the model. It runs the agent you already pay for (Claude Code today; Codex and OpenCode are planned) on your own subscription and hands it Shrike's tools over MCP. No second AI bill. A built-in agent using your own API key exists for people with no agent installed.
 2. **Open source core, MIT.** The desktop app, instrumentation and MCP server are open. People will only let a tool watch their app's traffic if they can read its code. The paid layer is optional cloud (sharing, team history, hosted keys).
 3. **Local-first.** Your code, recordings and secrets stay on your machine. Nothing is uploaded unless you share it.
 4. **Desktop, real Chromium.** Electron with an embedded browser, like Orca's design mode, because debugging needs a real browser and real dev tools access.
@@ -60,7 +60,7 @@ That loop (reproduce, observe, hypothesise, probe, fix, verify) is what makes it
 | 2 | **Timeline of what happened.** Every click becomes an Action: requests, backend functions, queries, logs, errors, nested and timed, each linked to `file:line`. | MVP |
 | 3 | **Code panes in space.** The code that ran floats in 3D, connected in order; the live line glows with its values; the camera flies the flight like God's Eye View. | MVP |
 | 4 | **What happened? card.** Plain-English checklist after every Action. | MVP |
-| 5 | **Debug agent, your choice of brain.** Describe the bug; Claude Code, Codex, OpenCode or the built-in agent reproduces, investigates, explains, proposes a fix and verifies it. | MVP |
+| 5 | **Debug agent, your choice of brain.** Describe the bug; Claude Code or the built-in agent (Codex and OpenCode planned) reproduces, investigates, explains, proposes a fix and verifies it. | MVP |
 | 6 | **API explorer.** Auto-discovered routes, search, send, cURL copy/import. Requests sent here are traced like clicks. Grown into a Bruno-style API client: collections, tabs, environments, assertions, edit and resend (docs/13 AP). | MVP |
 | 7 | **Inline logs.** Logs appear next to the line that wrote them, and in a filterable panel linked to their request. | MVP |
 | 8 | **Flow review.** On working flows, the agent flags slow steps, N+1 queries, sequential awaits and request waterfalls. | v1 |

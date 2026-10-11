@@ -1,6 +1,6 @@
 # apps/cloud
 
-Optional paid layer. Shrike works fully without it.
+Optional paid layer, not started. Shrike works fully without it.
 
 ## Owns
 

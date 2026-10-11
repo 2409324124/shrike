@@ -79,9 +79,9 @@ Python 3.13 was not installed on the machine that ran it. Re-run on every python
 | `fixtures/shop-app` | Vite React + three node:http services, PGlite, lru-cache, node:sqlite, a Stripe test double | The cart total goes to the charge in dollars where cents are expected (49 instead of 4900); the payments double refuses it |
 | `fixtures/big-app` | Vite React + nine node:http services, a queue, a cron worker, PGlite (3 databases), lru-cache (3 caches), node:sqlite outbox, Stripe and email test doubles | The showcase: one Place order click charges, saves, emails, then the receipt's per-line tax isn't rounded to whole cents and `money()` throws at `services/orders/src/domain/totals.ts:25` |
 | `fixtures/api-only` | node:http + node:sqlite, no web page, a nightly script | Case-sensitive "already registered?" check vs a case-insensitive unique index: 409 |
-| `fixtures/next-app` | Next.js app router + Prisma + SQLite | Same scenarios in Next.js, React 19 |
+| `fixtures/next-app` (planned) | Next.js app router + Prisma + SQLite | Same scenarios in Next.js, React 19 |
 | `fixtures/py-app` | Plain page + the same shop API on FastAPI, Flask and Django, SQLite | A gift card's pack size of 0 divides by zero (`api/main.py:47`, `api/shop.py:27`); recorded by python-agent, or by OpenTelemetry under `opentelemetry-instrument` |
-| `fixtures/bugs` | Variants of the two apps, one bug each | The agent eval corpus |
+| `fixtures/bugs` (planned) | Variants of the two apps, one bug each | The agent eval corpus |
 
 ## Agent eval corpus (`fixtures/bugs`)
 
@@ -125,7 +125,7 @@ Starting set (15 bugs, covering what vibe-coded apps actually break on):
 | Honesty | No "Observed" claim that the recording contradicts | 100% |
 | Steps / cost / time | Median per run | track, no target yet |
 
-Run the eval per brain (Claude Code, built-in, Codex, OpenCode) and record results in `fixtures/bugs/RESULTS.md` with the date, brain and model.
+Run the eval per brain (Claude Code, built-in, and Codex and OpenCode once they're supported) and record results in `fixtures/bugs/RESULTS.md` with the date, brain and model.
 
 ## Reliability
 
