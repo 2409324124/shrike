@@ -56,6 +56,12 @@ class Semantics(unittest.TestCase):
         req = self.reqs["errors"]
         self.assertEqual((req["status"], req["error"]["type"], req["http"]["status"]), ("error", "ValueError", 500))
 
+    def test_a_bare_key_error_or_empty_message_reads_like_python_prints_it(self):
+        (rate,) = self.steps("lookup", "rate()")
+        self.assertEqual((rate["error"]["type"], rate["error"]["message"]), ("KeyError", "KeyError: 'reduced'"))
+        (silent,) = self.steps("lookup", "silent()")
+        self.assertEqual(silent["error"]["message"], "RuntimeError")
+
     def test_generators_hand_control_back_to_their_consumer(self):
         (total,) = self.steps("generators", "total_of()")
         gens = self.steps("generators", "numbers()")

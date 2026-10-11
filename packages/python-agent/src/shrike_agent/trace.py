@@ -187,7 +187,10 @@ def preview(v):
 def error_info(e):
     try:
         stack = "".join(traceback.format_exception(e)).replace(project + os.sep, "")
-        return {"message": cut(str(e)), "type": type(e).__name__, "stack": cut(stack, 8192)}
+        msg = str(e)
+        if isinstance(e, KeyError) or not msg:  # str(KeyError('x')) is just "'x'"
+            msg = traceback.format_exception_only(e)[-1].strip()
+        return {"message": cut(msg), "type": type(e).__name__, "stack": cut(stack, 8192)}
     except Exception:
         return {"message": "unknown error"}
 

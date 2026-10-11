@@ -65,6 +65,14 @@ def rethrow():
         raise
 
 
+def rate(table, key):
+    return table[key]
+
+
+def silent():
+    raise RuntimeError()
+
+
 def note(x):
     return x
 
@@ -128,6 +136,12 @@ async def handler(scope):
     if which == "errors":
         safe()
         rethrow()
+    if which == "lookup":
+        try:
+            silent()
+        except RuntimeError:
+            pass
+        return rate({"standard": 0.2}, "reduced")
     if which == "generators":
         out = [total_of(3), first_of(5)]
         async for t in ticks(2):
@@ -167,7 +181,7 @@ async def call(path):
 
 
 async def main():
-    for path in ["/classes", "/recursion", "/hot", "/errors", "/generators", "/threads", "/values", "/secrets"]:
+    for path in ["/classes", "/recursion", "/hot", "/errors", "/lookup", "/generators", "/threads", "/values", "/secrets"]:
         await call(path)
     await asyncio.gather(call("/concurrent1"), call("/concurrent2"))
 
