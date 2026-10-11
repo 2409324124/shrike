@@ -1,0 +1,25 @@
+{
+  "name": "shrike",
+  "displayName": "Shrike",
+  "version": "0.1.0",
+  "description": "Debug your web app from Claude Code with Shrike's recordings: Shrike's tools, a debugging skill, and the latest trip above the prompt",
+  "author": { "name": "Sumant Tirkey", "url": "https://github.com/SumantxD" },
+  "homepage": "https://github.com/SumantxD/shrike/tree/main/integrations/claude-code",
+  "repository": "https://github.com/SumantxD/shrike",
+  "license": "MIT",
+  "keywords": ["debugging", "mcp", "web", "recording"],
+  "mcpServers": {
+    "shrike": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/bridge/bridge.mjs"]
+    }
+  },
+  "userConfig": {
+    "edits_through_shrike": {
+      "type": "boolean",
+      "title": "Send code changes through Shrike",
+      "description": "While Shrike is connected, turn Claude's own edits to project files back toward propose_patch, so you apply each change in Shrike",
+      "default": false
+    }
+  }
+}
