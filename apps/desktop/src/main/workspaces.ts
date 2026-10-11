@@ -271,7 +271,7 @@ export function createWorkspaces(d: WorkspaceDeps) {
     if (channel === "agent:status") {
       const r = payload as { id: string; status: string };
       if (!runRoot.has(r.id)) runRoot.set(r.id, d.current() ?? "");
-      set(runRoot.get(r.id), r.status === "running" ? "working" : "done");
+      set(runRoot.get(r.id), r.status === "running" ? "working" : r.status === "done" ? "done" : "idle");
     } else if (channel === "approval:request") {
       const cur = d.current() ?? "";
       if (agent.get(cur) !== "waiting") before.set(cur, agent.get(cur) ?? "idle");
