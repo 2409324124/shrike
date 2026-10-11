@@ -5,7 +5,7 @@ Thanks for helping. Shrike is a debugger for people who build web apps with AI, 
 ## Ways to help
 
 - **Report a bug**: [open an issue](https://github.com/SumantxD/shrike/issues/new/choose) with the bug form. Steps to reproduce and your stack matter most.
-- **Ask for your stack**: Shrike records Node and Python 3.12+ today, and any backend through OpenTelemetry. Use the "Support my stack" form so we can see what people need.
+- **Ask for your stack**: Shrike records Node and Python 3.12+ today, and any backend through OpenTelemetry. Use the "Support my stack" form so we can see what people need. Want to build it yourself? [docs/writing-a-recorder.md](docs/writing-a-recorder.md) shows how.
 - **Ask a question or share an idea**: use [Discussions](https://github.com/SumantxD/shrike/discussions), not issues.
 - **Fix something**: issues labelled [`good first issue`](https://github.com/SumantxD/shrike/labels/good%20first%20issue) are small and well described. [`help wanted`](https://github.com/SumantxD/shrike/labels/help%20wanted) are bigger.
 - **Try it on Linux or Windows**: Windows has never run on a real machine and Linux has only run in Docker. A report from either is a real contribution.

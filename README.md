@@ -17,9 +17,9 @@
 <h3 align="center">The open source debugger for people who build web apps with AI.</h3>
 
 <p align="center">
-  Run your app inside Shrike and click the thing that breaks.<br>
-  Shrike records the whole trip, from the button to the database, and your own coding agent<br>
-  finds the line, fixes it after you say OK, and clicks again to prove it works.
+  You still just ask your agent to fix it. The difference: it sees what your app actually did.<br>
+  Click the thing that breaks, Shrike records the whole trip from the button to the database,<br>
+  and your agent fixes the real line on the first try, after you say OK, then clicks again to prove it.
 </p>
 
 <p align="center"><sub>Works with Node backends (Express, Next.js, NestJS, Hono, Remix), Python 3.12+ backends (FastAPI, Flask, Django) and Vite or Next frontends. Any other backend that speaks OpenTelemetry (.NET, Go, Java, older Python) gets basic tracing.</sub></p>
@@ -46,7 +46,7 @@
 
 ## Why Shrike
 
-You built an app with Cursor, Claude Code, Lovable or Bolt. It works until it doesn't. A button does nothing, so you paste the error into a chat and the model guesses from the code.
+You built an app with Cursor, Claude Code, Lovable or Bolt. It works until it doesn't. A button does nothing, so you paste the error into a chat and the model guesses from the code. On a small app that's often fine. On a bigger codebase, with a team and flows that can't break, the agent loops on wrong fixes because it can't see what ran.
 
 <table>
 <tr>
