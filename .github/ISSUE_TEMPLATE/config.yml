@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or help
+    url: https://github.com/SumantxD/shrike/discussions/categories/q-a
+    about: Ask how to do something, or get help running your app in Shrike.
+  - name: Idea
+    url: https://github.com/SumantxD/shrike/discussions/categories/ideas
+    about: Share an idea before it becomes a feature request.
+  - name: Security problem
+    url: https://github.com/SumantxD/shrike/security/advisories/new
+    about: Report it privately, never in a public issue.

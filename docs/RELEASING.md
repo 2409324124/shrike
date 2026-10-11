@@ -1,14 +1,37 @@
 # Releasing
 
+## When to release
+
+`main` should always work, but a version is cut only when it's stable:
+
+1. CI is green on `main` (macOS and Linux).
+2. `CHANGELOG.md` has user-visible changes under `[Unreleased]`.
+3. The maintainer has run the smoke check below on a fresh build.
+4. No open issue labelled `bug` that breaks the demo, Run or the agent fix.
+
+Versions follow [Semantic Versioning](https://semver.org/). While Shrike is 0.x: a minor version (0.2.0) for new features or changed behaviour, a patch (0.2.1) for fixes only. Security fixes go out as soon as they're ready.
+
+**Smoke check** on the built app, with a clean user data folder: open the sample project, Run, add a todo, see the Thread stop on the bad line, let the agent propose the fix, apply it, check it's fixed. Then open `fixtures/py-app` and check one Python trip.
+
+## Steps
+
+1. In `CHANGELOG.md`, rename `[Unreleased]` to `[x.y.z] - YYYY-MM-DD`, add a fresh empty `[Unreleased]` above it, and update the links at the bottom.
+2. Set `version` in `apps/desktop/package.json` to `x.y.z`. Commit: `Release x.y.z`.
+3. Tag and push: `git tag vx.y.z && git push origin main vx.y.z`. The `Release` workflow builds the Linux AppImage and `.deb` and opens a **draft** release with the changelog section as its notes.
+4. Build the macOS `.dmg` on the maintainer's Mac (below) and add it to the draft: `gh release upload vx.y.z release/dist/Shrike-x.y.z-arm64.dmg`.
+5. Read the draft, then publish it. Announce it in Discussions → Announcements.
+
+## macOS build
+
 One command builds a signed macOS arm64 `.dmg`. It is signed with a Developer ID and the hardened runtime, then notarised by Apple and stapled, so it opens with no warning.
 
-## Needs
+### Needs
 
 - macOS on Apple Silicon, Xcode (the voice helper is Swift), Node 24, pnpm 10, about 3 GB free
 - The signing identity `Developer ID Application: Sumant Tirkey (ZK8UX8XUW9)` in the login keychain (`security find-identity -v -p codesigning`)
 - Network: npm installs for the staged app, Apple's timestamp server
 
-## Build
+### Build
 
 ```sh
 pnpm i
@@ -30,7 +53,7 @@ Brand images (the dot bust, emblem) are JSON imported by the renderer, so they a
 
 Output: `release/dist/Shrike-<version>-arm64.dmg` and the unpacked `release/dist/mac-arm64/Shrike.app`. The script prints the sha256. The version comes from `apps/desktop/package.json`.
 
-## Check
+### Check
 
 ```sh
 APP=release/dist/mac-arm64/Shrike.app
@@ -47,15 +70,15 @@ cd apps/desktop
 SHRIKE_PACKAGED_APP="$PWD/../../release/dist/mac-arm64/Shrike.app" node --test e2e/packaged.test.ts
 ```
 
-## Publish
+### Publish
 
-Upload the `.dmg` to a GitHub release by hand (nothing in the script pushes or uploads):
+Nothing in the script pushes or uploads. Add the `.dmg` to the draft release the `Release` workflow opened (step 4 above):
 
 ```sh
-gh release create v0.1.0 release/dist/Shrike-0.1.0-arm64.dmg --title "Shrike 0.1.0" --notes "First public build. Signed and notarised."
+gh release upload vx.y.z release/dist/Shrike-x.y.z-arm64.dmg
 ```
 
-## Notarising
+### Notarising
 
 `build-mac.sh` sends the finished `.dmg` to Apple with `xcrun notarytool submit --keychain-profile shrike --wait` and staples the ticket. Store the credentials once in your keychain (never in the repo), using an app-specific password from appleid.apple.com:
 

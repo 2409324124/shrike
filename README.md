@@ -8,6 +8,7 @@
 <p align="center">
   <a href="https://github.com/SumantxD/shrike/releases/latest"><img src="https://img.shields.io/github/v/release/SumantxD/shrike?style=flat-square&label=release&color=2F7BFF&labelColor=0A1633" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/macOS-Apple%20Silicon-3FE7FF?style=flat-square&labelColor=0A1633&logo=apple&logoColor=white" alt="macOS on Apple Silicon">
+  <a href="https://github.com/SumantxD/shrike/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/SumantxD/shrike/ci.yml?branch=main&style=flat-square&label=CI&labelColor=0A1633" alt="CI status"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-8B5CF6?style=flat-square&labelColor=0A1633" alt="MIT license"></a>
   <a href="https://github.com/SumantxD/shrike/stargazers"><img src="https://img.shields.io/github/stars/SumantxD/shrike?style=flat-square&label=stars&color=FF9A3C&labelColor=0A1633" alt="GitHub stars"></a>
   <img src="https://img.shields.io/badge/MCP-server-C06BFF?style=flat-square&labelColor=0A1633" alt="Ships an MCP server">
@@ -272,13 +273,14 @@ The full plan is in [docs/08-roadmap.md](docs/08-roadmap.md).
 
 ## Contributing
 
-Issues and pull requests are welcome.
+Shrike is built in the open and contributions are welcome, from a bug report to a new stack.
 
-1. Read [CLAUDE.md](CLAUDE.md) for the working rules (they apply to people too) and [MASTER_PROMPT.md](MASTER_PROMPT.md) for the product brief.
-2. `pnpm test` runs the unit checks. `pnpm e2e` builds the app and runs the Playwright end-to-end tests ([docs/09-testing.md](docs/09-testing.md)).
-3. Keep diffs small, keep `docs/` true, and follow `design-system/` for anything visual.
+- **Start here:** [CONTRIBUTING.md](CONTRIBUTING.md) covers setup, the rules and how pull requests are reviewed.
+- **Pick something up:** [good first issues](https://github.com/SumantxD/shrike/labels/good%20first%20issue) and [help wanted](https://github.com/SumantxD/shrike/labels/help%20wanted).
+- **Ask, share or propose:** [Discussions](https://github.com/SumantxD/shrike/discussions).
+- **Found a bug or need your stack?** [Open an issue](https://github.com/SumantxD/shrike/issues/new/choose).
 
-Releasing a build: [docs/RELEASING.md](docs/RELEASING.md).
+What changed in each version is in [CHANGELOG.md](CHANGELOG.md). Everyone follows the [Code of Conduct](CODE_OF_CONDUCT.md), and security problems go through [SECURITY.md](SECURITY.md).
 
 ## Star history
 

@@ -1,0 +1,38 @@
+name: Support my stack
+description: Ask for a language, framework, database or OS Shrike doesn't record yet
+labels: [stack support, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Today Shrike records Node backends, Python 3.12+ (FastAPI, Flask, Django), Vite and Next frontends, and any backend that sends OpenTelemetry traces (basic tracing). See [docs/14-compatibility.md](https://github.com/SumantxD/shrike/blob/main/docs/14-compatibility.md). Give a 👍 on an existing request instead of opening a new one.
+  - type: input
+    id: stack
+    attributes:
+      label: Stack
+      placeholder: .NET 9 Web API with EF Core and SQL Server
+    validations:
+      required: true
+  - type: dropdown
+    id: part
+    attributes:
+      label: Which part
+      multiple: true
+      options:
+        - Backend language or framework
+        - Frontend framework
+        - Database or cache
+        - Operating system
+        - Agent (Codex, OpenCode, Cursor, ...)
+    validations:
+      required: true
+  - type: textarea
+    id: tried
+    attributes:
+      label: What happened when you tried it
+      description: Did it run without steps, not run at all, or something else? Does your app already use OpenTelemetry?
+  - type: input
+    id: example
+    attributes:
+      label: An open source app on this stack we could test with
+      placeholder: https://github.com/...

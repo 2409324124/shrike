@@ -1,0 +1,72 @@
+name: Bug report
+description: Something in Shrike doesn't work the way it should
+labels: [bug, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for reporting. Questions and ideas are better in [Discussions](https://github.com/SumantxD/shrike/discussions). Security problems go to [a private report](https://github.com/SumantxD/shrike/security/advisories/new).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a Next.js project
+        2. Press Run
+        3. Click "Sign up" in the app
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Shrike version
+      description: The release you downloaded, or "main" if you run from source.
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Linux
+        - Windows
+    validations:
+      required: true
+  - type: input
+    id: stack
+    attributes:
+      label: Your app's stack
+      description: Frameworks and versions of the app you ran in Shrike.
+      placeholder: Next.js 15, Express 5, Postgres, Node 24
+  - type: dropdown
+    id: agent
+    attributes:
+      label: Agent
+      options:
+        - Claude Code (run by Shrike)
+        - Claude Code (my own terminal, connected over MCP)
+        - Built-in agent
+        - No agent involved
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: |
+        Shrike's own log is in its user data folder under `logs/main.log` (on macOS: `~/Library/Application Support/Shrike/logs/main.log`). Check it for anything private before pasting.
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues and this isn't one of them
+          required: true
