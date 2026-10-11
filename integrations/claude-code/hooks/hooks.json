@@ -1,0 +1,4 @@
+{
+  "description": "Shrike's mod: the latest trip above the prompt, /shrike, and the opt-in propose_patch nudge",
+  "modules": ["./register.js"]
+}
