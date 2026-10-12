@@ -229,6 +229,12 @@ export function parseSlash<T extends { id: string }>(input: string, list: readon
   return c ? { id: c.id, rest: m[2]!.trim(), entry: c } : null;
 }
 
+/** The same action again: same label, or a click and a submit of the same named button (the agent's click on a form's button records as its submit). */
+export function sameAction(a: string, b: string): boolean {
+  const named = (l: string) => /^(?:Clicked|Submitted) (".+")$/.exec(l)?.[1];
+  return a === b || (!!named(a) && named(a) === named(b));
+}
+
 /** The previous trip with the same label, for /compare. `order` is oldest first. */
 export function previousSameLabel(order: string[], byId: Record<string, ActionView | undefined>, id: string): string | undefined {
   const label = byId[id]?.label;

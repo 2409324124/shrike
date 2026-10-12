@@ -547,6 +547,15 @@ export class Runner {
     return this.status;
   }
 
+  /** Another project opened: forget this one's ended processes, so its status and start_service begin empty. */
+  reset(): void {
+    if (this.alive().length) return;
+    this.procs = [];
+    this.urls = [];
+    this.pageUrl = this.firstUrl = undefined;
+    this.set({ state: "idle" });
+  }
+
   // Synchronous last resort for process exit.
   killNow(): void {
     for (const p of this.procs) if (p.child.pid) killTree(p.child.pid, "SIGKILL");

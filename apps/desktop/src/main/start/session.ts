@@ -494,7 +494,7 @@ export class StartSession implements StartHost {
     if (p.url) p = { url: this.here(p.url) };
     if (p.url) checkLocalUrl(p.url);
     const services = this.d.runner.services();
-    const down = services.filter((s) => s.state === "error" || (s.state === "stopped" && s.exitCode !== 0));
+    const down = services.filter((s) => s.state === "error"); // a "stopped" service exited cleanly or was stopped by Shrike
     const live = services.filter((s) => s.state === "starting" || s.state === "running");
     const open = this.quest.unfinished(["skill"]).filter((s) => !(s.state === "running" && s.service && live.some((x) => x.name === s.service)));
     const problems = [

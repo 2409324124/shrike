@@ -4,7 +4,7 @@ import type { ActionView, DebugEvent, TimelineNode } from "@shrike/schema";
 import { buildTrip } from "../lib/thread-layout.ts";
 import {
   agentSection, failingLocation, fileChip, fuzzyScore, goalWithContext, issueMarkdown, issueTitle, linearVariant, logChip, matchStation, parseInline, parseMarkdown,
-  chosenFinding, parseSlash, pickChip, pointQuestion, previousSameLabel, probeCap, rankFindings, rankQuick, resolveKey, sentence, sharpen, shortTitle, slashMatches, stationChip,
+  chosenFinding, parseSlash, pickChip, pointQuestion, previousSameLabel, probeCap, rankFindings, sameAction, rankQuick, resolveKey, sentence, sharpen, shortTitle, slashMatches, stationChip,
 } from "./logic.ts";
 
 let n = 0;
@@ -131,6 +131,15 @@ test("compare finds the previous trip with the same label", () => {
   const byId = { a: { ...view, id: "a", label: "x" }, b: { ...view, id: "b", label: "y" }, c: { ...view, id: "c", label: "x" } };
   assert.equal(previousSameLabel(["a", "b", "c"], byId, "c"), "a");
   assert.equal(previousSameLabel(["a", "b", "c"], byId, "a"), undefined);
+});
+
+test("the agent's re-run after Apply matches the broken click, even when it records as the form's submit", () => {
+  assert.ok(sameAction('Clicked "Add Todo"', 'Submitted "Add Todo"'));
+  assert.ok(sameAction('Submitted "Add Todo"', 'Clicked "Add Todo"'));
+  assert.ok(sameAction("Submitted form", "Submitted form"));
+  assert.ok(!sameAction('Clicked "Add Todo"', 'Clicked "Delete"'));
+  assert.ok(!sameAction('Ticked "Done"', 'Clicked "Done"'));
+  assert.ok(!sameAction("Clicked button", "Submitted form"));
 });
 
 test("issue markdown: title, steps, expected vs actual, excerpt, agent diff; Linear gets a short title", () => {

@@ -39,8 +39,8 @@ export const useProgress = create<ProgressState>((set, get) => ({
     set({ progress });
     if (result) {
       if (get().result?.id === result.id || get().queue.some((q) => q.id === result.id)) return;
-      if (get().result) set((s) => ({ queue: [...s.queue, result].slice(-3) }));
-      else set({ result, open: !busy, asked: false });
+      if (get().result && get().open) set((s) => ({ queue: [...s.queue, result].slice(-3) }));
+      else set({ result, open: !busy, asked: false, queue: [] }); // an unopened held result is older news: the newest replaces it
     }
     if (promoted || cards?.length) set({ notice: { id: ++n, ...(promoted ? { promoted } : {}), cards: cards ?? [] } });
   },
