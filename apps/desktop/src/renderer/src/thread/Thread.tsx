@@ -159,7 +159,7 @@ export function Thread() {
       if (focusY - t0 <= h * 0.4) top = Math.min(top, t0 - TITLE);
     }
     el.scrollTo({ top, behavior: reducedMotion() ? "instant" : "smooth" });
-  }, [focusY, dived, width, framing, geo[fi]?.endY, lanes]);
+  }, [focus, focusY, dived, width, framing, geo[fi]?.endY, lanes]); // focus: a re-focus on the same step (!, voice) still brings it back after a scroll
 
   useEffect(() => void miniOn.current?.scrollIntoView({ block: "nearest" }), [fi]);
 
