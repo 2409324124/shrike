@@ -5,7 +5,7 @@ import { liveContext } from "../actions/run.ts";
 import { controls, onPlan, refreshFiles, voiceDeps, warmPlanner } from "./act.ts";
 import { contextWords } from "./grammar.ts";
 import { Turn, type Echo } from "./router.ts";
-import { translit } from "./understand/normalize.ts";
+import { roman } from "./understand/normalize.ts";
 import { markUsed, offerUndo, showPlan, useVoiceStore, type PlanControls } from "./store.ts";
 import { isDoubleTap, isPtt, isPttUp, TAP_MS } from "./ui/logic.ts";
 import { isMac } from "../lib/platform.ts";
@@ -42,7 +42,6 @@ let warmed = false;
 const set = useVoiceStore.setState;
 const get = useVoiceStore.getState;
 const rest = () => (get().hands ? "listening" : "idle");
-const roman = (t: string) => (/[\u0900-\u097f]/.test(t) ? translit(t) : t); // Hinglish shows in Roman script
 
 function show(e: Echo & { intents?: VoiceChip[] }): void {
   const miss = e.tone === "miss";

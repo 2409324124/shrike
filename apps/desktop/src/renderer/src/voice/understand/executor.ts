@@ -1,6 +1,6 @@
 import type { VoicePlan, VoicePlanStep, VoiceRisk } from "@shrike/schema";
 import { BY_ID } from "../../actions/registry.ts";
-import { normalize } from "./normalize.ts";
+import { normalize, roman } from "./normalize.ts";
 import { stepTitle, type Step } from "./parse.ts";
 
 // The plan executor (docs/16 §2.6). Steps run in order and stop at the first failure.
@@ -80,6 +80,7 @@ export class Executor {
   /** A new plan. Runs at once unless a step is outward or destructive; then the card waits. */
   async start(steps: Step[], meta: { heard: string; source: VoicePlan["source"] }): Promise<ExecState> {
     if (this.busy) this.stop();
+    meta = { ...meta, heard: roman(meta.heard) }; // the card, the commit message and every echo show Roman script
     this.last = { steps, heard: meta.heard, source: meta.source };
     this.steps = this.b.pre(steps.map((s) => ({ ...s })), meta.heard);
     this.undos = [];

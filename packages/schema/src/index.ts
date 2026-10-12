@@ -1620,7 +1620,6 @@ export interface ShrikeEvents {
   "memory:update": MemoryNote[];
   "checkpoint:update": Checkpoint[];
   "mcp:watch": { client: string; actionIds: string[] }; // A11
-  "skill:proposal": SkillProposal; // S4
   "skills:update": Skill[];
   "flows:update": Flow[];
   "api:first": { kind: "saved" | "passed"; name: string }; // AP: [Request Saved] / [Assertion Passed], once per project

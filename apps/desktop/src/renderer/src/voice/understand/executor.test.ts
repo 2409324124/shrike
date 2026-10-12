@@ -96,6 +96,13 @@ test("precondition repair is shown on the card, flagged as added", async () => {
   assert.deepEqual(r.ran, [], "the added commit waits with the push");
 });
 
+test("a Devanagari utterance reaches the card and the commit message in Roman script", async () => {
+  const r = rig({ pre: (steps, heard) => steps.flatMap((s) => (s.action === "git.push" ? [{ action: "git.commit", slots: {}, added: true, detail: `Voice: ${heard}` }, s] : [s])) });
+  const s = await r.x.start([step("git.push")], { heard: "सारी फाइल स्टेज करो और पुश कर दो", source: "planner" });
+  assert.equal(s.plan?.heard, "saaree faail stej karo aur push kar do");
+  assert.equal(s.plan?.steps[0]?.detail, "Voice: saaree faail stej karo aur push kar do");
+});
+
 test("stop skips what's pending and keeps what's done", async () => {
   let release: () => void = () => {};
   const ran: string[] = [];

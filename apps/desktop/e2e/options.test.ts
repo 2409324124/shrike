@@ -52,6 +52,7 @@ test("options: three mockups, more like B, combine B2 + C, approve, attached to 
     await ask.getByRole("textbox", { name: "Ask your agent" }).press("Enter");
     const call = await waitFor("the options run", () => cc.calls().find((c) => c.kind === "options"), 30_000);
     assert.match(call.goal, /answer with ask_options/, "the toggle asks for cards");
+    assert.equal(await win.locator('button[aria-pressed]', { hasText: "Show me options" }).first().getAttribute("aria-pressed"), "false", "the toggle is for one ask");
 
     // M2: three cards, live mockups in sandboxed iframes
     await board.waitFor({ timeout: 30_000 }).catch(diag);
@@ -131,6 +132,17 @@ test("options: three mockups, more like B, combine B2 + C, approve, attached to 
     assert.match(text, /v2: likes a bold colour band with a big centred title/);
     await sleep(800);
     await shot(app, "learned", P);
+
+    // SL6: Undo in the skill's History says so on its row
+    await dismissResult(win, 3000);
+    await win.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await win.keyboard.press("k");
+    const shelf = win.getByRole("region", { name: "Skills" });
+    await shelf.getByRole("button", { name: /^Design taste history$/i }).click();
+    const hist = shelf.getByRole("region", { name: /^Design taste history$/i });
+    await hist.getByRole("button", { name: "Undo" }).click();
+    await hist.getByText("Undone", { exact: true }).waitFor({ timeout: 10_000 });
+    await waitFor("the first copy to go", () => !existsSync(taste), 10_000);
   } finally {
     await cleanup();
     cc.remove();
