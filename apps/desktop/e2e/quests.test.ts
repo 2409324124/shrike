@@ -106,6 +106,8 @@ test("quests: plan a feature, objectives check off as their flows pass, the ques
     assert.equal(await board.count(), 0, "the board steps aside for the System's moment");
     const result = await waitFor("the result (screen or chip)", async () => (await win.locator(".xr-scrim").count()) || (await win.getByRole("button", { name: /Quest result/ }).count()), 20_000).catch(diag);
     assert.ok(result);
+    const shown = (await win.locator(".xr-scrim").count()) ? await win.locator(".xr-scrim").innerText() : await win.getByRole("button", { name: /Quest result/ }).getAttribute("title");
+    assert.match(shown ?? "", /Edit a todo/, "the newest quest's result, not the start's");
     if (await win.locator(".xr-scrim").count()) {
       await sleep(1500);
       await shot(app, "result-screen", P);
