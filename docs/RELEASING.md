@@ -98,9 +98,9 @@ scripts/release/build-linux.sh x64 AppImage ./release
 ```
 
 - `node-llama-cpp` installs its Linux CPU build for the target arch (`npm install --cpu --os=linux`); the CUDA and Vulkan builds are dropped. Voice is hidden off macOS, so the planner never loads; if it did and failed, it turns itself off.
-- Output: `release/dist/Shrike-<version>-<arch>.AppImage` and `.deb`, with their sha256. Unsigned.
+- Output: `release/dist/Shrike-<version>-<arch>.AppImage` and `.deb` (for x64: `x86_64.AppImage` and `amd64.deb`), with their sha256. Unsigned.
 - CI (`.github/workflows/ci.yml`) builds the x64 AppImage and `.deb` on every push and pull request and keeps them as the `shrike-linux-x64` artifact.
-- NixOS: the AppImage runs with `appimage-run Shrike-<version>-x64.AppImage`. To package it properly, wrap `release/dist/linux-unpacked` with nixpkgs' `electron` the way other Electron apps there do; there is no Shrike derivation yet.
+- NixOS: the AppImage runs with `appimage-run Shrike-<version>-x86_64.AppImage`. To package it properly, wrap `release/dist/linux-unpacked` with nixpkgs' `electron` the way other Electron apps there do; there is no Shrike derivation yet.
 
 ## Windows
 
