@@ -171,3 +171,56 @@ test("workspaces: rail, create from PR / branch / name, switching keeps other ap
   assert.ok(gitIn(proj, "branch", "--list", "feature/coupons"), "a branch you checked out stays");
   assert.equal(listening([0, 100, 200, 300].flatMap(ports)), "", "every port free");
 });
+
+// A project switched to from the rail starts clean: api-only (with a nightly job left running) to todo-app, then react-django's setup.
+test("workspaces: after a rail switch the next Run starts, and an added project's setup finds its processes", { timeout: 300_000 }, async () => {
+  const [api, web, todoApi] = [5710, 5720, 5721];
+  assert.equal(listening([api, web, todoApi, 4520, 4521]), "", "ports free");
+  const a = fixtureCopy("api-only", { ports: { 4300: api }, git: true });
+  const cfg = join(a, ".shrike", "config.json");
+  writeFileSync(cfg, JSON.stringify({ processes: [...JSON.parse(readFileSync(cfg, "utf8")).processes, { name: "cron", command: "node wait.mjs" }] }));
+  writeFileSync(join(a, "wait.mjs"), "setInterval(() => {}, 1000);\n"); // a job still running when you switch away
+  gitIn(a, "add", "-A");
+  gitIn(a, "commit", "-qm", "a nightly job");
+  const b = fixtureCopy("todo-app", { ports: { 5173: web, 3001: todoApi }, git: true });
+  const c = fixtureCopy("react-django", { git: true });
+  const { app, win, cleanup } = await launch({ SHRIKE_OPEN_FOLDER: a });
+  const rail = win.getByRole("navigation", { name: "Workspaces" });
+  const add = async (root: string) => {
+    await app.evaluate((_e, r) => void (process.env.SHRIKE_OPEN_FOLDER = r), root);
+    await rail.getByRole("button", { name: "Add a project" }).click();
+  };
+  try {
+    await win.emulateMedia({ reducedMotion: "reduce" });
+    await win.getByRole("button", { name: "Open a folder" }).click();
+    await win.getByRole("dialog", { name: "Set up api-only" }).getByRole("button", { name: "Run all" }).click();
+    await waitFor("api-only and its job running", async () => (await call<RunStatus>(win, "getRunStatus")).processes?.some((p) => p.name === "cron" && p.pid && p.state !== "stopped" && p.state !== "error"), 120_000).catch(async (e) => { throw new Error(e.message + JSON.stringify([await call(win, "getRunStatus"), await call(win, "getStartPlan")])); });
+    await dismissResult(win, 3000);
+
+    await add(b);
+    await rail.getByRole("button", { name: /^main \(todo-app\)/ }).click();
+    await waitFor("switched to todo-app", async () => (await call<ProjectInfo>(win, "getProject")).root === b, 30_000);
+    assert.deepEqual(await call<RunStatus>(win, "getRunStatus"), { state: "idle" }, "the last project's processes are gone");
+    await win.getByRole("banner").getByRole("button", { name: "Run", exact: true }).click();
+    await waitFor("todo-app running", async () => (await call<RunStatus>(win, "getRunStatus")).state === "running", 120_000);
+    assert.deepEqual((await call<RunStatus>(win, "getRunStatus")).processes?.map((p) => p.name), ["app"]);
+    await dismissResult(win, 3000);
+
+    await add(c);
+    await rail.getByRole("button", { name: /^main \(react-django\)/ }).click();
+    await waitFor("switched to react-django", async () => (await call<ProjectInfo>(win, "getProject")).root === c, 30_000);
+    // not even for one frame: an empty list saying "Add at least one process."
+    await win.evaluate(() => new MutationObserver((rs) => rs.some((r) => [...r.addedNodes].some((n) => n.textContent?.includes("Add at least one process"))) && document.body.setAttribute("data-empty-setup", "")).observe(document.body, { childList: true, subtree: true }));
+    await win.getByRole("banner").getByRole("button", { name: "Set up processes" }).click();
+    const setup = win.getByRole("dialog", { name: "Set up react-django" });
+    await setup.waitFor();
+    assert.deepEqual(await setup.getByRole("textbox", { name: /^Name of process/ }).evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value)), ["app", "api"]);
+    assert.equal(await win.evaluate(() => document.body.hasAttribute("data-empty-setup")), false, "setup opened on the scanner's processes");
+    await sleep(300);
+    await shot(app, "ws-switch-setup", "v6");
+  } finally {
+    await call(win, "stop").catch(() => {});
+    await cleanup();
+  }
+  assert.equal(listening([api, web, todoApi]), "", "every port free");
+});
