@@ -1,10 +1,11 @@
 import "./system.css";
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { SkillEvent, SkillRank, StartReward, StartStep } from "@shrike/schema";
 import { api } from "../lib/api.ts";
 import { cx } from "../components/ui.tsx";
 import { improvedAgo, useSkills } from "../stores/skills.ts";
 import { useThread } from "../stores/thread.ts";
+import { useUi } from "../stores/ui.ts";
 import { keyOf, LEAVE_MS, SHOW_MS } from "./queue.ts";
 import { RANK_COLOR, rankOf } from "./ranks.ts";
 import { chime } from "./sound.ts";
@@ -47,7 +48,7 @@ function useSystemBridge(): void {
 /** A use that crossed a rank line gets the big window. */
 export const rankedUp = (e: SkillEvent): boolean => e.kind === "used" && e.proficiency > 0 && rankOf(e.level, e.proficiency - 1).rank !== e.rank;
 
-/** The one System window on screen: queued, auto-dismissed, never modal. Hover holds it; a click sends it away. */
+/** The one System window on screen: queued, auto-dismissed, never modal. Hover holds it; a click on it, Esc or a click elsewhere sends it away. */
 export function SystemLayer() {
   useSystemBridge();
   return (
@@ -64,6 +65,7 @@ function SystemWindows() {
   const calm = useCalm();
   const [leaving, setLeaving] = useState(false);
   const [held, setHeld] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
   const key = current ? keyOf(current) : "";
   // The quest and options boards own the stage: a window waits for them to close instead of landing on top (quest complete is theirs).
   const questBoard = useQuests((s) => s.open);
@@ -91,19 +93,31 @@ function SystemWindows() {
     return () => clearTimeout(t);
   }, [leaving, calm]);
 
+  // Never in the way: Esc, a click outside it, or a sheet or Setup opening sends it away at once.
+  useEffect(() => {
+    if (!current || wait) return;
+    const away = () => (setLeaving(false), setHeld(false), useSystem.getState().next());
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && away();
+    const onDown = (e: PointerEvent) => !(e.target instanceof Node && box.current?.contains(e.target)) && away();
+    window.addEventListener("keydown", onKey, true);
+    window.addEventListener("pointerdown", onDown, true);
+    const offUi = useUi.subscribe((s, was) => ((s.sheet && s.sheet !== was.sheet) || (s.setup && !was.setup)) && away());
+    return () => (window.removeEventListener("keydown", onKey, true), window.removeEventListener("pointerdown", onDown, true), offUi());
+  }, [key, wait]);
+
   if (!current || wait) return null;
   const hold = { onMouseEnter: () => (setHeld(true), setLeaving(false)), onMouseLeave: () => setHeld(false), onClick: () => setLeaving(true) };
   if ((current.kind === "used" && !rankedUp(current)) || current.kind === "not_learned")
     return (
       <div className="pointer-events-none! absolute top-14 right-4 z-[47]">
-        <div className="pointer-events-auto">
+        <div ref={box} className="pointer-events-auto">
           {current.kind === "not_learned" ? <NotLearned key={key} e={current} leaving={leaving} {...hold} /> : <UsedToast key={key} e={current} calm={calm} leaving={leaving} {...hold} />}
         </div>
       </div>
     );
   return (
     <div className="pointer-events-none! absolute inset-x-0 top-14 z-[47] flex justify-center px-4">
-      <div className="pointer-events-auto max-w-full">
+      <div ref={box} className="pointer-events-auto max-w-full">
         <SystemWindow key={key} e={current} calm={calm} leaving={leaving} {...hold} />
       </div>
     </div>

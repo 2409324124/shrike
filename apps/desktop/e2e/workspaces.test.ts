@@ -204,6 +204,13 @@ test("workspaces: after a rail switch the next Run starts, and an added project'
     await win.getByRole("banner").getByRole("button", { name: "Run", exact: true }).click();
     await waitFor("todo-app running", async () => (await call<RunStatus>(win, "getRunStatus")).state === "running", 120_000);
     assert.deepEqual((await call<RunStatus>(win, "getRunStatus")).processes?.map((p) => p.name), ["app"]);
+    // SL: Esc sends a System window away at once, so it never sits over what you open next
+    const sys = win.getByRole("status", { name: /^(Skill acquired|Quest complete): .*todo-app/ }).first();
+    await sys.waitFor({ timeout: 20_000 });
+    const label = (await sys.getAttribute("aria-label"))!;
+    await win.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await win.keyboard.press("Escape");
+    await win.getByRole("status", { name: label, exact: true }).waitFor({ state: "detached", timeout: 400 });
     await dismissResult(win, 3000);
 
     await add(c);

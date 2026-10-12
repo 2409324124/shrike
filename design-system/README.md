@@ -139,6 +139,7 @@ Code: `hud/Shell.tsx`, `theme.css`. The row is rail, app pane, stage column (the
 - **Toasts** stack at the top of the stage, centred on it, `--s-2` below its top edge (centred in the window when there is no stage). The New trip pill is the first toast in that stack. While one shows, the lane header's labels fade out, so nothing reads half under it; cards that open at the top (System windows, the quest board) start below the 46px header band.
 - **Sheets** (Logs, Network, Details, Terminal, API, Skills, Flows) sit `--s-2` in from the stage's sides, which covers the Thread's outermost cards (they keep `--s-2` from the edge too).
 - **System windows wait for the boards.** While the quest board or the options board is open, a System window (other than Quest complete) queues until it closes instead of landing on the board.
+- **System windows step aside.** Esc, a click outside the window, or a sheet or Setup opening sends the one on screen away at once, with no fade, so it never sits over a sheet's header, the Thread or the New trip pill. The skill log keeps it.
 
 Stage z scale. Use these steps for anything positioned over the stage; don't invent new ones.
 
