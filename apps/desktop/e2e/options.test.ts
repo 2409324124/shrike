@@ -132,6 +132,17 @@ test("options: three mockups, more like B, combine B2 + C, approve, attached to 
     assert.match(text, /v2: likes a bold colour band with a big centred title/);
     await sleep(800);
     await shot(app, "learned", P);
+
+    // SL6: Undo in the skill's History says so on its row
+    await dismissResult(win, 3000);
+    await win.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await win.keyboard.press("k");
+    const shelf = win.getByRole("region", { name: "Skills" });
+    await shelf.getByRole("button", { name: /^Design taste history$/i }).click();
+    const hist = shelf.getByRole("region", { name: /^Design taste history$/i });
+    await hist.getByRole("button", { name: "Undo" }).click();
+    await hist.getByText("Undone", { exact: true }).waitFor({ timeout: 10_000 });
+    await waitFor("the first copy to go", () => !existsSync(taste), 10_000);
   } finally {
     await cleanup();
     cc.remove();

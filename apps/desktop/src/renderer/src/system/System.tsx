@@ -441,6 +441,7 @@ export function SkillLog({ skillId, onAll }: { skillId?: string; onAll?(): void 
   }, []);
   const drafts = allDrafts.filter((x) => x.status === "pending" && (!skillId || x.skillId === skillId));
   const undoable = new Set(allDrafts.filter((x) => x.status === "applied").map((x) => x.id));
+  const [undone, setUndone] = useState<ReadonlySet<string>>(new Set()); // the row says so where you clicked (the toast is up top)
   const rows = useMemo(() => [...log].reverse().filter((e) => !skillId || e.skillId === skillId || e.rewards?.some((r) => r.skillId === skillId)), [log, skillId]);
   const name = skillId ? (log.find((e) => e.skillId === skillId)?.name ?? skillId) : undefined;
   return (
@@ -506,10 +507,16 @@ export function SkillLog({ skillId, onAll }: { skillId?: string; onAll?(): void 
                 {e.kind === "quest_complete" && !!e.rewards?.length && <span className="block truncate text-[11.5px] text-dim">{e.rewards.map((r) => `${REWARD_WORD[r.kind]}: ${r.name}`).join(" · ")}</span>}
               </span>
               <span className="flex items-center gap-1.5">
-                {e.kind === "leveled" && e.draftId && undoable.has(e.draftId) && (
-                  <button type="button" className="hud-btn" onClick={() => void useSystem.getState().undo(e.draftId!)}>
-                    Undo
-                  </button>
+                {e.kind === "leveled" && e.draftId && undone.has(e.draftId) ? (
+                  <span className="micro text-[9.5px] text-dim">Undone</span>
+                ) : (
+                  e.kind === "leveled" &&
+                  e.draftId &&
+                  undoable.has(e.draftId) && (
+                    <button type="button" className="hud-btn" onClick={() => void useSystem.getState().undo(e.draftId!).then((ok) => ok && setUndone((s) => new Set(s).add(e.draftId!)))}>
+                      Undo
+                    </button>
+                  )
                 )}
                 {e.level > 0 && <span className="font-mono text-[10px] text-dim">{lv(e.level)}</span>}
                 {e.skillId && <RankBadge rank={e.rank} small />}
