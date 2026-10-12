@@ -7,12 +7,12 @@ import { lastStation } from "../lib/thread-layout.ts";
 import { useUi } from "../stores/ui.ts";
 import { isBackgroundAction } from "../lib/format.ts";
 import { isTyping } from "./commands.ts";
-import { chosenFinding, matchStation, probeCap, sentence, sharpen } from "./logic.ts";
+import { chosenFinding, matchStation, probeCap, sameAction, sentence, sharpen } from "./logic.ts";
 
 // Drives the Thread from the outside: new trips (M1-M4), the agent's probe (M7) and the re-knit (M8).
 
 const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
-let rerun: { at: number; label: string } | null = null; // after Apply: the verifying re-run is the next click with the broken trip's label
+let rerun: { at: number; label: string } | null = null; // after Apply: the verifying re-run is the next trip of the broken trip's action (sameAction)
 let captionTimer: ReturnType<typeof setTimeout> | undefined;
 
 function say(text: string | null, holdMs = 0): void {
@@ -90,7 +90,7 @@ export function useTrips(): void {
   }, [order, byId]);
 }
 
-const isRerun = (a: ActionView): boolean => !!rerun && a.trigger !== "navigation" && a.label === rerun.label && a.startMs >= rerun.at;
+const isRerun = (a: ActionView): boolean => !!rerun && a.trigger !== "navigation" && sameAction(a.label, rerun.label) && a.startMs >= rerun.at;
 
 /** The most recent trip that broke. */
 const lastFailing = (): string | undefined => tripOrder().reverse().find((id) => tripFor(id)?.status === "error");
