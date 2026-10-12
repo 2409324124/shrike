@@ -142,6 +142,7 @@ export function ask(goal: string, extra: AgentOptions = {}): void {
   const full = goalWithContext(goal, useUi.getState().chips);
   if (!full) return;
   const opts = { ...askOptions(goal), ...extra };
+  useOptions.setState({ askMode: false }); // M6: Show me options is for the next ask only
   if (Object.keys(opts).length) void startWith(full, opts);
   else {
     ag.setGoal(full);

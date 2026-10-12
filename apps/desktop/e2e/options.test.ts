@@ -52,6 +52,7 @@ test("options: three mockups, more like B, combine B2 + C, approve, attached to 
     await ask.getByRole("textbox", { name: "Ask your agent" }).press("Enter");
     const call = await waitFor("the options run", () => cc.calls().find((c) => c.kind === "options"), 30_000);
     assert.match(call.goal, /answer with ask_options/, "the toggle asks for cards");
+    assert.equal(await win.locator('button[aria-pressed]', { hasText: "Show me options" }).first().getAttribute("aria-pressed"), "false", "the toggle is for one ask");
 
     // M2: three cards, live mockups in sandboxed iframes
     await board.waitFor({ timeout: 30_000 }).catch(diag);
