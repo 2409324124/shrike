@@ -296,6 +296,27 @@ test("state(): the branch's PR with checks, failing ones carry their log summary
   assert.match(s.pr?.checks[0]?.summary ?? "", /"lint" check failed during "Lint"\. The first problem it printed: src\/a\.ts:3:1 error/);
 });
 
+test("prSeen: the PR panel's green re-run refreshes the state, so the rail stops saying the check failed", async () => {
+  const { dir } = repo();
+  sh(dir, "switch", "--quiet", "-c", "fix/x");
+  let bucket = "fail";
+  const gh = fakeGh({
+    "--version": ok(),
+    "auth status": ok(),
+    "pr view": ok(JSON.stringify({ number: 5, title: "x", url: "u", state: "OPEN" })),
+    "pr checks": () => ({ code: bucket === "pass" ? 0 : 1, stdout: JSON.stringify([{ name: "Test", bucket }]), stderr: "" }),
+    "run view": ok(""),
+  });
+  const { git, emitted } = service(dir, { gh });
+  await git.refresh();
+  assert.equal(emitted.at(-1)?.pr?.checks[0]?.state, "fail");
+  assert.equal(git.prSeen(5, [{ name: "Test", state: "fail" }]), undefined, "same checks: no refresh");
+  bucket = "pass";
+  assert.equal(git.prSeen(6, [{ name: "Test", state: "pass" }]), undefined, "another PR: no refresh");
+  await git.prSeen(5, [{ name: "Test", state: "pass" }]);
+  assert.equal(emitted.at(-1)?.pr?.checks[0]?.state, "pass");
+});
+
 test("a gh that never answers (packets dropped) is stopped and reads as a network problem", async () => {
   const bin = join(mkdtempSync(join(tmpdir(), "shrike-gh-hang-")), "gh");
   writeFileSync(bin, "#!/usr/bin/env node\nsetTimeout(() => {}, 60_000);\n", { mode: 0o755 }); // one process, like the real gh binary

@@ -22,7 +22,7 @@ import { pickFolder } from "./project.ts";
 import { openInEditor, saveClip } from "./system.ts";
 // power (O1 point mode, O6 issue card, O13 images)
 import { readFile as readBytes, stat as statPath } from "node:fs/promises";
-import type { PointPick } from "@shrike/schema";
+import type { PointPick, PrView } from "@shrike/schema";
 import { exportIssue, showInFolder } from "./issue.ts";
 // agent (A4 skills, A5 memory, A6 checkpoints, A11 watched-by, A13 diff comments)
 import * as agentExtras from "./agent.ts";
@@ -560,9 +560,13 @@ export function registerIpc(win: () => BrowserWindow | undefined, appWin: AppWin
     },
     redact: redactText,
   });
+  const seen = (v: PrView) => {
+    if (v.pr) void git.prSeen(v.pr.number, v.checks); // the rail and the Ship sheet follow the panel's fresher checks
+    return v;
+  };
   const nodeId = z.string().regex(/^[\w=-]{1,120}$/);
   const prBody = z.string().max(60_000);
-  handle("prView", z.union([z.tuple([]), z.tuple([prNumber]), z.tuple([z.undefined()])]), (n) => prs.view(n));
+  handle("prView", z.union([z.tuple([]), z.tuple([prNumber]), z.tuple([z.undefined()])]), (n) => prs.view(n).then(seen));
   handle("prCheckJob", z.tuple([z.string().url().max(2000), z.string().min(1).max(300)]), (link, name) => prs.checkJob(link, name));
   handle(
     "prAct",
@@ -577,7 +581,7 @@ export function registerIpc(win: () => BrowserWindow | undefined, appWin: AppWin
         z.object({ kind: z.literal("rerun"), run: z.string().regex(/^\d{1,20}$/) }),
       ]),
     ]),
-    (a) => prs.act(a),
+    (a) => prs.act(a).then(seen),
   );
   handle(
     "prAgent",
