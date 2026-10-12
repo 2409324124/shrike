@@ -44,6 +44,9 @@
   <sub>Watch the 40 second launch video on YouTube</sub>
 </p>
 
+> [!TIP]
+> **Hacktoberfest 2026:** Shrike welcomes first-time contributors all October. Pick a [good first issue](https://github.com/SumantxD/shrike/labels/good%20first%20issue), or [add your stack](https://github.com/SumantxD/shrike/labels/add-your-stack) (Go, Rails, .NET, Java, PHP, Rust). Replies within 48 hours. [Start here](https://github.com/SumantxD/shrike/issues?q=is%3Aissue+is%3Aopen+label%3Ahacktoberfest).
+
 ## Why Shrike
 
 You built an app with Cursor, Claude Code, Lovable or Bolt. It works until it doesn't. A button does nothing, so you paste the error into a chat and the model guesses from the code. On a small app that's often fine. On a bigger codebase, with a team and flows that can't break, the agent loops on wrong fixes because it can't see what ran.

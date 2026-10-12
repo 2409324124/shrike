@@ -54,6 +54,12 @@ These keep Shrike safe to run inside other people's apps. [CLAUDE.md](CLAUDE.md)
 8. **Keep docs true.** If your change makes a doc wrong, fix the doc in the same PR. User-facing text follows [docs/06-design.md](docs/06-design.md): plain words, no em dashes.
 9. **Agent prompts are tested.** Changing `prompts/agent/` means re-running the agent eval and putting the result in the PR.
 
+## Taking an issue
+
+- **Good first issues aren't assigned.** The first pull request that meets the acceptance criteria gets merged. No need to ask first.
+- **Help wanted and add-your-stack issues have one owner at a time.** Comment that you're taking it; it's yours for 7 days. Open a draft pull request in that time so we can agree on the approach, or it opens up again.
+- Please keep to two open pull requests at a time.
+
 ## Pull requests
 
 - Branch from `main`. Keep your branch up to date by rebasing.
@@ -62,7 +68,7 @@ These keep Shrike safe to run inside other people's apps. [CLAUDE.md](CLAUDE.md)
 - CI must pass on macOS and Linux. Windows runs a smaller set of checks while support is new.
 - AI-assisted contributions are welcome. You are responsible for every line, so read and test what your agent wrote, and say in the PR that you used one.
 
-A maintainer reviews every PR. Expect a first reply within a few days. If a PR goes quiet for two weeks after review comments, it may be closed; you can always reopen it.
+A maintainer reviews every PR. Expect a first reply within 48 hours. If a PR goes quiet for two weeks after review comments, it may be closed; you can always reopen it.
 
 ## Maintainer and decisions
 

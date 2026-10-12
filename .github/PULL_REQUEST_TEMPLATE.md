@@ -14,4 +14,5 @@
 - [ ] Docs updated if this made any of them wrong
 - [ ] UI follows `design-system/` and the copy rules in `docs/06-design.md`
 - [ ] Nothing bypasses redaction, and agents still change code only after the user's click
-- [ ] If I used a coding agent, I read and tested everything it wrote
+- [ ] I ran it and it works: a screenshot, clip or test output is above
+- [ ] AI use: none / some / most of this was written with a coding agent (say which), and I read and tested every line

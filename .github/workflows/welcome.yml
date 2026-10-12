@@ -1,0 +1,25 @@
+name: Welcome
+
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  greet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/first-interaction@1c4688942c71f71d4f5502a26ea67c331730fa4d # v3.1.0
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          issue_message: |
+            Thanks for opening your first issue on Shrike! A maintainer will reply within 48 hours. If it's a bug, steps to reproduce and your stack help a lot.
+          pr_message: |
+            Thanks for your first pull request to Shrike! A maintainer will review it within 48 hours.
+
+            Quick checks while you wait: `pnpm typecheck` and `pnpm test` pass, the PR links its issue (`Fixes #123`), and UI changes include a screenshot. Setup and the rules are in [CONTRIBUTING.md](https://github.com/SumantxD/shrike/blob/main/CONTRIBUTING.md).
