@@ -436,7 +436,7 @@ paths:
   assert.equal(oa.auth.type, "bearer");
   assert.deepEqual(oa.requests.map((r) => [r.folder, r.req.name, r.req.method, r.req.url]), [["pets", "Get a pet", "GET", "{{baseUrl}}/pets/:petId"], ["pets", "updatePet", "PUT", "{{baseUrl}}/pets/:petId"]]);
   assert.deepEqual(oa.requests[0]!.req.pathParams, [{ name: "petId", value: "p1", enabled: true }]);
-  assert.deepEqual(JSON.parse((oa.requests[1]!.req.body as { data: string }).data), { name: "string", age: 0 });
+  assert.deepEqual(JSON.parse((oa.requests[1]!.req.body as { data: string }).data), { name: "name", age: 1 });
 
   const rt = importRoutes([{ method: "GET", path: "/api/todos" }, { method: "DELETE", path: "/api/todos/:id" }, { method: "GET", path: "/api/users/[id]" }], "http://localhost:5173", "Routes");
   assert.deepEqual(rt.requests.map((r) => r.req.url), ["{{baseUrl}}/api/todos", "{{baseUrl}}/api/todos/:id", "{{baseUrl}}/api/users/:id"]);

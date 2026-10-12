@@ -51,7 +51,8 @@ test("py-api-only: the Routes page fills from FastAPI's /openapi.json; Try it, t
     const body = doc.getByRole("region", { name: "Request body" });
     for (const field of ["customer", "lines", "sku", "qty", "coupon"]) await body.locator(".ap-schema-name", { hasText: new RegExp(`^${field}$`) }).first().waitFor();
     assert.ok((await body.locator(".ap-req-mark").count()) >= 3, "required fields are marked");
-    assert.match(await body.getByLabel("Example body").innerText(), /"customer": "string"/);
+    assert.match(await body.getByLabel("Example body").innerText(), /"customer": "customer"/);
+    assert.doesNotMatch(await body.getByLabel("Example body").innerText(), /"string"/, "placeholders from field names, not type names");
     const responses = await doc.getByRole("region", { name: "Responses" }).locator(".ap-pill").allInnerTexts();
     assert.deepEqual(responses, ["200", "422"]);
     assert.match(await doc.locator(".ap-link").innerText(), /^main\.py:\d+$/, "the handler's file:line");

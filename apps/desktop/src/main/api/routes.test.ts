@@ -88,7 +88,7 @@ test("OpenAPI 3 to route docs: refs, allOf, params, body example, responses, ser
   const props = place.body!.schema!.properties as Record<string, Record<string, unknown>>;
   assert.equal((props.lines!.items as Record<string, unknown>).title, "Line");
   assert.deepEqual(props.next, { type: "object", title: "OrderIn" }, "a cycle stops at its name");
-  assert.deepEqual(JSON.parse(place.body!.example!), { customer: "user@example.com", lines: [{ sku: "string", qty: 0 }], next: {} });
+  assert.deepEqual(JSON.parse(place.body!.example!), { customer: "user@example.com", lines: [{ sku: "sku", qty: 1 }], next: {} });
   assert.equal(place.responses.find((r) => r.status === "422")!.description, "Bad body");
   assert.throws(() => specDocs({ swagger: "2.0", paths: {} }), /Swagger 2/);
 });
