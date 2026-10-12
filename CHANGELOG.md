@@ -4,12 +4,21 @@ Notable changes to Shrike. The format follows [Keep a Changelog](https://keepach
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-12
+
+Shrike now debugs Python backends and anything that speaks OpenTelemetry, works from your own Claude Code, and has Linux builds.
+
+Thanks to the Reddit folks whose feedback shaped this release: brainDDump, DaRKoN_, streamer3222, joeyda3rd, Expensive-County4890, LatentSpaceLeaper, Hairy_Glove2064, samarijackfan, Southern_Arm_5726, samas69420 and not-a-painting.
+
 ### Added
 
 - **Python function steps** for Python 3.12+ on FastAPI, Flask and Django: every call into your own code with argument and return values and the exact line, nested under the request, plus sqlite3 queries. No code changes needed.
+- **Python database capture**: queries from psycopg, psycopg2, asyncpg, PyMySQL, mysqlclient, SQLAlchemy and the Django ORM on Postgres, MySQL and SQLite, with the rows each write changed. Outgoing HTTP calls (httpx, requests) show up as outside calls, and a React page in front of FastAPI or Django is one trip, proxied or cross-origin.
 - **Any backend through OpenTelemetry**: .NET, Go, Java and others that already use an OpenTelemetry SDK show their requests, queries, outside calls and errors in the Thread (basic tracing).
 - **Use Shrike from your own Claude Code**: a Tools panel section with the `claude mcp add` command, a Shrike skill and a settings snippet that keeps code changes behind your click. The connection survives restarts; approval cards say which agent is asking.
-- **Linux and Windows builds**: AppImage and `.deb` for Linux, an NSIS installer for Windows (not yet run on a Windows machine). Voice stays macOS only.
+- **Claude Code plugin**: `/plugin install shrike@shrike` brings Shrike's tools and its debugging skill into Claude Code, plus a small mod that shows the latest trip above the prompt and adds `/shrike`.
+- **Routes page** in the API client: lists every route, loads an OpenAPI spec on its own when the app has one, fills in example bodies from the schema and real calls, and checks a JSON body against the route's schema before sending.
+- **Linux and Windows builds**: AppImage and `.deb` for Linux, an NSIS installer for Windows (not yet run on real Windows hardware). The Linux AppImage and `.deb` are attached to this release. Voice stays macOS only.
 - **Checks before Run**: Shrike says in plain words when Node, a package manager, Python, Docker or git is missing or too old, how to get it, and offers Check again. It never installs anything itself.
 - CI on macOS, Linux and Windows.
 
@@ -23,10 +32,13 @@ Notable changes to Shrike. The format follows [Keep a Changelog](https://keepach
 - Large trips and output floods are capped, so the app stays responsive.
 - Tools installed with nvm, fnm or asdf are found when Shrike is opened from Finder.
 - The agent's quick send no longer follows redirects to outside servers.
+- Fixes found while recording the tutorials: Found it stays up through later runs until you hide it, the agent's re-run matches a broken click recorded as a form submit, Ship uses the Commit box message, Undone shows on the History row after an undo, the next project starts clean after a switch, Show me options applies to the next ask only, the Thread camera follows every focus move, and Esc or a click elsewhere closes System windows at once.
+- A React 19 click points at its JSX line, Enter in a form field counts as a submit, and a cross-origin 500 the browser couldn't read shows the server's error.
 
 ## [0.1.0] - 2026-10-11
 
 First public release for macOS on Apple Silicon, signed and notarised.
 
-[Unreleased]: https://github.com/SumantxD/shrike/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/SumantxD/shrike/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/SumantxD/shrike/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/SumantxD/shrike/releases/tag/v0.1.0
