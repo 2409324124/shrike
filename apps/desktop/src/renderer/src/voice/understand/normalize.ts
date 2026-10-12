@@ -40,6 +40,9 @@ export function translit(input: string): string {
   return units.map((u) => u.c + u.v).join("");
 }
 
+/** User-facing text in Roman script (docs/16): Devanagari is transliterated, anything else is unchanged. */
+export const roman = (t: string): string => (DEVA.test(t) ? translit(t) : t);
+
 /** Hinglish phonetic key: aspirates collapsed, long vowels shortened, w=v, z=j, trailing schwa dropped. */
 export function hkey(w: string): string {
   let s = w.toLowerCase().replace(/chh/g, "c").replace(/ch/g, "c").replace(/sh/g, "s").replace(/([kgjtdpb])h/g, "$1").replace(/ph/g, "f");

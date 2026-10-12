@@ -6,7 +6,7 @@ Approved 2026-10-10. This is the voice architecture as built. The measured bench
 
 | Question | Answer |
 |---|---|
-| Hinglish on screen | Roman script ("PR 42 kholo"). Devanagari is transliterated before it is shown or understood |
+| Hinglish on screen | Roman script ("PR 42 kholo"). Devanagari is transliterated before it is shown or understood, and before it reaches a plan card or a commit message |
 | Hands-free and outward actions | Hands-free may push, merge, open a PR or rerun CI after a spoken "yes" / "haan" while the plan card is on screen. "no" / "cancel" cancels |
 | Jev | Retired from the voice path. A small planner ships with Shrike instead |
 | Licences | Nemotron 3.5 ASR Streaming 0.6B weights (OpenMDW-1.1) are acceptable |
