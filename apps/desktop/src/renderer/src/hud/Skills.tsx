@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, History, ListChecks, Pencil, Play, Search, X } from "lucide-react";
-import type { Skill, SkillProposal } from "@shrike/schema";
-import { lineDiff } from "../lib/hud.ts";
+import type { Skill } from "@shrike/schema";
 import { cx, IconButton, Kbd } from "../components/ui.tsx";
 import { useAgent } from "../stores/agent.ts";
 import { checklist, filterSkills, improvedAgo, sourceLabel, useSkills, useSkillsBridge } from "../stores/skills.ts";
@@ -12,7 +11,7 @@ import { useRecipes } from "../recipes/store.ts";
 import { Glyph } from "../mcp/ToolsPanel.tsx"; // mcp: MCP7
 import { useMcp } from "../mcp/store.ts";
 
-// S1 shelf, S2 Claude offer, S3 checklist, S4 "Learned something" card.
+// S1 shelf, S2 Claude offer, S3 checklist. S4 drafts show in the history (SkillLog).
 // Shell finds these by export name (hud/Sdlc.tsx): SkillShelf is the K panel, SkillsOverlay sits over the Thread.
 
 export function SkillsOverlay() {
@@ -20,7 +19,6 @@ export function SkillsOverlay() {
   return (
     <>
       <SkillChecklist />
-      <SkillProposalCard />
       <SystemLayer />
     </>
   );
@@ -275,61 +273,5 @@ export function SkillChecklist() {
         })}
       </ol>
     </aside>
-  );
-}
-
-/** S4: "Learned something": the change as a diff, Keep or Discard. One at a time. */
-export function SkillProposalCard() {
-  const p = useSkills((s) => s.proposals[0]);
-  const skill = useSkills((s) => (p ? s.list.find((k) => k.id === p.skillId) : undefined));
-  if (!p) return null;
-  return (
-    <section aria-label="Learned something" className="agentcard absolute right-4 bottom-[64px] z-20 w-[min(420px,calc(100%-32px))]">
-      <div className="mb-1.5 flex items-center gap-2">
-        <span className="text-violet">✦</span>
-        <b className="font-semibold">Learned something</b>
-        <span className="flex-1" />
-        <span className="lbl truncate">{skill?.name ?? p.skillId}</span>
-      </div>
-      <p className="m-0 mb-2.5 text-[13.5px] leading-snug text-ink">{p.reason.replace(/^learned( something)?:\s*/i, "").replace(/^./, (c) => c.toUpperCase())}</p>
-      <ProposalDiff p={p} />
-      {skill?.source === "claude" && skill.readOnly !== false && <p className="m-0 mb-2.5 text-[11.5px] text-dim">Your Claude Code file stays as it is. Shrike keeps the better version as its own copy.</p>}
-      <div className="flex gap-2">
-        <button type="button" className="btn go" onClick={() => void useSkills.getState().answer(p.id, true)}>
-          Keep this improvement
-        </button>
-        <button type="button" className="btn" onClick={() => void useSkills.getState().answer(p.id, false)}>
-          Discard
-        </button>
-      </div>
-    </section>
-  );
-}
-
-const unnumber = (md: string) => md.replace(/^(\s*)\d+[.)]\s+/gm, "$1");
-
-function ProposalDiff({ p }: { p: SkillProposal }) {
-  // step numbers left out, so adding a step 1 reads as one added line, not every step renumbered
-  const lines = useMemo(() => lineDiff(unnumber(p.before), unnumber(p.after), 1), [p.before, p.after]);
-  const [all, setAll] = useState(false);
-  const max = all ? lines.length : 8;
-  return (
-    <>
-      <div className="diff selectable mb-2.5 max-h-[220px] overflow-y-auto">
-        {lines.slice(0, max).map((l, i) => (
-          <div key={i} className={l.kind === "del" ? "d" : l.kind === "add" ? "a" : "c"}>
-            <span className="m" aria-hidden>
-              {l.kind === "del" ? "-" : l.kind === "add" ? "+" : " "}
-            </span>
-            {l.text || " "}
-          </div>
-        ))}
-      </div>
-      {lines.length > max && (
-        <button type="button" className="hud-btn mb-2 -mt-1" onClick={() => setAll(true)}>
-          Show all {lines.length} lines
-        </button>
-      )}
-    </>
   );
 }

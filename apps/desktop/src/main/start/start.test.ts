@@ -205,7 +205,6 @@ async function runStart(scenario: string, f: Awaited<ReturnType<typeof fixture>>
   const log = join(tmp, `calls-${scenario}.jsonl`);
   Object.assign(process.env, { SHRIKE_CLAUDE_BIN: bin, FAKE_START: scenario, FAKE_PORT: String(f.port), FAKE_LOG: log });
   const plans: StartPlan[] = [];
-  const proposals: string[] = [];
   const { recipes, lessons } = await discoverRecipes({ root: f.root, name: f.project.name, personal: d.personal, claude: d.claude, builtin: d.builtin });
   const register = join(tmp, "register.mjs");
   writeFileSync(register, "");
@@ -216,7 +215,6 @@ async function runStart(scenario: string, f: Awaited<ReturnType<typeof fixture>>
     skillDirs: () => d,
     emit: (ch, p) => {
       if (ch === "start:plan") plans.push(p as StartPlan);
-      if (ch === "skill:proposal") proposals.push((p as { id: string }).id);
     },
     recipes,
     lessons,
@@ -231,7 +229,7 @@ async function runStart(scenario: string, f: Awaited<ReturnType<typeof fixture>>
   await ended;
   await mcp.close();
   const calls = readFileSync(log, "utf8").trim().split("\n").map((l) => JSON.parse(l) as { resume: string | null; effort: string; tools: string; system: string; call?: string }).filter((c) => !c.call);
-  return { session, plans, proposals, calls };
+  return { session, plans, calls };
 }
 
 test("a whole start: plan, refused push, a failed service fixed, ready, Skill Acquired; services outlive the agent; next Run follows the skill", { timeout: 60_000 }, async () => {
@@ -254,7 +252,6 @@ test("a whole start: plan, refused push, a failed service fixed, ready, Skill Ac
     assert.deepEqual(plan.rewards?.map((r) => [r.kind, r.skillId]), [["acquired", "run-fixture-app"], ["proposed", "starting-apps"]]);
     assert.equal(plan.skillId, "run-fixture-app");
     assert.match(readFileSync(join(f.root, ".shrike/skills/run-fixture-app.md"), "utf8"), /kind: run[\s\S]*node server\.mjs/);
-    assert.equal(first.proposals.length, 0, "no Keep card: learnings are drafts");
     assert.deepEqual((await listDrafts(d)).filter((x) => x.status === "pending").map((x) => [x.skillId, x.expect]), [["starting-apps", "run"]]);
     assert.equal(runner.status.state, "running");
     assert.equal(runner.status.url, `http://127.0.0.1:${f.port}/`);
@@ -273,7 +270,7 @@ test("a whole start: plan, refused push, a failed service fixed, ready, Skill Ac
     assert.deepEqual(again.session.quest.plan.rewards?.map((r) => r.kind), ["used"]);
     await runner.stop();
 
-    // Learned something: a proposal (Level up after Keep).
+    // Learned something: a draft, applied once the outcome is verified.
     const learned = await runStart("learned", f, d, runner);
     assert.deepEqual(learned.session.quest.plan.rewards?.map((r) => [r.kind, r.level]), [["proposed", 2]]);
     await runner.stop();

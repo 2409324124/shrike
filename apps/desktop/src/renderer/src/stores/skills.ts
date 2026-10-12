@@ -46,11 +46,9 @@ interface SkillsState {
   offer: number | null; // S2: Claude Code skills to offer, until answered
   query: string;
   active: { runId: string; skillId: string; name: string; items: string[] } | null; // S3
-  proposals: SkillProposal[]; // S4, oldest first; the first one shows
   load(): Promise<void>;
   run(s: Skill, input?: string): Promise<void>;
   edit(s: Skill): Promise<void>;
-  answer(id: string, keep: boolean): Promise<void>;
   importClaude(enable: boolean): Promise<void>;
   saveAsSkill(from: { actionId?: string; runId?: string; flowId?: string; name?: string }): Promise<Skill | undefined>;
   saveAsCommand(name: string, prompt: string): Promise<boolean>;
@@ -103,7 +101,6 @@ export const useSkills = create<SkillsState>((set, get) => ({
   offer: null,
   query: "",
   active: null,
-  proposals: [],
   async load() {
     const [list, offer] = await Promise.all([call((a) => a.listSkills(), "Couldn't load skills"), api().claudeSkillsOffer().catch(() => null)]);
     if (list) setList(list);
@@ -134,13 +131,6 @@ export const useSkills = create<SkillsState>((set, get) => ({
     closeShelf();
     if (s.source !== "project") toast(`Made a copy in ${path} for this project. Edit it there.`, "info");
     useUi.getState().openFile({ path, line: 1 });
-  },
-  async answer(id, keep) {
-    const p = get().proposals.find((x) => x.id === id);
-    set((st) => ({ proposals: st.proposals.filter((x) => x.id !== id) }));
-    const ok = await call((a) => a.answerSkillProposal(id, keep).then(() => true), keep ? "Couldn't keep the improvement" : "Couldn't discard it");
-    if (!ok && p) set((st) => ({ proposals: [p, ...st.proposals] }));
-    else if (ok && keep) toast("Kept. The skill is better next time.", "ok");
   },
   async importClaude(enable) {
     set({ offer: null });
@@ -185,7 +175,6 @@ export function useSkillsBridge(): void {
     const a = api();
     const offs = [
       a.on("skills:update", (list) => Array.isArray(list) && setList(list)),
-      a.on("skill:proposal", (p) => p && typeof p.id === "string" && useSkills.setState((st) => ({ proposals: [...st.proposals.filter((x) => x.id !== p.id), p] }))),
       a.on("file:changed", (f) => void (f?.path?.startsWith(".shrike/skills/") && useSkills.getState().load())),
       useProject.subscribe((st, prev) => void (st.project?.root !== prev.project?.root && useSkills.getState().load())),
     ];
