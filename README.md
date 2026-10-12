@@ -14,12 +14,12 @@
   <img src="https://img.shields.io/badge/MCP-server-C06BFF?style=flat-square&labelColor=0A1633" alt="Ships an MCP server">
 </p>
 
-<h3 align="center">The open source debugger for people who build web apps with AI.</h3>
+<h3 align="center">See what your app actually does. So you and your AI agent stop guessing.</h3>
 
 <p align="center">
-  You still just ask your agent to fix it. The difference: it sees what your app actually did.<br>
-  Click the thing that breaks, Shrike records the whole trip from the button to the database,<br>
-  and your agent fixes the real line on the first try, after you say OK, then clicks again to prove it.
+  Click anything in your app and watch the whole trip through your code, database and services, with real values.<br>
+  Understand a codebase you've never seen in minutes. When something breaks, your agent still does the fixing,<br>
+  but now it sees what actually ran, so it gets it right the first time. AI-native, with skills that improve every time a fix is proven.
 </p>
 
 <p align="center"><sub>Works with Node backends (Express, Next.js, NestJS, Hono, Remix), Python 3.12+ backends (FastAPI, Flask, Django) and Vite or Next frontends. Any other backend that speaks OpenTelemetry (.NET, Go, Java, older Python) gets basic tracing.</sub></p>
@@ -49,7 +49,9 @@
 
 ## Why Shrike
 
-You built an app with Cursor, Claude Code, Lovable or Bolt. It works until it doesn't. A button does nothing, so you paste the error into a chat and the model guesses from the code. On a small app that's often fine. On a bigger codebase, with a team and flows that can't break, the agent loops on wrong fixes because it can't see what ran.
+> **"Why not just ask my agent?"** You do. Shrike doesn't replace your agent, it gives it eyes. Your agent can read your code, but it can't see what your app actually did when you clicked. So it guesses, and on a bigger codebase it loops on wrong fixes. Shrike records what really ran and hands it over, and you get to see it too.
+
+You build with Cursor, Claude Code, Lovable or Bolt, and the code grows faster than you can follow it. Shrike shows you how it actually works: which code a click runs, what each step got and returned, what it read and wrote, and where the time went. That's useful when something breaks, and just as useful when you open a project you didn't write.
 
 <table>
 <tr>
@@ -78,7 +80,8 @@ You built an app with Cursor, Claude Code, Lovable or Bolt. It works until it do
 
 **Shrike is for you if**
 
-- You build with AI and can run `npm run dev`, but stack traces still feel like guesswork
+- You build with AI and the code grows faster than you can follow it
+- You've opened a project you didn't write and want to know how it really works
 - You want to see what your code did when you clicked, not read 40 files to find out
 - You want your agent to fix things with proof, and never touch a file without asking
 
