@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Database, Globe, Layers, Monitor, Play, Plus, Server, User, X, Zap, type LucideIcon } from "lucide-react";
 import type { PlaceKind, ProcessSpec } from "@shrike/schema";
 import { useProject } from "../stores/project.ts";
@@ -36,10 +36,12 @@ export function Setup() {
   const runState = useRun((s) => s.status.state);
   const [list, setList] = useState<ProcessSpec[]>([]);
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
+  // Filled while rendering, not in an effect, so the first frame already lists what the scanner found.
+  const [from, setFrom] = useState<typeof project>(null);
+  if (from !== (open ? project : null)) {
+    setFrom(open ? project : null);
     if (open && project) setList(project.processes?.length ? project.processes.map((p) => ({ ...p })) : [{ name: "app", command: project.devCommand }]);
-  }, [open, project]);
+  }
 
   if (!open || !project) return null;
   const close = () => useUi.setState({ setup: false });
