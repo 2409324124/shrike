@@ -8,6 +8,54 @@ const o = (v: unknown): Obj => (v && typeof v === "object" && !Array.isArray(v) 
 
 const pathOnly = (url: string) => splitUrl(url).base.replace(/^\{\{[^}]+\}\}/, "").replace(/^[a-z]+:\/\/[^/]*/i, "") || "/";
 
+const str = (v: unknown) => (typeof v === "string" ? v : "");
+
+/** A placeholder from the field's name and format, never the bare type name. */
+function guess(key: string, s: Obj, type: string): unknown {
+  if (type === "boolean") return false;
+  if (type === "integer" || type === "number") return typeof s.minimum === "number" && s.minimum > 1 ? s.minimum : 1;
+  if (type !== "string") return null;
+  const f = str(s.format);
+  const k = key.toLowerCase();
+  if (f === "email" || k.includes("email")) return "user@example.com";
+  if (f === "uuid" || /uuid|guid/.test(k)) return "00000000-0000-0000-0000-000000000000";
+  if (f === "date") return "2024-01-01";
+  if (f === "date-time" || /date|time|_at$/.test(k) || /[a-z]At$/.test(key)) return "2024-01-01T00:00:00.000Z";
+  if (f === "uri" || f === "url" || /url|uri|link|website|href/.test(k)) return "https://example.com";
+  if (k.includes("phone")) return "+15555550100";
+  if (k === "id" || /_id$/.test(k) || /[a-z]Id$/.test(key)) return "1";
+  return /^[a-z][a-z0-9_]{0,30}$/i.test(key) ? k : "text"; // sku -> "sku", name -> "name"
+}
+
+/** An example from a schema: its example, default or enum first, else the last real call's value (sample), else a guess from the field name. */
+export function skeleton(schema: Obj, root: Obj, depth = 0, key = "", sample?: unknown): unknown {
+  const ref = str(schema.$ref);
+  if (ref.startsWith("#/")) {
+    const target = ref.slice(2).split("/").reduce<unknown>((cur, k) => o(cur)[k.replace(/~1/g, "/").replace(/~0/g, "~")], root);
+    return depth > 3 ? {} : skeleton(o(target), root, depth + 1, key, sample);
+  }
+  if (schema.example !== undefined) return schema.example;
+  if (Array.isArray(schema.examples) && schema.examples.length) return schema.examples[0];
+  if (schema.default !== undefined) return schema.default;
+  if (Array.isArray(schema.enum) && schema.enum.length) return schema.enum[0];
+  if (Array.isArray(schema.allOf)) return Object.assign({}, ...schema.allOf.map((s) => o(skeleton(o(s), root, depth + 1, key, sample))));
+  if (Array.isArray(schema.oneOf) || Array.isArray(schema.anyOf)) return skeleton(o(((schema.oneOf ?? schema.anyOf) as unknown[])[0]), root, depth + 1, key, sample);
+  const type = Array.isArray(schema.type) ? str(schema.type.find((t) => t !== "null")) : str(schema.type);
+  if (type === "object" || schema.properties) {
+    if (depth > 3) return {};
+    if (!schema.properties && Object.keys(o(sample)).length) return sample;
+    return Object.fromEntries(Object.entries(o(schema.properties)).map(([k, v]) => [k, skeleton(o(v), root, depth + 1, k, o(sample)[k])]));
+  }
+  if (type === "array") {
+    if (depth > 3) return [];
+    const items = o(schema.items);
+    return Array.isArray(sample) && sample.length ? sample.map((x) => skeleton(items, root, depth + 1, key, x)) : [skeleton(items, root, depth + 1, key)];
+  }
+  const kind = typeof sample;
+  if (type === "integer" || type === "number" ? kind === "number" : type ? kind === type : kind === "string" || kind === "number" || kind === "boolean") return sample;
+  return guess(key, schema, type);
+}
+
 /** The route a request goes to, by method and path: "/orders/5" finds "/orders/:order_id". */
 export function docFor(routes: RouteDoc[] | undefined, method: string, url: string): RouteDoc | undefined {
   const p = pathOnly(url);
@@ -116,14 +164,17 @@ export function checkBody(schema: JsonSchema | undefined, value: unknown): strin
 
 const firstOk = (r: RouteDoc) => r.responses.find((x) => /^2\d\d$/.test(x.status))?.status ?? "200";
 
-/** "Try it": the spec's or the guess's examples first, else the last real call (AP2), else an empty object. */
+/** "Try it": the spec's or the guess's examples first, else the last real call (AP2), else placeholders from the schema, else an empty object. */
 export function reqFromDoc(r: RouteDoc, calls: Captured[] = []): Req {
   const base = fromRoute({ method: r.method, path: r.path }, calls);
   const example = (name: string) => r.params.find((p) => p.name === name && p.in === "path")?.example ?? "";
   const pathVals = Object.fromEntries(Object.entries(base.pathVals).map(([k, v]) => [k, v || example(k)]));
   const params = r.params.filter((p) => p.in === "query").map((p) => row(p.name, p.example ?? "", p.required));
   const headers = r.params.filter((p) => p.in === "header").map((p) => row(p.name, p.example ?? "", p.required));
-  const text = r.body?.example;
+  const schema = r.body?.schema;
+  // the example came from the schema alone: redo it with the last real call's values
+  const fromSchema = schema && JSON.stringify(tryJson(r.body?.example ?? "")) === JSON.stringify(skeleton(schema, schema));
+  const text = fromSchema ? JSON.stringify(skeleton(schema, schema, 0, "", tryJson(base.body.text))) : r.body?.example;
   const json = tryJson(text);
   const body = !hasBody(r.method) || text === undefined ? base.body : { ...base.body, mode: json !== undefined ? ("json" as const) : ("text" as const), text: json !== undefined ? JSON.stringify(json, null, 2) : text };
   const docs = [r.summary, r.description].filter(Boolean).join("\n\n");

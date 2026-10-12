@@ -1398,7 +1398,7 @@ export interface ShrikeApi {
   apiSaveGuess(guess: RouteGuess): Promise<RoutesView>; // AP22: the user accepted it: .shrike/api/guessed-routes.json and a request in the project's collection
   // G: git and GitHub
   gitState(): Promise<GitState>;
-  shipFix(opts: { actionId?: string; title?: string; files?: string[] }): Promise<PullRequest>; // G1: needs approval for push
+  shipFix(opts: { actionId?: string; title?: string; message?: string; files?: string[] }): Promise<PullRequest>; // G1: needs approval for push; message: the Commit box draft
   listPullRequests(): Promise<PullRequest[]>;
   reviewPullRequest(n: number): Promise<AgentRunInfo>; // G2
   resolveConflicts(): Promise<AgentRunInfo>; // G3

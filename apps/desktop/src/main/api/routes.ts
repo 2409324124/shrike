@@ -6,7 +6,8 @@ import { z } from "zod";
 import type { ApiRequest, JsonSchema, Route, RouteDoc, RouteGuess, RouteParam, RouteResponse } from "@shrike/schema";
 import { redactText } from "@shrike/redact";
 import { blankRequest } from "./collections.ts";
-import { colonPath, pathParamsOf, skeleton } from "./import.ts";
+import { colonPath, pathParamsOf } from "./import.ts";
+import { skeleton } from "../../renderer/src/api/routes.ts";
 import { parseYaml } from "./yaml.ts";
 
 type Obj = Record<string, unknown>;

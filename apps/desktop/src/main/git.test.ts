@@ -127,6 +127,24 @@ test("G1 shipFix: branches off main, commits only Shrike's files, pushes after a
   assert.deepEqual(create.slice(2, 6), ["--base", "main", "--head", branch]);
 });
 
+test("G1 shipFix: the Commit box message, when there is one, is the commit and the PR title", async () => {
+  const { dir } = repo();
+  writeFileSync(join(dir, "app.ts"), "export const total = Number(1);\n");
+  let title = "";
+  const gh = fakeGh({
+    "--version": ok("gh version 2"),
+    "auth status": ok(),
+    "pr view": (args) => (args[2] === "8" ? ok(JSON.stringify({ number: 8, title, url: "https://github.com/o/r/pull/8", state: "OPEN", body: "" })) : { code: 1, stdout: "", stderr: "no pull requests found" }),
+    "pr checks": ok("[]"),
+    "pr create": (args) => ((title = args[args.indexOf("--title") + 1]!), ok("https://github.com/o/r/pull/8\n")),
+  });
+  const { git, approvals } = service(dir, { gh });
+  await git.shipFix({ title: "Total works again", message: "Fix: Add Todo saves the owner again\r\n\r\nThe server read req.body.user.\n" });
+  assert.equal(sh(dir, "log", "-1", "--format=%B"), "Fix: Add Todo saves the owner again\n\nThe server read req.body.user.");
+  assert.equal(title, "Fix: Add Todo saves the owner again");
+  assert.match(approvals[0]!.reason, /your commit "Fix: Add Todo saves the owner again"/);
+});
+
 test("G1 shipFix: a denied push keeps the commit local and says so; no gh means push only", async () => {
   const { dir, remote } = repo();
   writeFileSync(join(dir, "app.ts"), "export const total = 3;\n");
@@ -294,6 +312,27 @@ test("state(): the branch's PR with checks, failing ones carry their log summary
   assert.equal(s.pr?.number, 5);
   assert.deepEqual(s.pr?.checks.map((c) => c.state), ["fail", "pass"]);
   assert.match(s.pr?.checks[0]?.summary ?? "", /"lint" check failed during "Lint"\. The first problem it printed: src\/a\.ts:3:1 error/);
+});
+
+test("prSeen: the PR panel's green re-run refreshes the state, so the rail stops saying the check failed", async () => {
+  const { dir } = repo();
+  sh(dir, "switch", "--quiet", "-c", "fix/x");
+  let bucket = "fail";
+  const gh = fakeGh({
+    "--version": ok(),
+    "auth status": ok(),
+    "pr view": ok(JSON.stringify({ number: 5, title: "x", url: "u", state: "OPEN" })),
+    "pr checks": () => ({ code: bucket === "pass" ? 0 : 1, stdout: JSON.stringify([{ name: "Test", bucket }]), stderr: "" }),
+    "run view": ok(""),
+  });
+  const { git, emitted } = service(dir, { gh });
+  await git.refresh();
+  assert.equal(emitted.at(-1)?.pr?.checks[0]?.state, "fail");
+  assert.equal(git.prSeen(5, [{ name: "Test", state: "fail" }]), undefined, "same checks: no refresh");
+  bucket = "pass";
+  assert.equal(git.prSeen(6, [{ name: "Test", state: "pass" }]), undefined, "another PR: no refresh");
+  await git.prSeen(5, [{ name: "Test", state: "pass" }]);
+  assert.equal(emitted.at(-1)?.pr?.checks[0]?.state, "pass");
 });
 
 test("a gh that never answers (packets dropped) is stopped and reads as a network problem", async () => {

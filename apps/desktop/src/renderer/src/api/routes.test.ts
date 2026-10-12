@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { RouteDoc } from "@shrike/schema";
-import { checkBody, docFor, groupRoutes, reqFromDoc, schemaRows, seenIn, testFromDoc } from "./routes.ts";
+import { checkBody, docFor, groupRoutes, reqFromDoc, schemaRows, seenIn, skeleton, testFromDoc } from "./routes.ts";
 
 const ORDER_IN = {
   type: "object",
@@ -62,4 +62,33 @@ test("Try it: examples from the doc, required query params on; Save as test adds
   const seen = reqFromDoc({ ...GET, params: [] }, [{ method: "GET", url: "/orders/42" }]);
   assert.equal(seen.pathVals.order_id, "42", "the last real call fills what the doc doesn't");
   assert.deepEqual(testFromDoc(POST).asserts.map((a) => [a.expr, a.op, a.value]), [["res.status", "eq", "201"]]);
+});
+
+test("Try it on a schema with no example: schema values, else the last real call, else placeholders from the field name", () => {
+  const schema = {
+    type: "object",
+    properties: {
+      customer: { type: "string" },
+      contact_email: { type: "string" },
+      lines: { type: "array", items: { type: "object", properties: { sku: { type: "string" }, qty: { type: "integer" }, product_id: { type: "integer" } } } },
+      coupon: { anyOf: [{ type: "string" }, { type: "null" }] },
+      status: { type: "string", enum: ["new", "paid"] },
+      gift: { type: "boolean", default: true },
+      site: { type: "string", format: "uri" },
+      createdAt: { type: "string" },
+    },
+  };
+  const doc: RouteDoc = { ...POST, body: { contentType: "application/json", required: true, schema, example: JSON.stringify(skeleton(schema, schema)) } };
+  const fresh = reqFromDoc(doc).body.text;
+  assert.doesNotMatch(fresh, /"string"/, "never the bare type name");
+  assert.deepEqual(JSON.parse(fresh), { customer: "customer", contact_email: "user@example.com", lines: [{ sku: "sku", qty: 1, product_id: 1 }], coupon: "coupon", status: "new", gift: true, site: "https://example.com", createdAt: "2024-01-01T00:00:00.000Z" });
+  assert.equal(reqFromDoc(doc).body.text, fresh, "deterministic");
+  const real = { customer: "ana@corner.cafe", lines: [{ sku: "BEANS", qty: 3 }, { sku: "MUG", qty: 1 }], coupon: "WELCOME10", status: "paid", gift: false, extra: 1 };
+  const seen = JSON.parse(reqFromDoc(doc, [{ method: "POST", url: "/orders", reqBody: JSON.stringify(real) }]).body.text);
+  assert.deepEqual(seen.lines, [{ sku: "BEANS", qty: 3, product_id: 1 }, { sku: "MUG", qty: 1, product_id: 1 }], "the last real call's values, placeholders for what it lacked");
+  assert.equal(seen.customer, "ana@corner.cafe");
+  assert.equal(seen.status, "new", "the schema's own enum and default win over the call");
+  assert.equal(seen.gift, true);
+  assert.equal(seen.extra, undefined, "only the schema's fields");
+  assert.equal(JSON.parse(reqFromDoc(POST, [{ method: "POST", url: "/orders", reqBody: JSON.stringify(real) }]).body.text).lines[0].qty, 1, "a spec's own example beats the call");
 });

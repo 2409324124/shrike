@@ -2,6 +2,7 @@
 import type { ApiAuth, ApiBody, ApiEnvironment, ApiKv, ApiRequest, Route } from "@shrike/schema";
 import { blankRequest } from "./collections.ts";
 import { parseYaml, type Yaml } from "./yaml.ts";
+import { skeleton } from "../../renderer/src/api/routes.ts";
 
 export interface ImportDraft {
   name: string;
@@ -322,28 +323,6 @@ export function importPostman(text: string): ImportDraft {
 }
 
 // ---- OpenAPI 3 ----
-
-export function skeleton(schema: Obj, root: Obj, depth = 0): unknown {
-  const ref = str(schema.$ref);
-  if (ref.startsWith("#/")) {
-    const target = ref.slice(2).split("/").reduce<unknown>((cur, k) => o(cur)[k.replace(/~1/g, "/").replace(/~0/g, "~")], root);
-    return depth > 3 ? {} : skeleton(o(target), root, depth + 1);
-  }
-  if (schema.example !== undefined) return schema.example;
-  if (Array.isArray(schema.enum) && schema.enum.length) return schema.enum[0];
-  if (Array.isArray(schema.allOf)) return Object.assign({}, ...schema.allOf.map((s) => o(skeleton(o(s), root, depth + 1))));
-  if (Array.isArray(schema.oneOf) || Array.isArray(schema.anyOf)) return skeleton(o(((schema.oneOf ?? schema.anyOf) as unknown[])[0]), root, depth + 1);
-  const type = Array.isArray(schema.type) ? str(schema.type[0]) : str(schema.type);
-  if (type === "object" || schema.properties) {
-    if (depth > 3) return {};
-    return Object.fromEntries(Object.entries(o(schema.properties)).map(([k, v]) => [k, skeleton(o(v), root, depth + 1)]));
-  }
-  if (type === "array") return depth > 3 ? [] : [skeleton(o(schema.items), root, depth + 1)];
-  if (type === "integer" || type === "number") return 0;
-  if (type === "boolean") return false;
-  if (type === "string") return schema.format === "date-time" ? new Date(0).toISOString() : schema.format === "uuid" ? "00000000-0000-0000-0000-000000000000" : schema.format === "email" ? "user@example.com" : "string";
-  return null;
-}
 
 export function importOpenApi(text: string): ImportDraft {
   const t = text.trim();

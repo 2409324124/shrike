@@ -17,6 +17,7 @@ import { SelfCheckCard } from "../lessons/index.ts"; // review-lessons: RL6
 const close = () => useUi.setState({ panel: null });
 import { keys } from "../lib/platform.ts";
 import { GitMissing } from "../scm/Changes.tsx";
+import { useScm } from "../scm/store.ts";
 
 export function ShipSheet() {
   useGitBridge();
@@ -139,7 +140,8 @@ function Changes({ state, quiet }: { state: GitState; quiet: boolean }) {
   const trip = useActions((s) => s.order.map((id) => s.byId[id]).find((a) => a?.status === "error"));
   const proved = useUi((s) => s.sdlc?.stages.prove === "done"); // "works again" only once the re-run says so
   const title = trip ? `${trip.label.replace(/^Clicked\s+/, "")} works again` : undefined; // the commit subject and PR title are "Fix: <title>" (main/git.ts commitMessage)
-  const subject = `Fix: ${title ?? checkpoints.findLast((c) => c.current)?.label ?? "Fix from Shrike"}`;
+  const box = useScm((s) => s.message.trim().split("\n")[0]); // the Commit box draft, when there is one, is the message
+  const subject = box || `Fix: ${title ?? checkpoints.findLast((c) => c.current)?.label ?? "Fix from Shrike"}`;
   const onBase = !state.branch || state.branch === (state.base ?? "main") || state.branch === "master";
   const incoming = state.incoming?.length ?? 0;
   const merged = state.pr?.state === "merged";
@@ -187,7 +189,7 @@ function Changes({ state, quiet }: { state: GitState; quiet: boolean }) {
         <ol className="m-0 mb-3 grid list-none gap-1.5 p-0">
           <Step>{onBase ? `Make a new branch from ${state.base ?? "main"} (${state.base ?? "main"} stays as it is)` : `Commit on ${state.branch}`}</Step>
           <Step>
-            Commit {chosen.size === 1 ? "1 file" : `${chosen.size} files`} with the trip's verdict as the message
+            Commit {chosen.size === 1 ? "1 file" : `${chosen.size} files`} {box ? "with your message from the Commit box" : "with the trip's verdict as the message"}
             <span className="mt-0.5 block truncate font-mono text-[11.5px] text-dim" aria-label="Commit message" title={subject}>
               {subject}
             </span>

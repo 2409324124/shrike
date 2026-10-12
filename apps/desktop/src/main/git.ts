@@ -241,6 +241,7 @@ export function createGit(deps: GitDeps) {
   const logs = new Map<string, { summary: string; lines: string[] }>(); // failed-check logs by link; a failed run's log doesn't change
   let resolving = false; // G3: a Shrike conflict run is in progress; finish the sync once every marker is gone
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let last: GitState | undefined;
   let chain: Promise<unknown> = Promise.resolve();
 
   const need = (): string => {
@@ -288,12 +289,19 @@ export function createGit(deps: GitDeps) {
         s = await state();
       }
       if (!s.conflicts.length && !s.operation) resolving = false;
+      last = s;
       deps.emit(s);
       checksOutcome(s.pr);
       return s;
     });
     chain = next.catch(() => {});
     return next.catch(() => undefined);
+  }
+
+  /** The PR panel read this PR's checks: when they moved on (a re-run went green), refresh so the rail and the Ship sheet follow. */
+  function prSeen(n: number, checks: { name: string; state: string }[]): Promise<unknown> | undefined {
+    const key = (cs: { name: string; state: string }[]) => cs.map((c) => `${c.name}:${c.state}`).sort().join();
+    if (last?.pr?.number === n && key(last.pr.checks) !== key(checks)) return refresh();
   }
 
   /** Debounced refresh, for file changes. */
@@ -327,7 +335,7 @@ export function createGit(deps: GitDeps) {
     return { ok, count: flows.length };
   }
 
-  async function shipFix(opts: { actionId?: string; title?: string; files?: string[] }): Promise<PullRequest> {
+  async function shipFix(opts: { actionId?: string; title?: string; message?: string; files?: string[] }): Promise<PullRequest> {
     const cwd = need();
     const { state: s, remote } = await readGit(cwd);
     if (!s.isRepo) throw new Error("This folder isn't saved in git yet, so there's nothing to ship. Run git init in it first.");
@@ -356,9 +364,10 @@ export function createGit(deps: GitDeps) {
         await git(cwd, ["switch", "-c", branch]); // your changes come along; main itself is untouched
       }
       await git(cwd, ["add", "-A", "--", ...files]);
-      const message = commitMessage(title, md);
+      const own = opts.message?.replace(/\r\n?/g, "\n").trim(); // the Commit box draft wins over the generated message
+      const message = own || commitMessage(title, md);
       subject = message.split("\n")[0]!;
-      body = md ?? `${commitMessage(title)}\n`;
+      body = md ?? `${own || commitMessage(title)}\n`;
       await git(cwd, ["commit", "--quiet", "-m", message, "--", ...files]);
     }
     const done = (msg: string): never => {
@@ -487,5 +496,5 @@ export function createGit(deps: GitDeps) {
     return after;
   }
 
-  return { state, refresh, poke, shipFix, listPullRequests, reviewPullRequest, resolveConflicts, explainCheck, mergePullRequest, syncWithMain, prove };
+  return { state, refresh, poke, prSeen, shipFix, listPullRequests, reviewPullRequest, resolveConflicts, explainCheck, mergePullRequest, syncWithMain, prove };
 }
