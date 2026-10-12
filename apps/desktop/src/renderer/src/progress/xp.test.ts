@@ -65,13 +65,15 @@ test("XP9 never blocks: mid-work holds the result as the chip, idle opens it, ho
   const p = useProgress.getState();
   p.apply({ progress, result: r("a") }, true);
   assert.deepEqual([useProgress.getState().result?.id, useProgress.getState().open], ["a", false]);
-  p.apply({ progress, result: r("b") });
-  assert.deepEqual(useProgress.getState().queue.map((q) => q.id), ["b"]);
+  p.apply({ progress, result: r("b") }, true);
+  assert.deepEqual([useProgress.getState().result?.id, useProgress.getState().open, useProgress.getState().queue.length], ["b", false, 0], "the chip holds the newest result, not an unopened older one");
   p.show();
+  p.apply({ progress, result: r("c") });
+  assert.deepEqual(useProgress.getState().queue.map((q) => q.id), ["c"], "one on screen: the next waits");
   p.hold(); // opened from the chip: a trip doesn't fold it
   assert.equal(useProgress.getState().open, true);
   p.next();
-  assert.deepEqual([useProgress.getState().result?.id, useProgress.getState().open], ["b", true]);
+  assert.deepEqual([useProgress.getState().result?.id, useProgress.getState().open], ["c", true]);
   p.hold(); // auto-opened: folds
   assert.equal(useProgress.getState().open, false);
   p.next(true);
