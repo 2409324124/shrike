@@ -39,13 +39,19 @@ export function currentStage(s: SdlcState): SdlcStage | null {
   return STAGES.find((k) => s.stages[k] !== "done" && s.stages[k] !== "skipped") ?? null;
 }
 
+/** The same action by name: a click on a named button and the submit it records as (Enter, or el.click() in a focused form) are one. */
+export function sameAction(a: string, b: string): boolean {
+  const named = (l: string) => /^(?:Clicked|Submitted) (".+")$/.exec(l)?.[1];
+  return a === b || (!!named(a) && named(a) === named(b));
+}
+
 /** A red re-run belongs to the break it re-runs: walk back over earlier breaks of the same thing with no green run between. */
 function episodeStart(actions: ActionView[], last: ActionView | undefined): ActionView | undefined {
   if (!last) return undefined;
   let start = last;
   for (let k = actions.indexOf(last) - 1; k >= 0; k--) {
     const a = actions[k]!;
-    if (a.label !== last.label) continue;
+    if (!sameAction(a.label, last.label)) continue;
     if (a.status !== "error") break;
     start = a;
   }
@@ -91,7 +97,7 @@ export function computeSdlc(i: SdlcInput): SdlcState {
 
   // L4: the re-run, saved flows and unit tests after the fix
   const since = fixAt ?? t0;
-  const rerun = i.actions.filter((a) => a.id !== anchor.id && a.label === anchor.label && a.startMs > since && a.complete).at(-1);
+  const rerun = i.actions.filter((a) => a.id !== anchor.id && sameAction(a.label, anchor.label) && a.startMs > since && a.complete).at(-1);
   const flowsAfter = i.flows.filter((f) => f.lastRun && f.lastRun.at > since);
   const redFlows = flowsAfter.filter((f) => !f.lastRun!.ok);
   const tests = i.tests && i.tests.at > since ? i.tests : null;

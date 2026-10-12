@@ -186,3 +186,11 @@ test("build mode: Idea → Plan → Design → Build → Prove → Review → Sh
   assert.equal(x.r!.detail.live, "Live at https://todo.app.");
   assert.equal(b({ quest: active, git: { ...repo, isRepo: false } }).r!.stages.live, "skipped");
 });
+
+test("a re-run recorded as a submit proves the fix like a click does", () => {
+  const broke = trip("a", 100, "error");
+  const findings = [{ at: 200, summary: "The server reads the wrong field.", actionIds: ["a"] }];
+  const clicked = at({ actions: [broke, trip("b", 400, "ok")], findings, checkpoints: [cp(300)] }).line;
+  const submitted = at({ actions: [broke, trip("b", 400, "ok", 'Submitted "Add Todo"')], findings, checkpoints: [cp(300)] }).line;
+  assert.equal(submitted, clicked);
+});
