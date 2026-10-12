@@ -5,6 +5,7 @@ import { api, errorMessage } from "../lib/api.ts";
 import { useActions } from "./actions.ts";
 import { useAgent } from "./agent.ts";
 import { useUi } from "./ui.ts";
+import { useScm } from "../scm/store.ts";
 
 // G1–G6 in the renderer: the Ship sheet's state. Main pushes "git:update"; every action here refreshes after.
 
@@ -79,8 +80,10 @@ export const useGit = create<GitStore>((set, get) => {
     pick: (picked) => set({ picked }),
     async ship(title) {
       const files = get().picked ?? shrikeFiles(get().state);
-      const pr = await run("ship", () => api().shipFix({ actionId: brokenTrip(), files, ...(title ? { title } : {}) }), (p) => `Opened pull request #${p.number}.`);
+      const message = useScm.getState().message.trim();
+      const pr = await run("ship", () => api().shipFix({ actionId: brokenTrip(), files, ...(title ? { title } : {}), ...(message ? { message } : {}) }), (p) => `Opened pull request #${p.number}.`);
       if (pr) set({ picked: null });
+      if (pr && message) useScm.setState({ message: "", written: false });
     },
     async sync(mode) {
       await run("sync", () => api().syncWithMain(mode ? { mode } : undefined), (s) =>

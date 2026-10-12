@@ -335,7 +335,7 @@ export function createGit(deps: GitDeps) {
     return { ok, count: flows.length };
   }
 
-  async function shipFix(opts: { actionId?: string; title?: string; files?: string[] }): Promise<PullRequest> {
+  async function shipFix(opts: { actionId?: string; title?: string; message?: string; files?: string[] }): Promise<PullRequest> {
     const cwd = need();
     const { state: s, remote } = await readGit(cwd);
     if (!s.isRepo) throw new Error("This folder isn't saved in git yet, so there's nothing to ship. Run git init in it first.");
@@ -364,9 +364,10 @@ export function createGit(deps: GitDeps) {
         await git(cwd, ["switch", "-c", branch]); // your changes come along; main itself is untouched
       }
       await git(cwd, ["add", "-A", "--", ...files]);
-      const message = commitMessage(title, md);
+      const own = opts.message?.replace(/\r\n?/g, "\n").trim(); // the Commit box draft wins over the generated message
+      const message = own || commitMessage(title, md);
       subject = message.split("\n")[0]!;
-      body = md ?? `${commitMessage(title)}\n`;
+      body = md ?? `${own || commitMessage(title)}\n`;
       await git(cwd, ["commit", "--quiet", "-m", message, "--", ...files]);
     }
     const done = (msg: string): never => {

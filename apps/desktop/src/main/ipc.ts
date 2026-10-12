@@ -492,7 +492,7 @@ export function registerIpc(win: () => BrowserWindow | undefined, appWin: AppWin
   const git = gitSvc;
   const prNumber = z.number().int().min(1).max(10_000_000);
   handle("gitState", none, async () => (await git.refresh()) ?? git.state());
-  handle("shipFix", z.tuple([z.object({ actionId: str.optional(), title: z.string().trim().max(200).optional(), files: z.array(z.string().min(1).max(4096)).max(500).optional() })]), (opts) => git.shipFix(opts).then((pr) => (void progress.shipped(pr), pr)));
+  handle("shipFix", z.tuple([z.object({ actionId: str.optional(), title: z.string().trim().max(200).optional(), message: z.string().max(20_000).optional(), files: z.array(z.string().min(1).max(4096)).max(500).optional() })]), (opts) => git.shipFix(opts).then((pr) => (void progress.shipped(pr), pr)));
   handle("listPullRequests", none, () => git.listPullRequests());
   handle("reviewPullRequest", z.tuple([prNumber]), (n) => git.reviewPullRequest(n));
   handle("resolveConflicts", none, () => git.resolveConflicts());

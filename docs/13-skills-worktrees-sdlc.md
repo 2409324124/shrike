@@ -40,7 +40,7 @@ All through `gh` and `git` on the user's machine, shown as flows with plain word
 
 | ID | Skill | What the user sees | Status |
 |---|---|---|---|
-| G1 | **Ship this fix** | Branch → commit (message from the trip's verdict) → push → open PR with the issue card (O6) as the description and the clip attached. Work already committed on a branch (the Changes dock) skips the commit: **Open a pull request** pushes it (asks first) and opens the PR with the commit message as the description | Build |
+| G1 | **Ship this fix** | Branch → commit (the Commit box message when one is written, else one from the trip's verdict) → push → open PR with the issue card (O6) as the description and the clip attached. Work already committed on a branch (the Changes dock) skips the commit: **Open a pull request** pushes it (asks first) and opens the PR with the commit message as the description | Build |
 | G2 | **Review a PR** | Pick a PR; the agent runs a code review and posts nothing until approved; findings show as cards with file:line that open in the in-app file view | Build |
 | G3 | **Fix merge conflicts** | Conflicted files listed; each conflict shown as two sides with the agent's proposed resolution as a diff; Apply per file; then re-run the app's flows to prove nothing broke | Build |
 | G4 | **CI status** | The PR's checks as a row of dots (pass/fail/running); a failing check opens its log with the failing line pulled out in plain words; **Ask why** sends it to the agent | Build |

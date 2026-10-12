@@ -127,6 +127,24 @@ test("G1 shipFix: branches off main, commits only Shrike's files, pushes after a
   assert.deepEqual(create.slice(2, 6), ["--base", "main", "--head", branch]);
 });
 
+test("G1 shipFix: the Commit box message, when there is one, is the commit and the PR title", async () => {
+  const { dir } = repo();
+  writeFileSync(join(dir, "app.ts"), "export const total = Number(1);\n");
+  let title = "";
+  const gh = fakeGh({
+    "--version": ok("gh version 2"),
+    "auth status": ok(),
+    "pr view": (args) => (args[2] === "8" ? ok(JSON.stringify({ number: 8, title, url: "https://github.com/o/r/pull/8", state: "OPEN", body: "" })) : { code: 1, stdout: "", stderr: "no pull requests found" }),
+    "pr checks": ok("[]"),
+    "pr create": (args) => ((title = args[args.indexOf("--title") + 1]!), ok("https://github.com/o/r/pull/8\n")),
+  });
+  const { git, approvals } = service(dir, { gh });
+  await git.shipFix({ title: "Total works again", message: "Fix: Add Todo saves the owner again\r\n\r\nThe server read req.body.user.\n" });
+  assert.equal(sh(dir, "log", "-1", "--format=%B"), "Fix: Add Todo saves the owner again\n\nThe server read req.body.user.");
+  assert.equal(title, "Fix: Add Todo saves the owner again");
+  assert.match(approvals[0]!.reason, /your commit "Fix: Add Todo saves the owner again"/);
+});
+
 test("G1 shipFix: a denied push keeps the commit local and says so; no gh means push only", async () => {
   const { dir, remote } = repo();
   writeFileSync(join(dir, "app.ts"), "export const total = 3;\n");
