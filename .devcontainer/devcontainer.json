@@ -1,0 +1,8 @@
+{
+  "name": "Shrike (headless: recorders, scanner, correlator, unit tests)",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "24", "pnpmVersion": "10.34.6" }
+  },
+  "postCreateCommand": "pnpm install --frozen-lockfile && pnpm --filter @shrike/browser-agent build"
+}

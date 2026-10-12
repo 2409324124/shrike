@@ -294,6 +294,29 @@ Shrike is built in the open and contributions are welcome, from a bug report to 
 - **Ask, share or propose:** [Discussions](https://github.com/SumantxD/shrike/discussions).
 - **Found a bug or need your stack?** [Open an issue](https://github.com/SumantxD/shrike/issues/new/choose).
 
+### Stacks we record
+
+Each recorder has one owner. Take a wanted one and it's yours; [docs/writing-a-recorder.md](docs/writing-a-recorder.md) shows how.
+
+| Stack | Recorder | Owner |
+|---|---|---|
+| Node | `packages/node-agent` | [@SumantxD](https://github.com/SumantxD) (maintainer) |
+| Python 3.12+ | `packages/python-agent` | [@SumantxD](https://github.com/SumantxD) (maintainer) |
+| Go | | Wanted, see [#30](https://github.com/SumantxD/shrike/issues/30) |
+| Ruby on Rails | | Wanted, see [#31](https://github.com/SumantxD/shrike/issues/31) |
+| .NET | | Wanted, see [#32](https://github.com/SumantxD/shrike/issues/32) |
+| Java | | Wanted, see [#33](https://github.com/SumantxD/shrike/issues/33) |
+| PHP | | Wanted, see [#34](https://github.com/SumantxD/shrike/issues/34) |
+| Rust | | Wanted, see [#35](https://github.com/SumantxD/shrike/issues/35) |
+
+Any other backend shows up through OpenTelemetry with basic tracing.
+
+### Contributors
+
+<a href="https://github.com/SumantxD/shrike/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=SumantxD/shrike" alt="Everyone who has contributed to Shrike">
+</a>
+
 What changed in each version is in [CHANGELOG.md](CHANGELOG.md). Everyone follows the [Code of Conduct](CODE_OF_CONDUCT.md), and security problems go through [SECURITY.md](SECURITY.md).
 
 ## Star history

@@ -7,7 +7,7 @@ Thanks for helping. Shrike is a debugger for people who build web apps with AI, 
 - **Report a bug**: [open an issue](https://github.com/SumantxD/shrike/issues/new/choose) with the bug form. Steps to reproduce and your stack matter most.
 - **Ask for your stack**: Shrike records Node and Python 3.12+ today, and any backend through OpenTelemetry. Use the "Support my stack" form so we can see what people need. Want to build it yourself? [docs/writing-a-recorder.md](docs/writing-a-recorder.md) shows how.
 - **Ask a question or share an idea**: use [Discussions](https://github.com/SumantxD/shrike/discussions), not issues.
-- **Fix something**: issues labelled [`good first issue`](https://github.com/SumantxD/shrike/labels/good%20first%20issue) are small and well described. [`help wanted`](https://github.com/SumantxD/shrike/labels/help%20wanted) are bigger.
+- **Fix something**: issues labelled [`good first issue`](https://github.com/SumantxD/shrike/labels/good%20first%20issue) are small and well described. [`help wanted`](https://github.com/SumantxD/shrike/labels/help%20wanted) are bigger. [`quick win`](https://github.com/SumantxD/shrike/labels/quick%20win) are the smallest, about an hour or two. On [`mentor available`](https://github.com/SumantxD/shrike/labels/mentor%20available) issues the maintainer will pair with you, so ask in the issue.
 - **Try it on Linux or Windows**: Windows has never run on a real machine and Linux has only run in Docker. A report from either is a real contribution.
 
 Before starting something larger than a bug fix, open an issue or discussion first so we can agree on the approach. It saves you from a pull request that can't be merged.
@@ -24,6 +24,21 @@ pnpm dev          # runs the desktop app
 pnpm typecheck
 pnpm test         # unit tests, about a minute
 ```
+
+### In the browser (GitHub Codespaces)
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/SumantxD/shrike)
+
+The Codespace (`.devcontainer/devcontainer.json`) comes with Node 24, pnpm 10 and Python 3.12, installs dependencies and builds the browser recorder. The Electron app can't open a window there, so UI work needs a local machine. Recorders, the scanner, the correlator and the package unit tests run fine:
+
+```sh
+node --test --experimental-test-isolation=none 'packages/*/test/*.test.ts' 'packages/*/test/*.test.mjs'
+pnpm typecheck
+```
+
+The one test that launches Electron (`browser-agent end to end in Electron`) fails there; that's expected.
+
+### End-to-end tests
 
 `pnpm e2e` builds the app and runs the Playwright end-to-end tests. Most e2e files can be run alone, for example `cd apps/desktop && node --test e2e/demo.test.ts`. Windows open without taking focus; set `SHRIKE_HEADLESS=1` to hide them. See [docs/09-testing.md](docs/09-testing.md).
 
