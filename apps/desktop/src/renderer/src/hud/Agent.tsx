@@ -325,15 +325,18 @@ function Cards({ stage }: { stage: RefObject<HTMLElement | null> }) {
   const patches = useAgent((s) => s.patches);
   const probe = useThread((s) => s.probe);
   const focus = useThread((s) => s.focus);
-  const findingStep = useMemo(() => [...steps].reverse().find((s) => s.kind === "findings" && s.findings?.length), [steps]);
+  const latest = useMemo(() => [...steps].reverse().find((s) => s.kind === "findings" && s.findings?.length), [steps]);
   const patchId = useMemo(() => [...steps].reverse().find((s) => s.kind === "patch" && s.patchId)?.patchId, [steps]);
   const pending = approvals.find((a) => !inline.includes(a.id));
   const patch = pending?.patch ?? (patchId ? patches[patchId] : undefined);
+  // A Found it outlives its run: a later run keeps it up until Hide, a newer Found it, or a fix of its own.
+  const [kept, setKept] = useState<AgentStep>();
+  useEffect(() => void (latest && setKept(latest)), [latest]);
+  const findingStep = latest ?? (patch || pending ? undefined : kept);
   const doneStep = patch?.status === "applied" ? steps.find((x) => x.kind === "done" && x.patchId === patch.id) : undefined;
   const verified = doneStep?.summary === "Fixed and verified"; // the agent's own verdict: a done step alone isn't a passing re-run
   const [hidden, setHidden] = useState<string | null>(null);
   const revising = useAgent((s) => s.revising);
-  const runId = useAgent((s) => s.run?.id);
   const [forking, setForking] = useState(false); // C1: "Ask differently…" from the finding
   const box = useRef<HTMLDivElement>(null);
 
@@ -354,6 +357,7 @@ function Cards({ stage }: { stage: RefObject<HTMLElement | null> }) {
 
   const key = findingStep?.id ?? patch?.id ?? pending?.id ?? null;
   const afterFix = patch && (patch.status === "applied" || patch.status === "reverted");
+  useEffect(() => void (afterFix && setKept(undefined)), [afterFix]);
   const showFinding = !!finding && !afterFix;
   const showPatch = !!patch && patch.status !== "rejected";
   const waitingRevision = !!revising && !pending;
@@ -401,7 +405,7 @@ function Cards({ stage }: { stage: RefObject<HTMLElement | null> }) {
             ) : (
               patch && <span className="min-w-0 truncate font-mono text-[11.5px] text-dim">{patch.files[0]?.path.split("/").pop()}</span>
             )}
-            {showFinding && runId && findingStep && (
+            {showFinding && findingStep && (
               <IconButton label="Branch from here" title="Branch from here: ask differently" className="size-5" onClick={() => setForking(!forking)}>
                 <GitBranch size={11} />
               </IconButton>
@@ -413,9 +417,9 @@ function Cards({ stage }: { stage: RefObject<HTMLElement | null> }) {
           <p className="m-0 mb-2.5 text-[13.5px] leading-snug text-ink last:mb-0">
             {afterFix ? (verified ? "Ran it again and it works now." : doneStep ? (/still shows a problem/.test(doneStep.summary ?? "") ? "Ran it again and it still shows a problem." : "Applied. It wasn't run again to check yet.") : patch.status === "reverted" ? "Your file is back the way it was." : "Running it again to check…") : showFinding ? finding.claim : patch?.rationale}
           </p>
-          {forking && showFinding && runId && findingStep && (
+          {forking && showFinding && findingStep && (
             <div className="mb-2.5">
-              <ForkInput runId={runId} stepId={findingStep.id} onDone={() => setForking(false)} />
+              <ForkInput runId={findingStep.runId} stepId={findingStep.id} onDone={() => setForking(false)} />
             </div>
           )}
           {showPatch && <ApprovedMockup />}
