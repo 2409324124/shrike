@@ -174,8 +174,8 @@ function stationEl(actionId: string, i: number): Element | null {
   return document.querySelector(`.th-trip.focus .th-st[data-i="${i}"]`);
 }
 
-/** Floating layers that keep their spot: the agent pill, the conversation, System windows. The cards go round them. */
-const LAYERS = 'aside[aria-label="Agent"], section[aria-label="Conversation"], .sys:not(.sys-leave)';
+/** Floating layers that keep their spot: the agent pill, the conversation, System windows, an open sheet. The cards go round them. */
+const LAYERS = 'aside[aria-label="Agent"], section[aria-label="Conversation"], .sys:not(.sys-leave), section.sheet-in';
 const layers = () =>
   [...document.querySelectorAll(LAYERS)]
     .filter((e) => parseFloat(getComputedStyle(e).opacity) > 0.5)
@@ -369,7 +369,7 @@ function Cards({ stage }: { stage: RefObject<HTMLElement | null> }) {
   return (
     <div
       ref={box}
-      className={`absolute ${pending ? "z-[35]" : "z-20"} flex flex-col gap-2.5`} // a question stays above an open sheet
+      className={`absolute ${pending ? "z-[35]" : "z-20"} flex flex-col gap-2.5`} // a question stays above the agent aside
       style={{ width: `min(${CARD_W}px, calc(100% - 80px))`, left: pos?.left ?? 0, top: pos?.top ?? 0, visibility: pos && !pos.off ? "visible" : "hidden" }}
     >
       {pending && !pending.patch ? (
