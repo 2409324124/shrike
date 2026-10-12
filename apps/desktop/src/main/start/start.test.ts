@@ -398,3 +398,24 @@ test("W2: in a worktree a declared port is moved by the offset, and a moved one 
   assert.doesNotMatch(await s.checkHealth({ target: `http://${moved}/`, timeoutSec: 1 }), new RegExp(`${f.port + 200}`));
   s.stop();
 });
+
+test("project switch: the last project's services, killed by Shrike, don't fail the next start's app_ready; reset forgets them", { timeout: 30_000 }, async () => {
+  const runner = new Runner({ onStatus: () => {}, onOutput: () => {} });
+  const session = async (name: string) => {
+    const f = await fixture(name);
+    return new StartSession({ project: f.project, runner, runEnv: async () => ({ nodeAgentRegister: "/x.mjs", ingestUrl: "http://127.0.0.1:1", token: "t" }), skillDirs: () => dirsFor(f.root, name), emit: () => {}, recipes: [], lessons: [], always: new Set(), saveAlways: () => {} });
+  };
+  const a = await session("switch-a");
+  await a.startService({ name: "cron", command: "sleep 30", instrument: false, waitSec: 1 });
+  a.stop();
+  await runner.stop();
+  assert.deepEqual(runner.services().map((s) => [s.name, s.state, s.exitCode]), [["cron", "stopped", null]], "killed by a signal: no exit code");
+  const b = await session("switch-b");
+  await b.startService({ name: "api", command: "sleep 30", instrument: false, waitSec: 1 });
+  assert.doesNotMatch(await b.appReady({}).catch((e: Error) => e.message), /cron/);
+  b.stop();
+  await runner.stop();
+  runner.reset();
+  assert.deepEqual(runner.services(), []);
+  assert.deepEqual(runner.status, { state: "idle" });
+});

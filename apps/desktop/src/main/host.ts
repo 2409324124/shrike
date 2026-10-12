@@ -119,6 +119,7 @@ export async function openProject(root: string): Promise<ProjectInfo> {
     for (const f of beforeProjectSwitch) await f().catch(() => {});
     await race.projectOpened(loaded.info.root); // W2: another repo's background worktree runs stop
     await runner.stop();
+    runner.reset();
     clearActions();
     unwatch?.();
     const root = loaded.info.root;
