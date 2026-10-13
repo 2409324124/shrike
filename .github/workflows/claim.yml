@@ -1,0 +1,50 @@
+name: Claim
+
+# Answers "can I work on this?" comments with the contribution policy (CONTRIBUTING.md, Taking an issue).
+# Good first issues aren't assigned; help wanted and add-your-stack issues get one owner for 7 days.
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+
+jobs:
+  claim:
+    if: ${{ !github.event.issue.pull_request && github.event.comment.user.type != 'Bot' && github.event.comment.user.login != github.repository_owner }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const body = context.payload.comment.body || "";
+            const asks = /\b(work on (this|it)|take (this|it)( on)?|pick (this|it) up|assign (it|this|me)|can i (do|work|take|try|have)|i(['’]d| would) (like|love) to (work|try|take|help)|i['’]?ll (work|take|do|try)|interested in (working|this|taking))\b/i;
+            if (!asks.test(body)) return;
+
+            const user = context.payload.comment.user.login;
+            const issue = context.payload.issue;
+            const labels = issue.labels.map((l) => l.name);
+            const { owner, repo } = context.repo;
+            const marker = `<!-- shrike-claim:${user} -->`;
+
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number: issue.number, per_page: 100 });
+            if (comments.some((c) => (c.body || "").includes(marker))) return; // one reply per person per issue
+
+            const reply = (text) => github.rest.issues.createComment({ owner, repo, issue_number: issue.number, body: `${marker}\n${text}` });
+            const setup = "Setup is in [CONTRIBUTING.md](https://github.com/SumantxD/shrike/blob/main/CONTRIBUTING.md), and questions are welcome right here.";
+
+            if (labels.includes("help wanted") || labels.includes("add-your-stack")) {
+              const others = issue.assignees.map((a) => a.login).filter((l) => l !== user);
+              if (others.length) {
+                await reply(`Thanks @${user}! @${others[0]} is on this one right now. If their claim lapses (7 days without a draft pull request), it opens up again. Meanwhile, here are other [open help wanted issues](https://github.com/${owner}/${repo}/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22+no%3Aassignee).`);
+                return;
+              }
+              try { await github.rest.issues.addAssignees({ owner, repo, issue_number: issue.number, assignees: [user] }); } catch (e) { core.warning(`couldn't assign ${user}: ${e.message}`); }
+              const until = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
+              await reply(`It's yours, @${user}! You have it until ${until}: please open a draft pull request by then so we can agree on the approach early, or it opens up again for others. A maintainer will reply within 48 hours. ${setup}`);
+              return;
+            }
+
+            if (labels.includes("good first issue")) {
+              await reply(`Thanks @${user}, go for it! Good first issues aren't assigned, so no need to wait: the first pull request that meets the acceptance criteria gets merged, and you're credited in the release notes. ${setup}`);
+            }
