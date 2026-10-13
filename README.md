@@ -41,7 +41,7 @@
     <img src="docs/media/shrike-launch-poster.png" alt="Watch the 40 second launch video" width="560">
   </a>
   <br>
-  <sub>Watch the 40 second launch video on YouTube</sub>
+  <sub>Watch the 40 second launch video on YouTube, then the <a href="https://www.youtube.com/playlist?list=PLDUfdcoHmZ_0">14 short tutorials</a> (about 2 minutes each)</sub>
 </p>
 
 > [!TIP]
@@ -209,6 +209,7 @@ Works today with Node servers (Express, Next.js, NestJS, Hono, Remix), Python 3.
 1. Get `Shrike-<version>-arm64.dmg` from [Releases](https://github.com/SumantxD/shrike/releases/latest) and drag Shrike to Applications.
 2. Open Shrike. The build is signed and notarised by Apple, so it opens like any other app.
 3. Click **Open the sample project**, press **Run**, add a todo, and watch it break.
+4. New to it? The [tutorials](https://www.youtube.com/playlist?list=PLDUfdcoHmZ_0) walk through every part of the app, about 2 minutes each.
 
 **Linux** (x64): get `Shrike-<version>-x86_64.AppImage` or `Shrike-<version>-amd64.deb` from [Releases](https://github.com/SumantxD/shrike/releases/latest). They are unsigned. On arm64, build them with `scripts/release/build-linux.sh` (see [docs/RELEASING.md](docs/RELEASING.md)). Voice is macOS only. On NixOS, run the AppImage with `appimage-run`. **Windows** builds from the same config but hasn't been run on a Windows machine yet ([docs/14-compatibility.md](docs/14-compatibility.md#operating-systems)).
 
