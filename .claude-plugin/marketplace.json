@@ -6,7 +6,7 @@
     {
       "name": "shrike",
       "source": "./integrations/claude-code",
-      "description": "Debug your web app from Claude Code with Shrike's recordings"
+      "description": "Show Claude Code what your web app actually did, from Shrike's recordings"
     }
   ]
 }

@@ -1,8 +1,8 @@
 {
   "name": "shrike",
   "displayName": "Shrike",
-  "version": "0.1.0",
-  "description": "Debug your web app from Claude Code with Shrike's recordings: Shrike's tools, a debugging skill, and the latest trip above the prompt",
+  "version": "0.2.0",
+  "description": "Show Claude Code what your web app actually did on each click: Shrike's recorded trips as tools, a skill that reads them, and the latest trip above the prompt",
   "author": { "name": "Sumant Tirkey", "url": "https://github.com/SumantxD" },
   "homepage": "https://github.com/SumantxD/shrike/tree/main/integrations/claude-code",
   "repository": "https://github.com/SumantxD/shrike",
