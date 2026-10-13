@@ -18,7 +18,7 @@ jobs:
         with:
           script: |
             const body = context.payload.comment.body || "";
-            const asks = /\b(work on (this|it)|take (this|it)( on)?|pick (this|it) up|assign (it|this|me)|can i (do|work|take|try|have)|i(['’]d| would) (like|love) to (work|try|take|help)|i['’]?ll (work|take|do|try)|interested in (working|this|taking))\b/i;
+            const asks = /\b(work on (this|it)|take (this|it)( on)?|pick (this|it) up|assign (it|this|me)|can i (do|work on|take|try)|i(['’]d| would) (like|love) to (work|try|take|help)|i['’]?ll (work|take|do|try)|interested in (working|this|taking))\b/i;
             if (!asks.test(body)) return;
 
             const user = context.payload.comment.user.login;
@@ -39,7 +39,15 @@ jobs:
                 await reply(`Thanks @${user}! @${others[0]} is on this one right now. If their claim lapses (7 days without a draft pull request), it opens up again. Meanwhile, here are other [open help wanted issues](https://github.com/${owner}/${repo}/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22+no%3Aassignee).`);
                 return;
               }
-              try { await github.rest.issues.addAssignees({ owner, repo, issue_number: issue.number, assignees: [user] }); } catch (e) { core.warning(`couldn't assign ${user}: ${e.message}`); }
+              let assigned = false;
+              try {
+                const { data } = await github.rest.issues.addAssignees({ owner, repo, issue_number: issue.number, assignees: [user] });
+                assigned = data.assignees.some((a) => a.login === user); // GitHub skips people it can't assign without an error
+              } catch (e) { core.warning(`couldn't assign ${user}: ${e.message}`); }
+              if (!assigned) {
+                await reply(`Thanks @${user}! I couldn't assign this to you automatically, so a maintainer will do it shortly. Feel free to start meanwhile. ${setup}`);
+                return;
+              }
               const until = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
               await reply(`It's yours, @${user}! You have it until ${until}: please open a draft pull request by then so we can agree on the approach early, or it opens up again for others. A maintainer will reply within 48 hours. ${setup}`);
               return;

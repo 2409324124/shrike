@@ -1,0 +1,35 @@
+name: Stale claims
+
+# Help wanted and add-your-stack claims last 7 days unless a pull request links the issue (CONTRIBUTING.md, Taking an issue).
+on:
+  schedule:
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const week = Date.now() - 7 * 864e5;
+            for (const label of ["help wanted", "add-your-stack"]) {
+              const issues = await github.paginate(github.rest.issues.listForRepo, { owner, repo, state: "open", labels: label, assignee: "*", per_page: 100 });
+              for (const issue of issues) {
+                if (issue.pull_request) continue;
+                const events = await github.paginate(github.rest.issues.listEventsForTimeline, { owner, repo, issue_number: issue.number, per_page: 100 });
+                if (events.some((e) => e.event === "cross-referenced" && e.source?.issue?.pull_request && e.source.issue.state === "open")) continue; // a PR is in progress
+                for (const a of issue.assignees) {
+                  if (a.login === owner) continue;
+                  const at = events.filter((e) => e.event === "assigned" && e.assignee?.login === a.login).map((e) => Date.parse(e.created_at)).pop();
+                  if (!at || at > week) continue;
+                  await github.rest.issues.removeAssignees({ owner, repo, issue_number: issue.number, assignees: [a.login] });
+                  await github.rest.issues.createComment({ owner, repo, issue_number: issue.number, body: `Hi @${a.login}, it's been 7 days without a draft pull request, so this is open again for others. If you're still on it, just comment and it's yours again. Thanks for looking at it!` });
+                }
+              }
+            }
