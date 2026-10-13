@@ -74,7 +74,6 @@ These keep Shrike safe to run inside other people's apps. [CLAUDE.md](CLAUDE.md)
 - **Good first issues aren't assigned.** The first pull request that meets the acceptance criteria gets merged. No need to ask first.
 - **Help wanted and add-your-stack issues have one owner at a time.** Comment that you're taking it; it's yours for 7 days. Open a draft pull request in that time so we can agree on the approach, or it opens up again.
 - Please keep to two open pull requests at a time.
-- A bot answers "can I work on this?" comments with these rules, and assigns help wanted issues for you.
 
 ## Pull requests
 
