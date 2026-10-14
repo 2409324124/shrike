@@ -162,6 +162,25 @@ export function findFlags(view: View): Flag[] {
     });
   }
 
+  // empty_result: Supabase answered OK with no rows, or a write that changed nothing. Row level security does this silently.
+  const RLS = "Row level security can do this when no policy matches the signed-in user.";
+  for (const n of nodes) {
+    const e = n.event;
+    const h = e.http;
+    const table = h && /\/rest\/v1\/([^/?]+)/.exec(h.url)?.[1];
+    if (e.kind !== "db_query" || !e.place?.id.startsWith("data:supabase:") || e.status === "error" || !h || !table || (h.status ?? 0) < 200 || (h.status ?? 0) >= 300) continue;
+    const t = decodeURIComponent(table);
+    let message: string | undefined;
+    if (h.method === "GET" || h.method === "HEAD") {
+      const total = /\/(\d+)$/.exec(h.resHeaders?.["content-range"] ?? "")?.[1];
+      if (h.method === "HEAD" ? total === "0" : h.resBody?.trim() === "[]") message = `Supabase answered with 0 rows from ${t}. ${RLS}`;
+    } else if (e.change && e.change.op !== "insert") {
+      if (e.change.count === 0) message = `Supabase ${e.change.op === "delete" ? "deleted 0 rows from" : "updated 0 rows in"} ${t}. ${RLS}`;
+      else if (e.change.count === undefined) message = `Supabase didn't say how many rows changed in ${t}. If Save did nothing, row level security may have matched 0 rows.`;
+    }
+    if (message) flags.push({ kind: "empty_result", eventId: e.id, message, source: e.source });
+  }
+
   // swallowed_error
   for (const [n] of parentOf) {
     const s = n.event.http?.status;

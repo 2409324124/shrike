@@ -269,3 +269,25 @@ test("hono-drizzle-pg: a request the page's navigation cancelled is not a broken
   assert.equal(buildActionView(root, [fetch, real], true).status, "error", "a server error stays a break");
   assert.equal(buildActionView(root, [{ ...fetch, error: { message: "Failed to fetch", type: "TypeError" } }, server], true).status, "error");
 });
+
+test("flags: empty_result names a silent Supabase row level security miss", () => {
+  const place = { kind: "data" as const, id: "data:supabase:abcdefghijklmnopqrst.supabase.co", name: "SUPABASE · abcdefghijklmnopqrst" };
+  const url = "https://abcdefghijklmnopqrst.supabase.co/rest/v1/orders";
+  const trip = (http: NonNullable<DebugEvent["http"]>, change?: DebugEvent["change"]) => {
+    const r = ev({ kind: "user_action", origin: "browser", name: "Clicked Save", startMs: 0 });
+    const q = ev({ kind: "db_query", origin: "browser", parentId: r.id, name: "SELECT", startMs: 1, durationMs: 40, place, db: { system: "postgres", statement: "SELECT * FROM orders" }, http, change });
+    return buildActionView(r, [q], true);
+  };
+  const read = trip({ method: "GET", url: `${url}?select=*&user_id=eq.7`, status: 200, resBody: "[]" });
+  assert.deepEqual(read.flags.map((f) => f.kind), ["empty_result"]);
+  assert.equal(read.flags[0]!.message, "Supabase answered with 0 rows from orders. Row level security can do this when no policy matches the signed-in user.");
+  assert.equal(read.summary.headline, "You clicked Save. It looked like it worked, but Supabase answered with 0 rows from orders.");
+  assert.deepEqual(trip({ method: "GET", url: `${url}?select=*`, status: 200, resBody: '[{"id":1}]' }).flags, [], "rows came back: quiet");
+
+  const none = trip({ method: "PATCH", url: `${url}?id=eq.3`, status: 204, resHeaders: { "content-range": "*/0" } }, { table: "orders", op: "update", count: 0 });
+  assert.equal(none.flags[0]!.message, "Supabase updated 0 rows in orders. Row level security can do this when no policy matches the signed-in user.");
+  const unknown = trip({ method: "PATCH", url: `${url}?id=eq.3`, status: 204 }, { table: "orders", op: "update" });
+  assert.equal(unknown.flags[0]!.message, "Supabase didn't say how many rows changed in orders. If Save did nothing, row level security may have matched 0 rows.");
+  assert.doesNotMatch(unknown.summary.headline, /0 rows/, "an unknown count is never claimed as 0");
+  assert.equal(trip({ method: "HEAD", url: `${url}?select=*`, status: 200, resHeaders: { "content-range": "*/0" } }).flags[0]!.kind, "empty_result");
+});

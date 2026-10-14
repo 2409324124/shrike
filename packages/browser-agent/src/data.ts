@@ -96,7 +96,8 @@ function supabase(ev: DebugEvent, url: URL): DebugEvent {
   if (op && out.status !== "error") {
     const range = /\/(\d+)$/.exec(ev.http?.resHeaders?.["content-range"] ?? "")?.[1];
     const after = rows.length ? rows : op === "insert" ? [json(ev.http?.reqBody)].flat().filter((x) => x && typeof x === "object") : [];
-    out.change = { table, op, count: rows.length || Number(range) || after.length, rows: after.slice(0, 5).map((r) => (op === "delete" ? { before: rowOf(r) } : { after: rowOf(r) })) };
+    const count = rows.length || (range !== undefined ? Number(range) : op === "insert" && after.length ? after.length : undefined); // unknown stays unset, not 0
+    out.change = { table, op, ...(count !== undefined && { count }), rows: after.slice(0, 5).map((r) => (op === "delete" ? { before: rowOf(r) } : { after: rowOf(r) })) };
   } else if (Array.isArray(body)) out.returned = plural(body.length);
   return out;
 }

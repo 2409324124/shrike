@@ -224,6 +224,7 @@ These feed the What happened? card and flow review. The AI explains them; it doe
 | Browser waterfall | fetch B starts within 20ms of fetch A ending, B's URL/body doesn't contain values from A's response |
 | Duplicate requests | identical method + URL + body twice in one Action |
 | Swallowed error | server error event, but HTTP status 200 |
+| Empty result (Supabase) | a PostgREST read answers 2xx with `[]` (or HEAD `content-range: */0`), or an update/delete answers 2xx with `content-range: */0`: "can do this" wording points at row level security; an unknown count (`Prefer: return=minimal`) says so instead of claiming 0 |
 | Silent frontend failure | response ≥ 400 and no render or visible text change afterwards |
 
 ## Outside Shrike: MCP for any agent

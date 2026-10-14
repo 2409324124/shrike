@@ -67,7 +67,7 @@ export type Cell = string | number | boolean | null;
 export interface DataChange {
   table: string;
   op: "insert" | "update" | "delete";
-  count: number; // rows the statement changed
+  count?: number; // rows the statement changed; unset when the database didn't say (Supabase with Prefer: return=minimal)
   rows?: { pk?: string; before?: Record<string, Cell>; after?: Record<string, Cell> }[]; // at most 5, redacted
 }
 export type DataSystem = "sqlite" | "postgres" | "mysql" | "mongodb" | "supabase" | "dynamodb" | "firestore"; // docs/13 DB
@@ -88,7 +88,7 @@ export interface TimelineNode {
 }
 
 export interface Flag {
-  kind: "slow" | "n_plus_one" | "sequential" | "duplicate_request" | "swallowed_error" | "cache_never_hit" | "slow_outside";
+  kind: "slow" | "n_plus_one" | "sequential" | "duplicate_request" | "swallowed_error" | "cache_never_hit" | "slow_outside" | "empty_result";
   eventId: string;
   message: string; // plain English, one sentence, includes numbers
   source?: SourceLocation;

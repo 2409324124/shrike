@@ -77,3 +77,11 @@ test("Firestore WebChannel: writes and listens become queries on the Firestore l
   }).events;
   assert.deepEqual(listen.map((e) => e.db?.statement), ['db.count.get("counter")', "db.animals.query(order by name, limit 10)"]);
 });
+
+test("supabase writes: content-range */0 is 0 rows changed; no count at all stays unknown, not 0", () => {
+  const url = "https://abcdefghijklmnopqrst.supabase.co/rest/v1/orders?id=eq.3";
+  const [zero] = one("PATCH", url, { status: 204, resBody: "", resHeaders: { "content-range": "*/0" } }, sb).events;
+  assert.equal(zero!.change?.count, 0);
+  const [unknown] = one("PATCH", url, { status: 204, resBody: "" }, sb).events;
+  assert.deepEqual(unknown!.change, { table: "orders", op: "update", rows: [] });
+});

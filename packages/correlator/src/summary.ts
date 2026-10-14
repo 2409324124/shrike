@@ -139,6 +139,8 @@ function outcome(view: View): string {
   const fourHundred = reqs.map(httpStatus).find((s) => s !== undefined && s >= 400);
   if (fourHundred !== undefined) return `The server said no (${withWord(fourHundred)}).`;
   if (!view.complete) return `Still running (${fmtMs(view.durationMs)} so far).`;
+  const empty = flags.find((f) => f.kind === "empty_result" && f.message.includes(" 0 rows"));
+  if (empty) return `It looked like it worked, but ${empty.message.split(". ")[0]}.`;
   if (view.status === "slow" || flags.some((f) => f.kind === "slow")) return `It worked, but it was slow (${fmtMs(view.durationMs)}).`;
   return `Everything worked (${fmtMs(view.durationMs)}).`;
 }

@@ -86,7 +86,7 @@ export function dataChanges(view: ActionView | undefined, placeId: string): Chan
   const groups = new Map<string, ChangeGroup>();
   for (const e of view ? allEvents(view) : []) {
     const c = e.kind === "db_query" && e.status !== "error" && e.place?.id === placeId ? e.change : undefined;
-    if (!c || c.count <= 0) continue;
+    if (!c?.count) continue;
     let g = groups.get(c.table);
     if (!g) groups.set(c.table, (g = { table: c.table, added: 0, changed: 0, removed: 0, rows: [] }));
     const kind = c.op === "insert" ? "added" : c.op === "update" ? "changed" : "removed";
