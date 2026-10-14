@@ -4,6 +4,12 @@ Notable changes to Shrike. The format follows [Keep a Changelog](https://keepach
 
 ## [Unreleased]
 
+Thanks to our first outside contributor, [@AK-Lmn](https://github.com/AK-Lmn).
+
+### Fixed
+
+- The Routes page no longer asks a spec-less app for its spec every 10 seconds for as long as it's open. It checks a few times while the app starts (2, 5, 10 and 20 seconds), then stops; a new Run, a changed address or the refresh button looks again ([#49](https://github.com/SumantxD/shrike/pull/49), thanks [@AK-Lmn](https://github.com/AK-Lmn)).
+
 ## [0.2.0] - 2026-10-12
 
 Shrike now debugs Python backends and anything that speaks OpenTelemetry, works from your own Claude Code, and has Linux builds.
