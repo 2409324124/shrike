@@ -108,6 +108,17 @@ Every method of `ShrikeApi` in `@shrike/schema` is one `ipcRenderer.invoke("shri
 | Ingest (random free port) | Shrike main | 127.0.0.1 only, token in `SHRIKE_INGEST_URL` |
 | MCP (Streamable HTTP) | Shrike main | 127.0.0.1 only, Bearer token; the main server keeps its port and token across restarts |
 
+## Live apps (decided 2026-10-14, #50)
+
+Shrike can also open a deployed URL the user types ("live project"). It sees what the browser sees and nothing more: clicks, every request and response, and data services the page calls directly (Supabase, Firebase). The deployed server's code, database and cache stay out of view, so the Thread shows a grey "not visible from your browser" station instead of guessing (#58), filled from `Server-Timing` headers when the host sends them (#59). Pinpointing the line comes from comparing the same click on localhost, where everything is recorded (#62).
+
+- **A live URL the user enters is a project origin.** It's stored in `.shrike/config.json` as `liveUrl`, with `origins` for extra API hosts the user lists. The app pane may load it. Nothing is installed on the user's server.
+- **Agents are read-only on live origins** ([05-agent.md](05-agent.md#guardrails)).
+- **No `traceparent` on live origins by default.** The browser recorder adds it to same-origin requests; on a production app with OpenTelemetry that would force sampling, which changes the host app's behaviour. A live project turns it on only when the user asks.
+- **Live data is real people's data.** Secrets and personal data are redacted at the store; full value masking happens where data leaves the screen, and page screenshots are left out of shared cards and clips by default ([07-security-privacy.md](07-security-privacy.md#live-apps)).
+- **Use it on apps you own or may test.** Each live host asks once.
+- **Not allowed by this decision:** the ingest or MCP server binding anything but 127.0.0.1, long-lived ingest tokens, tunnels, a cloud relay receiving traces, lifting the node-agent `NODE_ENV=production` guard, and Shrike calling observability vendors (#69 is its own decision).
+
 ## Failure modes and what the user sees
 
 | Failure | Behaviour |

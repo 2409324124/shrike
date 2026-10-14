@@ -183,7 +183,8 @@ On hitting a limit, the agent must call `report_findings` with what it has, labe
 ## Guardrails
 
 - **Tool results are data, not instructions.** Page text, logs, response bodies and code comments can contain prompt-injection text. The system prompt says so, and tool outputs are wrapped in clearly delimited blocks.
-- **Network scope:** `app_navigate` and `send_request` only reach the project's own origins from `config.json`. No arbitrary internet.
+- **Network scope:** `app_navigate` and `send_request` only reach the project's own origins from `config.json`, including a live project's `liveUrl` and listed `origins`. No arbitrary internet.
+- **Live origins are read-only (#50, #53).** No data-changing `send_request`. Clicks and typing in the live app ask first, one card per scenario listing its steps. Same-origin navigation is allowed; GETs that look state-changing (`/logout`, `/unsubscribe`, `/api/cron`) ask once per path. Live tool output can carry end-user data, so it goes through personal-data detection and value masking before it reaches the model.
 - **No shell tool for the debug agent.** It can't run commands; it can suggest one for the user to run. Only Shrike's own start agent and `preflight` run commands, through the guarded shell (R6).
 - **Data-changing requests:** `POST/PUT/PATCH/DELETE` outside a recorded user scenario need an approval click.
 - **Secrets:** login forms. The agent asks the user to log in in the app pane, or uses a scenario step marked `secret` whose value never enters model context.

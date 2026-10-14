@@ -29,6 +29,8 @@ Shrike sees request bodies, cookies, database queries and source code. People wi
 | Adding a catalog tool downloads and runs code | The add is an approval card that names what runs and where it's saved; the download runs through the guarded shell (`judge`; "never" refuses), three minutes at most, and is killed on quit. Health checks kill the server's whole process tree when they finish or time out |
 | The API client reaches hosts outside the app, or the agent does | Your own sends from the API client (AP) go to any http(s) host you type, like Bruno or Postman; only the app's own addresses get Shrike's `traceparent`. An agent's `send_request` or `save_request` to anything other than the app's local address shows an approval card first (GET included), and data-changing requests to the app still ask too. An agent's send never follows a redirect to another origin and never sees `{{vars}}` set by your own sends. Assertions run as pure checks, never code |
 | A collection's scripts or files hurt your machine | Collection scripts (Bruno `script:*` and `tests`) run only on your own sends, never the agent's, in a `node:vm` context inside a worker thread: no `require`, `process`, timers or network, string code generation off, only JSON crosses in and out, 64MB heap, and the worker is killed after 2s. Linked Bruno folders are written only when you press Save, atomically (temp file, then rename); links, `..`, `.claude`, `.git` and `node_modules` paths are refused. Secret environment values go to userData `api-secrets.json`, encrypted with Electron `safeStorage`; files get `vars:secret` names only. History (last 200 sends per project, userData) is redacted before it's written |
+| Live page scripts forge recorder events (live projects) | The browser recorder keeps its binding in a closure and deletes `window.__shrikeEmit` before page scripts run; flow and point messages are ignored outside their modes (#54) |
+| Live agent tool output carries end-user data (page text, names, emails) | Personal-data detection and value masking on live tool output before it reaches the model (#53) |
 | Supply-chain compromise of Shrike itself | Signed and notarised builds, lockfile pinning, dependency review in CI, minimal deps in node-agent and browser-agent, none beyond the standard library in python-agent (they run inside user apps) |
 
 ## Redaction rules (`@shrike/redact`)
@@ -45,6 +47,14 @@ Applied in this order, on every event at ingest and again on every tool output a
 Replacement format: `"[redacted:password]"`, keeping the key so the structure stays debuggable. Redaction is logged as a count per event (never the value).
 
 rrweb (planned, with DOM replay): `maskAllInputs: true` by default; `password` inputs are always masked; users can unmask non-sensitive inputs per selector.
+
+## Live apps
+
+Decided 2026-10-14 (#50); see [02-architecture.md](02-architecture.md#live-apps-decided-2026-10-14-50). Recording your production app means recording real customers' data, which makes you its data controller:
+
+- Secrets and personal data (emails, phone numbers, the Vercel protection bypass token) are redacted at the store for live projects (#51).
+- Shared cards, clips, links, `.shriketrace` files and live agent tool output mask values, and leave page screenshots out by default (#52).
+- Live agent tool output can contain end-user data; sending it to your agent provider is your call, and Shrike masks what it can first.
 
 ## Data sent off the machine
 
