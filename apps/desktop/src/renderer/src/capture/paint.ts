@@ -580,7 +580,7 @@ function drawTrip(ctx: Ctx, s: ClipScene, t: number, dim: number): void {
   // T6/M3 return line, under the thread.
   if (t >= ret.start) {
     const err = s.trip.status === "error";
-    const c = err ? color.fail : color.ok;
+    const c = err ? color.fail : s.trip.shape === "came_back_empty" ? color.slow : color.ok;
     const { d, tip } = partial(s.ret.pts, retLen(s, t));
     ctx.save();
     ctx.globalAlpha *= 0.85 * (0.5 + 0.5 * dim);
@@ -1121,4 +1121,57 @@ function drawOutroMark(ctx: Ctx, f: Frame, k: number): void {
   ctx.shadowBlur = 24 * k;
   ctx.fillText("SHRIKE", f.W / 2 + size * 0.25, f.H / 2); // centre: clear of the caption fading out below
   ctx.restore();
+}
+
+// ---------------------------------------------------------------- T23: local vs live split (#62)
+
+export interface Box {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** 16:9: the verdict band on top, two 9:16 panes (local left, live right), each named in the margin beside it. */
+export function splitFrame(): { W: number; H: number; panes: [Box, Box] } {
+  const W = 1920;
+  const H = 1080;
+  const top = 120;
+  const gap = 40;
+  const h = H - top - 24;
+  const w = Math.round((h * 9) / 16);
+  const x = Math.round((W - 2 * w - gap) / 2);
+  return { W, H, panes: [{ x, y: top, w, h }, { x: x + w + gap, y: top, w, h }] };
+}
+
+// ponytail: #52 kept minimal for the live side of a split: no value chips here, no screenshot or dive card (recorder.ts). Upgrade: #52's maskValues over captions too.
+export const maskTrip = (trip: Trip): Trip => ({ ...trip, stations: trip.stations.map((s) => ({ ...s, chip: undefined, chipError: undefined })) });
+
+/** Composes two painted 9:16 clip frames into the split. */
+export function paintSplit(ctx: Ctx, panes: [CanvasImageSource, CanvasImageSource], verdict: string): void {
+  const f = splitFrame();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 1;
+  ctx.shadowBlur = 0;
+  ctx.letterSpacing = "0px";
+  ctx.fillStyle = color.void;
+  ctx.fillRect(0, 0, f.W, f.H);
+  ctx.textBaseline = "alphabetic";
+  ctx.textAlign = "center";
+  ctx.font = display(34, 500);
+  ctx.fillStyle = color.ink;
+  ctx.fillText(fitText(ctx, verdict, f.W - 120), f.W / 2, 74);
+  f.panes.forEach((p, i) => {
+    ctx.drawImage(panes[i]!, p.x, p.y, p.w, p.h);
+    ctx.strokeStyle = color.hair;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(p.x + 0.5, p.y + 0.5, p.w - 1, p.h - 1);
+    const x = i ? p.x + p.w + 32 : p.x - 32;
+    ctx.textAlign = i ? "left" : "right";
+    ctx.font = mono(24, 600);
+    ctx.letterSpacing = "6px";
+    ctx.fillStyle = i ? color.slow : color.inkDim;
+    ctx.fillText(i ? "LIVE" : "LOCAL", x, p.y + 60);
+    ctx.letterSpacing = "0px";
+  });
 }

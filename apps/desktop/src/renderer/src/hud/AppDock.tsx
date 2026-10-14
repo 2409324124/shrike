@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Crosshair, PanelLeftOpen, Play, RotateCw, SquareArrowOutUpRight } from "lucide-react";
 import { useRun } from "../stores/run.ts";
-import { useProject } from "../stores/project.ts";
+import { isLiveSite, useProject } from "../stores/project.ts";
 import { useUi } from "../stores/ui.ts";
 import { useFlows } from "../stores/flows.ts";
 import { call } from "../lib/api.ts";
@@ -87,6 +87,7 @@ export function AppDock() {
             {recording && <span className="lbl shrink-0 text-fail">● Rec</span>}
             <span className="flex-1" />
             {appBar && <span className="lbl selectable min-w-0 truncate" style={{ textTransform: "none" }}>{url}</span>}
+            {appBar && project?.liveUrl && !isLiveSite(project) && <SideSwitch liveUrl={project.liveUrl} />}
             {appBar && (
               <IconButton
                 label={pointing ? "Stop pointing (Esc)" : "Point at something in your app (X)"}
@@ -126,6 +127,27 @@ export function AppDock() {
         </section>
       </div>
     </>
+  );
+}
+
+/** H16 (#62): a project with a dev command and a liveUrl moves the pane between the local run and the live site. */
+function SideSwitch({ liveUrl }: { liveUrl: string }) {
+  const side = useRun((s) => s.side);
+  return (
+    <span role="group" aria-label="Local or live" className="flex shrink-0 overflow-hidden rounded-[6px] border border-hair">
+      {(["local", "live"] as const).map((s) => (
+        <button
+          key={s}
+          type="button"
+          aria-pressed={side === s}
+          className={cx("lbl px-1.5 py-[2px] transition-colors", side === s ? (s === "live" ? "bg-[color-mix(in_srgb,var(--slow)_14%,transparent)] text-slow" : "bg-[var(--glass)] text-ink") : "text-faint hover:text-ink")}
+          title={s === "live" ? `Show your live site: ${liveUrl}` : "Show your local app"}
+          onClick={() => void useRun.getState().setSide(s)}
+        >
+          {s === "live" ? "Live" : "Local"}
+        </button>
+      ))}
+    </span>
   );
 }
 

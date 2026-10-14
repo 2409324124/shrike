@@ -4,7 +4,7 @@ import type { ActionView, DebugEvent } from "@shrike/schema";
 import type { Trip } from "../lib/thread-layout.ts";
 import { buildTrip, FALLBACK, knownPlaces, LANE_X, layoutTrip } from "../lib/thread-layout.ts";
 import { curlSignup, payNow } from "../thread/fixtures.ts";
-import { cropAround, diveTarget, fitValue, frameCount, frameFor, lengthOf, outPoints, partial, phaseAt, retPoints, rng, snippetRange, timeline, toCanvas, totalOf } from "./paint.ts";
+import { cropAround, diveTarget, fitValue, frameCount, frameFor, lengthOf, maskTrip, outPoints, partial, phaseAt, retPoints, rng, snippetRange, splitFrame, timeline, toCanvas, totalOf } from "./paint.ts";
 
 const PL = [FALLBACK.screen, FALLBACK.page, FALLBACK.server, FALLBACK.database];
 const st = (lane: 0 | 1 | 2 | 3, p: Partial<Trip["stations"][number]> = {}): Trip["stations"][number] => ({
@@ -15,6 +15,17 @@ const trip: Trip = {
   caller: { place: FALLBACK.screen, browser: true, text: "" }, places: PL.map((place) => ({ place, hop: 0 })), forks: [],
   stations: [st(1), st(1, { sub: 1 }), st(2), st(2, { sub: 1, chip: "{ userId: undefined }", chipError: true, status: "error" }), st(3, { snap: true, status: "error", kind: "db_query" }), st(2)],
 };
+
+test("local vs live split (#62): 16:9 with two equal 9:16 panes inside it, live values dropped", () => {
+  const f = splitFrame();
+  assert.equal(f.W / f.H, 16 / 9);
+  const [l, r] = f.panes;
+  assert.ok(Math.abs(l.w / l.h - 9 / 16) < 0.01 && l.w === r.w && l.h === r.h && l.y === r.y);
+  assert.ok(l.x > 0 && l.x + l.w < r.x && r.x + r.w < f.W && l.y + l.h <= f.H);
+  const masked = maskTrip(trip);
+  assert.ok(trip.stations.some((s) => s.chip) && masked.stations.every((s) => s.chip === undefined && s.chipError === undefined));
+  assert.equal(masked.stations.length, trip.stations.length);
+});
 
 test("timeline: about 8s with every phase, shorter without snap/dive; frames are exact", () => {
   const full = timeline({ snap: true, dive: true });

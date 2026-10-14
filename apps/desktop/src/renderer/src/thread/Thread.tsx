@@ -15,6 +15,7 @@ import { useInspector } from "../inspector/store.ts";
 import { useUi } from "../stores/ui.ts";
 import { useWorktrees } from "../stores/worktrees.ts";
 import { FilesView } from "../files/FilesView.tsx";
+import { Compare } from "./Compare.tsx";
 
 // The Thread: every click as one glowing round trip through the places it touched (lanes, D9-D11); time runs down.
 // Spec: docs/06-design.md, design-system/prototype-thread.html. Keys, caption and auto-dive live in the shell (hud/**).
@@ -75,6 +76,7 @@ export function Thread() {
   const probe = useThread((s) => s.probe);
   const openGroups = useThread((s) => s.openGroups);
   const viewMode = useThread((s) => s.view);
+  const compare = useThread((s) => (s.view === "thread" ? s.compare : null));
   const expected = useProject((s) => s.project?.expectedPlaces);
   const guessed = useProject((s) => !!s.project && !s.project.placesFrom); // lanes-from-plan: package.json lanes are only a guess until Claude plans the start
   const procs = useRun((s) => s.status.processes);
@@ -230,7 +232,8 @@ export function Thread() {
           </div>
         </div>
       )}
-      <div className={`th-stage${dived ? " dived" : ""}`} hidden={viewMode === "files"}>
+      {compare && <Compare {...compare} known={known} />}
+      <div className={`th-stage${dived ? " dived" : ""}`} hidden={viewMode === "files" || !!compare}>
         <div className="th-lanes" aria-hidden>
           {lanes.cols.map((c) => (
             <div key={c.key} className={`th-lane${c.mode === "sliver" ? " dim" : ""}${c.ghost ? " ghost" : ""}`} style={{ left: c.x }} />

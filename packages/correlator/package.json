@@ -11,7 +11,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./compare": "./src/compare.ts"
   },
   "dependencies": {
     "@jridgewell/trace-mapping": "^0.3.30",

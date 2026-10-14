@@ -275,6 +275,7 @@ export function registerIpc(win: () => BrowserWindow | undefined, appWin: AppWin
     saveConfig(root, { liveUrl: url === null ? null : liveUrlFrom(url) });
     return openProject(root);
   });
+  handle("setAppSide", z.tuple([z.enum(["local", "live"])]), (side) => hostExtras.setAppSide(side));
   // ---- end setup ----
 
   // ---- flows: B1 record, B2 replay, B3 keep watching, B4 my MCP servers, B5 Shrike drivable, sessions ----

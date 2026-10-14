@@ -114,12 +114,12 @@ export function httpStatus(n: TimelineNode): number | undefined {
   return undefined;
 }
 
-// http_requests not nested under another http_request (browser fetches, or server requests sent from outside).
-export function topRequests(nodes: TimelineNode[]): TimelineNode[] {
+// http_requests not nested under another http_request (browser fetches, or server requests sent from outside); data: also the page's data calls (Supabase).
+export function topRequests(nodes: TimelineNode[], data = false): TimelineNode[] {
   const out: TimelineNode[] = [];
   const visit = (ns: TimelineNode[]) => {
     for (const n of ns) {
-      if (n.event.kind === "http_request") out.push(n);
+      if (n.event.kind === "http_request" || (data && n.event.http)) out.push(n);
       else visit(n.children);
     }
   };

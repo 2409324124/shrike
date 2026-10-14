@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { DebugEvent } from "@shrike/schema";
-import { buildActionView, compareActions, findFlags, formatActionTree, relativize } from "../src/index.ts";
+import { buildActionView, compareActions, compareLocalLive, findFlags, formatActionTree, relativize } from "../src/index.ts";
 import { normalizeSql } from "../src/flags.ts";
 import { addTodo, addTodoFixed, ev, payNow } from "./fixtures.ts";
 
@@ -171,6 +171,36 @@ test("compareActions: fixed verdict", () => {
   assert.match(back.split("\n").at(-1)!, /^Verdict: regressed \(/);
   const same = compareActions(buildActionView(b.root, b.events, true), buildActionView(b.root, b.events, true));
   assert.match(same.split("\n").at(-1)!, /^Verdict: not fixed \(same error: /);
+});
+
+test("compareLocalLive: host-free keys line up local and live Supabase; shape first, then the time gap", () => {
+  const trip = (host: string, rows: number, ms: number, live?: true) => {
+    const root = ev({ kind: "user_action", origin: "browser", name: 'Clicked "Save"', startMs: 0, durationMs: ms + 10, live });
+    const page = ev({ kind: "http_request", origin: "browser", name: "GET /api/me", parentId: root.id, startMs: 1, durationMs: 5, live, http: { method: "GET", url: "/api/me?x=1", status: 200 } });
+    const server = ev({ kind: "http_request", name: "GET /api/me", parentId: page.id, startMs: 2, durationMs: 3, http: { method: "GET", url: "/api/me", status: 200 } });
+    const q = ev({
+      kind: "db_query", origin: "browser", name: "SELECT * FROM orders", parentId: root.id, startMs: 8, durationMs: ms, live, returned: `${rows} rows`,
+      place: { kind: "data", id: `data:supabase:${host}`, name: "SUPABASE" }, http: { method: "GET", url: `http://${host}/rest/v1/orders?select=*`, status: 200, resBody: rows ? "[{},{},{}]" : "[]" },
+    });
+    return buildActionView(root, live ? [root, page, q] : [root, page, server, q], true);
+  };
+  const local = trip("localhost:54321", 3, 40);
+  const live = trip("abcdefghijklmnopqrst.supabase.co", 0, 210, true);
+  const d = compareLocalLive(local, live);
+  assert.equal(d.verdict, "Local: GET orders, 3 rows, 40 ms. Live: GET orders, 0 rows, 210 ms.");
+  assert.equal(d.localId, local.tree[1]!.event.id);
+  assert.equal(d.liveId, live.tree[1]!.event.id);
+  assert.match(d.caption!, /^Supabase answered with 0 rows from orders\. Row level security/);
+  assert.equal(d.note, "Compared requests only: your live server isn't visible from your browser.");
+  // Different data, same shape, is not a difference.
+  assert.equal(compareLocalLive(local, trip("abcdefghijklmnopqrst.supabase.co", 5, 210, true)).verdict, "No difference in the path. Live was 170 ms slower.");
+  assert.equal(compareLocalLive(local, trip("localhost:54321", 3, 40)).verdict, "No difference in the path. Both took the same time.");
+  // A request only one side sent (the live sign-in) is the difference, not a failure.
+  const signIn = trip("abcdefghijklmnopqrst.supabase.co", 3, 40, true);
+  signIn.tree.unshift({ event: ev({ kind: "db_query", origin: "browser", name: "sign in", startMs: 0, durationMs: 30, live: true, http: { method: "POST", url: "https://abcdefghijklmnopqrst.supabase.co/auth/v1/token?grant_type=password", status: 200 } }), children: [] });
+  assert.equal(compareLocalLive(local, signIn).verdict, "Local: POST /auth/v1/token not sent. Live: POST /auth/v1/token, 200 OK, 30 ms.");
+  // Without hostFree the MCP compare still keys by full URL.
+  assert.match(compareActions(local, live), /Verdict: /);
 });
 
 test("relativize", () => {

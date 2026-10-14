@@ -490,3 +490,19 @@ test("empty_result: a Supabase read with 0 rows says so in the verdict, in the w
   assert.equal(unknown.verdict, "Supabase didn't say how many rows changed in orders.", "an unknown count is never shown as 0");
   assert.equal(buildTrip(view(click, [node(q)], "ok")).shape, "worked");
 });
+
+test("#62: a page that asked Supabase directly never says it never called the server; 0 rows wins, in amber", () => {
+  const click = ev({ kind: "user_action", origin: "browser", name: 'Clicked "Save"', trigger: "click", source: src("app.js", 1) });
+  const place = { kind: "data" as const, id: "data:supabase:abcdefghijklmnopqrst.supabase.co", name: "SUPABASE · abcdefghijklmnopqrst" };
+  const q = ev({ startMs: 10, durationMs: 250, kind: "db_query", origin: "browser", name: "SELECT * FROM orders", place, db: { system: "postgres", statement: "SELECT * FROM orders" } });
+  const message = "Supabase answered with 0 rows from orders. Row level security can do this when no policy matches the signed-in user.";
+  const known = knownPlaces([], [], { liveUrl: "http://live.test/" });
+  for (const status of ["ok", "slow"] as const) {
+    const empty = buildTrip({ ...view(click, [node({ ...q, live: true })], status), flags: [{ kind: "empty_result", eventId: q.id, message }] }, new Set(), known);
+    assert.deepEqual([empty.shape, empty.verdict, empty.returned], ["came_back_empty", "Supabase answered with 0 rows from orders.", "Your page asked Supabase directly"], status);
+  }
+  const rows = buildTrip(view(click, [node(q)], "ok"));
+  assert.equal(rows.returned, "Your page asked Supabase directly");
+  assert.notEqual(rows.shape, "never_left_page");
+  assert.doesNotMatch(rows.verdict, /never called/);
+});

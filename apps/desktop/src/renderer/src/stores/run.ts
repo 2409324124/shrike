@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { RunStatus } from "@shrike/schema";
+import type { AppSide, RunStatus } from "@shrike/schema";
 import { call } from "../lib/api.ts";
 import { useStart } from "../start/store.ts";
 import { isLiveSite, useProject } from "./project.ts";
@@ -10,6 +10,8 @@ interface RunState {
   status: RunStatus;
   output: string;
   byProcess: Record<string, string>; // O4: output per process, from "process:output"
+  side: AppSide; // #62: the Local / Live switch; main goes back to local when the run stops
+  setSide(side: AppSide): Promise<void>;
   appendProcess(name: string, chunk: string): void;
   setStatus(s: RunStatus): void;
   append(chunk: string): void;
@@ -28,7 +30,12 @@ export const useRun = create<RunState>((set, get) => ({
   status: { state: "idle" },
   output: "",
   byProcess: {},
-  setStatus: (status) => set({ status }),
+  side: "local",
+  async setSide(side) {
+    const now = await call((a) => a.setAppSide(side), side === "live" ? "Couldn't open your live site" : "Couldn't go back to your local app");
+    if (now) set({ side: now });
+  },
+  setStatus: (status) => set({ status, ...(status.state !== "running" && { side: "local" as const }) }),
   append: (chunk) => set((s) => ({ output: tail(s.output + chunk) })),
   appendProcess: (name, chunk) => set((s) => ({ byProcess: { ...s.byProcess, [name]: tail((s.byProcess[name] ?? "") + chunk) } })),
   clearOutput: () => set({ output: "", byProcess: {} }),

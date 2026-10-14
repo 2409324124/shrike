@@ -1306,6 +1306,8 @@ export interface Progress {
   formula: { label: string; xp: number }[]; // XP8
 }
 
+export type AppSide = "local" | "live"; // #62: what the app pane of a project with a liveUrl and a dev command shows
+
 // Preload API exposed to the renderer as window.shrike
 export interface ShrikeApi {
   platform?: string; // process.platform from preload: shortcut labels, voice, title bar
@@ -1314,6 +1316,7 @@ export interface ShrikeApi {
   sampleProjectPath(): Promise<string>;
   openLiveSite(url: string): Promise<ProjectInfo>; // #54: a scratch project in userData/live/<host> with .shrike/config.json { liveUrl }
   setLiveUrl(url: string | null): Promise<ProjectInfo>; // #54: Setup's Live URL field
+  setAppSide(side: AppSide): Promise<AppSide>; // #62: the Local / Live switch; asks for consent once per host, answers the side now shown
   getProject(): Promise<ProjectInfo | null>;
   run(): Promise<RunStatus>;
   stop(): Promise<RunStatus>;

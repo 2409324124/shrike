@@ -3,22 +3,43 @@ import { allEvents, errMsg, fmtMs, httpStatus, isFailure, topRequests, trunc, wi
 
 interface Req {
   key: string;
+  id: string;
+  label: string;
+  rows?: number;
   status?: number;
   failed: boolean;
   ms?: number;
   body?: string;
 }
 
-function requests(view: ActionView): Req[] {
+const pathOf = (url: string): string => {
+  try {
+    return new URL(url, "http://x").pathname;
+  } catch {
+    return url.replace(/[?#].*$/, "");
+  }
+};
+
+const rowsOf = (e: TimelineNode["event"]): number | undefined => {
+  const n = /^(\d+) rows?$/.exec(e.returned ?? "")?.[1] ?? e.change?.count;
+  return n === undefined ? undefined : Number(n);
+};
+
+// hostFree (#62): method and path only, so localhost:54321/rest/v1/orders lines up with xyz.supabase.co/rest/v1/orders; the page's data calls count too.
+function requests(view: ActionView, hostFree = false): Req[] {
   const seen = new Map<string, number>();
-  return topRequests(view.tree).map((n: TimelineNode) => {
+  return topRequests(view.tree, hostFree).map((n: TimelineNode) => {
     const e = n.event;
-    const base = e.http ? `${e.http.method} ${e.http.url.replace(/[?#].*$/, "")}` : e.name;
+    const path = e.http ? pathOf(e.http.url) : "";
+    const base = e.http ? `${e.http.method} ${hostFree ? path : e.http.url.replace(/[?#].*$/, "")}` : e.name;
     const i = seen.get(base) ?? 0;
     seen.set(base, i + 1);
     const server = n.children.find((c) => c.event.kind === "http_request")?.event;
     return {
       key: i ? `${base} #${i + 1}` : base,
+      id: e.id,
+      label: e.http ? `${e.http.method} ${/\/rest\/v1\/([^/]+)/.exec(path)?.[1] ?? path}` : e.name,
+      rows: rowsOf(e),
       status: httpStatus(n),
       failed: e.status === "error",
       ms: e.durationMs,
@@ -85,4 +106,36 @@ export function compareActions(before: ActionView, after: ActionView): string {
   else verdict = changed ? `both worked, but ${changed.key} is now ${statusText(changed.after)}` : "no change (both worked)";
   out.push(`Verdict: ${verdict}`);
   return out.join("\n");
+}
+
+// #62: shape first (sent or not, status, 0 rows vs some); exact counts only in the words, so different data on each side isn't noise.
+const shape = (r: Req | undefined): string => (r ? `${statusText(r)}|${r.rows === undefined ? "" : r.rows ? "rows" : "none"}` : "");
+const sideText = (r: Req | undefined, other: Req): string =>
+  r ? `${r.label}, ${r.rows !== undefined ? `${r.rows} row${r.rows === 1 ? "" : "s"}` : statusText(r)}${r.ms !== undefined ? `, ${Math.round(r.ms)} ms` : ""}` : `${other.label} not sent`;
+
+export interface LocalLiveDiff {
+  verdict: string; // "Local: GET orders, 3 rows, 40 ms. Live: GET orders, 0 rows, 210 ms."
+  sides?: [string, string]; // the verdict's halves when the paths differ
+  localId?: string; // the first differing request on each side
+  liveId?: string;
+  caption?: string; // the live side's empty_result (#57) on that request
+  note?: string;
+}
+
+/** #62: the same click on localhost and on the live site, request by request; names the first request whose shape differs. */
+export function compareLocalLive(local: ActionView, live: ActionView): LocalLiveDiff {
+  const l = requests(local, true);
+  const r = requests(live, true);
+  const key = [...new Set([...l, ...r].map((x) => x.key))].find((k) => shape(l.find((x) => x.key === k)) !== shape(r.find((x) => x.key === k)));
+  const blind = allEvents(local.tree).some((e) => e.origin !== "browser") && allEvents(live.tree).every((e) => e.origin === "browser");
+  const note = blind ? "Compared requests only: your live server isn't visible from your browser." : undefined;
+  if (key === undefined) {
+    const gap = Math.round(live.durationMs - local.durationMs);
+    return { verdict: `No difference in the path. ${gap ? `Live was ${Math.abs(gap)} ms ${gap > 0 ? "slower" : "faster"}.` : "Both took the same time."}`, note };
+  }
+  const lr = l.find((x) => x.key === key);
+  const rr = r.find((x) => x.key === key);
+  const sides: [string, string] = [`Local: ${sideText(lr, (lr ?? rr)!)}.`, `Live: ${sideText(rr, (lr ?? rr)!)}.`];
+  const caption = rr && live.flags.find((f) => f.kind === "empty_result" && f.eventId === rr.id)?.message;
+  return { verdict: sides.join(" "), sides, localId: lr?.id, liveId: rr?.id, caption, note };
 }

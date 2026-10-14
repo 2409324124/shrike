@@ -8,6 +8,7 @@ import { startClip, stopClip, useRecording } from "../capture/recorder.ts";
 export function Rec() {
   const recording = useRecording();
   const actionId = useThread((s) => s.focus.actionId);
+  const compare = useThread((s) => (s.view === "thread" ? s.compare : null)); // T23: the split records as one 16:9 clip
   const open = useUi((s) => s.recMenu);
   const [aspect, setAspect] = useState<"16:9" | "9:16">("9:16");
   const [captions, setCaptions] = useState(true);
@@ -23,9 +24,9 @@ export function Rec() {
 
   const start = async () => {
     setOpen(false);
-    if (!actionId) return;
+    if (!actionId && !compare) return;
     try {
-      await startClip({ actionId, aspect, captions });
+      await startClip({ actionId: actionId ?? undefined, aspect: compare ? "16:9" : aspect, captions, compare });
     } catch (e) {
       toast(`Couldn't record: ${e instanceof Error ? e.message : String(e)}`, "error");
     }
@@ -39,7 +40,7 @@ export function Rec() {
         style={recording ? { borderColor: "var(--fail)", color: "var(--fail)" } : undefined}
         aria-pressed={recording}
         aria-haspopup={!recording}
-        disabled={!recording && !actionId}
+        disabled={!recording && !actionId && !compare}
         title={recording ? "Stop recording" : "Record this trip as a clip (R)"}
         onClick={() => (recording ? stopClip() : setOpen(!open))}
       >
@@ -52,7 +53,7 @@ export function Rec() {
           <p className="lbl mb-2.5">Clip shape</p>
           <div className="mb-3 grid grid-cols-2 gap-1.5">
             {(["9:16", "16:9"] as const).map((a) => (
-              <button key={a} type="button" aria-pressed={aspect === a} onClick={() => setAspect(a)} className="btn justify-center">
+              <button key={a} type="button" aria-pressed={(compare ? "16:9" : aspect) === a} disabled={!!compare && a === "9:16"} onClick={() => setAspect(a)} className="btn justify-center">
                 <span className={cx("inline-block border border-current", a === "16:9" ? "h-[8px] w-[14px]" : "h-[14px] w-[8px]")} aria-hidden />
                 {a}
               </button>
@@ -64,9 +65,9 @@ export function Rec() {
           </label>
           <button type="button" className="btn go w-full justify-center" onClick={() => void start()}>
             <i className="size-[7px] rounded-full bg-fail" aria-hidden />
-            Record trip
+            {compare ? "Record both trips" : "Record trip"}
           </button>
-          <p className="mt-2 text-[11.5px] leading-snug text-faint">Plays the trip from the start, then asks where to save.</p>
+          <p className="mt-2 text-[11.5px] leading-snug text-faint">{compare ? "Plays local and live side by side, without a picture of your live site, then asks where to save." : "Plays the trip from the start, then asks where to save."}</p>
         </div>
       )}
     </div>

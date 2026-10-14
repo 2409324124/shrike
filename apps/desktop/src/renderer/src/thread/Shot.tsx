@@ -62,7 +62,7 @@ export function AfterShot({ trip, x, y }: { trip: Trip; x: number; y: number }) 
     <div className="th-shot th-after" style={{ left: x, top: y }}>
       <span className="tag">AFTER</span>
       <div className="txt">
-        <b className={bad ? "e" : "ok"}>{trip.returned}</b>
+        <b className={bad ? "e" : trip.shape === "came_back_empty" ? "warn" : "ok"}>{trip.returned}</b>
         <span className={`v${trip.shape === "came_back_empty" ? " warn" : ""}`}>{trip.verdict}</span>
       </div>
     </div>

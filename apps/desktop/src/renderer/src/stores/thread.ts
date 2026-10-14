@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { ActionView } from "@shrike/schema";
 import { useActions } from "./actions.ts";
 import { knownPlaces, buildTrip, firstFailure, type Trip } from "../lib/thread-layout.ts";
 import { useProject } from "./project.ts";
@@ -22,6 +23,8 @@ interface ThreadState {
   view: "thread" | "files"; // FV: the same trip and step, drawn as lanes or on the folder tree
   outward: 0 | 1 | 2; // FV: Esc steps out from the file cards to the tree (1), then the whole route (2)
   playing: boolean; // FV: Space steps forward on its own
+  compare: { local: string; live: string } | null; // T23 (#62): two trips side by side, local and live
+  setCompare(c: ThreadState["compare"]): void;
   setView(view: "thread" | "files"): void;
   setOutward(o: 0 | 1 | 2): void;
   setPlaying(on: boolean): void;
@@ -52,6 +55,13 @@ export function tripOrder(): string[] {
   return resendOrder(ids, (id) => byId[id]?.root.resendOf); // AP: an edited resend sits under the trip it came from
 }
 
+/** #62: the newest finished trip on the other side of `view` (live when it's local, local when it's live). */
+export const otherSide = (view: ActionView, s: Pick<ReturnType<typeof useActions.getState>, "order" | "byId"> = useActions.getState()): string | undefined =>
+  s.order.find((id) => {
+    const a = s.byId[id];
+    return !!a && a.complete && !isBackgroundAction(a) && !!a.root.live !== !!view.root.live;
+  });
+
 export function tripFor(actionId: string): Trip | undefined {
   const view = useActions.getState().byId[actionId];
   return view ? buildTrip(view, useThread.getState().expanded, projectPlaces()) : undefined;
@@ -70,6 +80,8 @@ export const useThread = create<ThreadState>((set, get) => ({
   view: "thread", // the Thread is always where a session starts
   outward: 0,
   playing: false,
+  compare: null,
+  setCompare: (compare) => set(compare ? { compare, view: "thread", dived: false } : { compare }),
   setView: (view) => set({ view, outward: 0, playing: false }),
   setOutward: (outward) => set({ outward, dived: false }),
   setPlaying: (playing) => set({ playing }),

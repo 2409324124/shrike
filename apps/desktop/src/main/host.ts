@@ -1,5 +1,5 @@
 import { BrowserWindow, webContents } from "electron";
-import type { ApprovalRequest, HttpRequestSpec, MemoryNote, ProjectInfo, RunStatus, ShrikeEvents, ShrikeHost } from "@shrike/schema";
+import type { AppSide, ApprovalRequest, HttpRequestSpec, MemoryNote, ProjectInfo, RunStatus, ShrikeEvents, ShrikeHost } from "@shrike/schema";
 import { AppView } from "./app-view.ts";
 import { notePatch } from "./issue.ts";
 import * as checkpoints from "./checkpoints.ts";
@@ -80,8 +80,10 @@ function queueOutput(name: string | null, chunk: string): void {
 }
 
 let prevState: RunStatus["state"] = "idle";
+let side: AppSide = "local"; // #62: back to local whenever the run stops
 export const runner = new Runner({
   onStatus: (s) => {
+    if (s.state !== "running") side = "local";
     emit("run:status", s);
     if (s.state === "running" && prevState !== "running") appView.load().catch(() => {});
     prevState = s.state;
@@ -92,15 +94,30 @@ export const runner = new Runner({
 
 export const appView = new AppView({
   bundlePath: paths.browserAgentBundle,
-  appUrl: () => (runner.status.state === "running" ? runner.status.url : undefined),
+  appUrl: () => (runner.status.state === "running" ? (side === "live" && project?.liveUrl) || runner.status.url : undefined),
   live: () => liveRun(),
   traceparent: () => !liveRun() || readConfig(project!.root).liveTraceparent === true, // #50: off on live origins unless the project turns it on
   onMessage: (msg) => store.handle(msg),
   onWarning: (text) => queueOutput(null, text),
 });
 
-/** #54: the app pane shows a live site (a live project's run), not a local dev server. */
-export const liveRun = (): boolean => !!project && runner.status.state === "running" && !!liveUrlOf(project);
+/** #54: the app pane shows a live site (a live project's run, or the Live side of a local run), not a local dev server. */
+export const liveRun = (): boolean => !!project && runner.status.state === "running" && (!!liveUrlOf(project) || side === "live");
+
+/** #62: a running project with a liveUrl moves its app pane between the local run and the live site (same webview; its own partition is #55). */
+export async function setAppSide(next: AppSide): Promise<AppSide> {
+  const p = requireProject();
+  if (next === side) return side;
+  if (next === "live") {
+    if (!p.liveUrl) throw new Error("Add your live URL in Setup first.");
+    if (runner.status.state !== "running") throw new Error("Run your app first, then switch to Live.");
+    const win = BrowserWindow.getAllWindows().find((w) => !w.getParentWindow());
+    if (!(await liveConsent(p.root, p.liveUrl, win))) return side;
+  }
+  side = next;
+  await appView.load();
+  return side;
+}
 
 const ingest = () => (ingestP ??= startIngest((msg) => store.handle(msg), inspector)); // inspector: I place inspector
 

@@ -61,6 +61,7 @@ export function TopBar() {
   const focused = useThread((s) => s.focus.actionId);
   const drop = useAskDrop();
   const full = useAgent((s) => fuel(s.usage) > 0.8);
+  const liveSide = useRun((s) => s.side === "live");
 
   return (
     <header className={cx("drag flex h-11 shrink-0 items-center gap-[14px] border-b border-hair max-xl:gap-2.5", isMac ? "pr-1.5 pl-[84px]" : "pr-[calc(100%-env(titlebar-area-width,100%)+6px)] pl-3")}>
@@ -71,8 +72,8 @@ export function TopBar() {
       <span className="max-w-[220px] min-w-0 shrink-0 truncate text-[13px] font-medium text-ink max-xl:shrink" title={project?.root}>
         {project?.name}
       </span>
-      {/* H15 live badge (#54) */}
-      {project?.liveUrl && isLiveSite(project) && (
+      {/* H15 live badge (#54), also on the Live side of a local project (#62) */}
+      {project?.liveUrl && (isLiveSite(project) || liveSide) && (
         <span className="lbl shrink-0 rounded-[6px] border border-slow px-1.5 py-[3px] text-slow" title={`Live site: ${project.liveUrl}${project.liveUrl.startsWith("http:") ? " (not secure)" : ""}`}>
           Live
         </span>

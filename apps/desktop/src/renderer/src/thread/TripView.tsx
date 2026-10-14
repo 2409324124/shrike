@@ -2,7 +2,7 @@ import { memo, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } 
 import type { ActionView, FlowStep } from "@shrike/schema";
 import { cssColor as color } from "@shrike/design";
 import { subLine, type Trip, type TripGeometry, type PlacedStation } from "../lib/thread-layout.ts";
-import { firstFailure, type useThread } from "../stores/thread.ts";
+import { firstFailure, otherSide, useThread } from "../stores/thread.ts";
 import { BeforeShot, AfterShot, TerminalCard, SHOT_W } from "./Shot.tsx";
 import { TripDecor } from "./TripDecor.tsx";
 import { DiveCard, editAndResend } from "./DiveCard.tsx";
@@ -33,6 +33,7 @@ interface Props {
   timeMode: boolean;
   play: Play | null;
   probe: Probe;
+  diff?: number; // T23: the station of the first difference from the other side
   onPlayed(p: Play): void;
   onStation(actionId: string, i: number, st: PlacedStation): void;
 }
@@ -106,23 +107,32 @@ function TripActions({ view }: { view: ActionView }) {
     return t && Number(t.assert?.[0]?.value) < 400 ? t : undefined;
   }, [view]);
   const diff = useMemo(() => (open && source ? resendDiff(source, view) : []), [open, source, view]);
-  if (!can) return null;
+  const other = useActions((s) => otherSide(view, s)); // #62
+  if (!can && !other) return null;
+  const live = !!view.root.live;
   return (
     <>
       <span className="th-acts">
-        {source && (
+        {other && (
+          <button type="button" className="th-act" onClick={() => useThread.getState().setCompare(live ? { local: other, live: view.id } : { local: view.id, live: other })} title={`Show this trip and the last ${live ? "local" : "live"} one side by side, with the first difference`}>
+            {live ? "Compare with local" : "Compare with live"}
+          </button>
+        )}
+        {can && source && (
           <button type="button" className="th-act" aria-pressed={open} onClick={() => setOpen((o) => !o)} title={`Compare with "${source.label}", the trip you edited`}>
             Compare
           </button>
         )}
-        {step && (
+        {can && step && (
           <button type="button" className="th-act" onClick={() => void saveTest(step)} title="Save this request and the status it answered as a test your flows replay">
             Save as test
           </button>
         )}
-        <button type="button" className="th-act" onClick={() => editAndResend(view)} title="Open this request in the editor, change it and send it again">
-          Edit and resend
-        </button>
+        {can && (
+          <button type="button" className="th-act" onClick={() => editAndResend(view)} title="Open this request in the editor, change it and send it again">
+            Edit and resend
+          </button>
+        )}
       </span>
       {open && diff.length > 0 && (
         <ul className="th-diff" aria-label="What changed since the trip you edited">
@@ -142,6 +152,7 @@ export const TripView = memo(function TripView(p: Props) {
   onPlayed.current = p.onPlayed;
   const gid = `th-${trip.actionId}`;
   const failed = trip.status === "error";
+  const retColor = failed ? color.fail : trip.shape === "came_back_empty" ? color.slow : color.ok; // T6: an empty answer comes back amber
   const clue = failed ? firstFailure(trip) : -1;
   const snapAt = g.stations.findIndex((s) => s.snap);
   const stations: St[] = g.stations.map((s, i) => ({ ...s, i, hot: !!s.snap || i === clue, post: snapAt >= 0 && !isFinite(s.reach) }));
@@ -196,7 +207,7 @@ export const TripView = memo(function TripView(p: Props) {
           d={g.ret}
           style={dPath(g.ret)}
           fill="none"
-          stroke={failed ? color.fail : color.ok}
+          stroke={retColor}
           strokeWidth="1.8"
           strokeDasharray={failed ? "6 6" : undefined}
           opacity=".85"
@@ -228,7 +239,7 @@ export const TripView = memo(function TripView(p: Props) {
         ) : null,
       )}
       <AfterShot trip={trip} x={x0} y={g.endY} />
-      <div className="th-retlab th-after" style={{ left: x0 + 72, top: g.endY - 14, color: failed ? color.fail : color.ok }}>
+      <div className="th-retlab th-after" style={{ left: x0 + 72, top: g.endY - 14, color: retColor }}>
         {trip.returned}
       </div>
 
@@ -292,6 +303,14 @@ export const TripView = memo(function TripView(p: Props) {
         </div>
       )}
       {pst && <i className="th-probe" style={{ left: pst.x, top: pst.y }} />}
+      {p.diff !== undefined && stations[p.diff] && (
+        <div className="th-found th-first" style={{ left: stations[p.diff]!.x, top: stations[p.diff]!.y }} aria-hidden>
+          <i />
+          <i />
+          <i />
+          <i />
+        </div>
+      )}
 
       <TripDecor actionId={trip.actionId} stations={g.stations} width={width} />
 

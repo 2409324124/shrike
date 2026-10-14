@@ -639,10 +639,12 @@ export function buildTrip(view: ActionView, expanded: ReadonlySet<string> = new 
   const httpStatus = browserReq?.http?.status ?? answer?.http?.status ?? firstReq?.http?.status;
   const h = (browserReq ?? firstReq)?.http?.resHeaders;
   const to = h?.["x-remix-redirect"] ?? (httpStatus && httpStatus >= 300 && httpStatus < 400 ? h?.location : undefined); // Remix answers a redirect to a data fetch with 204 and this header
+  const direct = caller.browser ? raw.find((s) => s.place.kind === "data" && steps[s.stepIndex]!.event.origin === "browser")?.place : undefined; // Supabase, Firebase called from the page
   const returned =
     to ? `Server sent your page to ${pathOf(to)}`
     : httpStatus ? (httpStatus >= 400 ? statusWords(httpStatus) : `Server replied ${statusWords(httpStatus)}`)
     : loadedOn ? "Rendered on the server"
+    : direct ? `Your page asked ${placeWords(direct)} directly`
     : caller.browser ? "Your page never called the server"
     : view.status === "error" ? "It stopped with an error"
     : "It finished";
@@ -836,7 +838,10 @@ function classify(view: ActionView, st: Station[], caller: TripCaller, multi: bo
   if (snap?.place.kind === "service") return { shape: "server_failed", verdict: `${where(snap)} failed in ${snap.label}.` };
   if (snap?.kind === "error") return { shape: "page_failed", verdict: `Your page's code threw an error: ${snap.chip ?? "unknown"}` };
   if (snap) return { shape: "page_failed", verdict: `Your page's code failed in ${snap.label}.` };
-  if (!reachedServer && caller.browser) {
+  const empty = view.flags.find((f) => f.kind === "empty_result" && f.message.includes(" 0 rows")); // same pick as the correlator's headline
+  if (empty && !(httpStatus && httpStatus >= 400)) return { shape: "came_back_empty", verdict: `${empty.message.split(". ")[0]}.` }; // #62: wins over every "worked" shape
+  const direct = caller.browser && st.find((s) => s.place.kind === "data" && !s.opaque);
+  if (!reachedServer && caller.browser && !direct) {
     if (!httpStatus) return live ? { shape: "worked", verdict: `The server rendered this page. ${inside}` } : { shape: "never_left_page", verdict: "Your page never called the server." };
     const who = blind ? serviceWords(blind) : "the server";
     if (httpStatus >= 400) return { shape: "server_failed", verdict: `${who.replace(/^t/, "T")} said no: ${statusWords(httpStatus)}. ${inside}` };
@@ -845,8 +850,6 @@ function classify(view: ActionView, st: Station[], caller: TripCaller, multi: bo
     return { shape: "worked", verdict: blind ? `Your page called ${who}, which Shrike can't see inside.` : "Your page called a server Shrike can't see inside." };
   }
   if (httpStatus && httpStatus >= 400) return { shape: "server_failed", verdict: `The server said no: ${statusWords(httpStatus)}.` };
-  const empty = view.flags.find((f) => f.kind === "empty_result" && f.message.includes(" 0 rows")); // same pick as the correlator's headline
-  if (empty) return { shape: "came_back_empty", verdict: `${empty.message.split(". ")[0]}.` };
   if (coil) return { shape: "repeated", verdict: `The same database question was asked ${coil.count} times.` };
   const reads = st.filter((s) => s.cache === "hit" || s.cache === "miss");
   if (reads.reduce((n, s) => n + (s.count ?? 1), 0) >= 2 && !reads.some((s) => s.cache === "hit"))

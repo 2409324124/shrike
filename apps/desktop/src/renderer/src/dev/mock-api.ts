@@ -898,6 +898,9 @@ export const mockApi: ShrikeApi = {
     if (!project) throw new Error("No project is open.");
     return (project = { ...project, liveUrl: url ?? undefined });
   },
+  async setAppSide(side) {
+    return side;
+  },
   async getMemory() {
     return memory;
   },
