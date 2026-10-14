@@ -114,7 +114,7 @@ try {
   await cdp("Runtime.enable");
   await cdp("Page.enable");
   await cdp("Runtime.addBinding", { name: "__shrikeEmit" });
-  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: bundle });
+  const { identifier: scriptId } = await cdp("Page.addScriptToEvaluateOnNewDocument", { source: bundle });
   const evaluate = async (expression) => {
     const r = await cdp("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true });
     if (r.exceptionDetails) throw new Error(`evaluate failed: ${expression}: ${JSON.stringify(r.exceptionDetails)}`);
@@ -212,14 +212,18 @@ try {
   out.flow = { steps: flowSteps(), after: flowSteps().length - recorded };
 
   await evaluate(`console.log("outside any action")`);
-  // Binding missing: messages are buffered and delivered once it is back.
-  await evaluate(`(() => { const b = window.__shrikeEmit; delete window.__shrikeEmit;
-    console.log("buffered while missing"); setTimeout(() => (window.__shrikeEmit = b), 500); })()`);
-  await waitFor(
-    () => out.msgs.some((m) => m.events?.some((e) => e.log?.message === "buffered while missing")),
-    3000,
-    "buffered log",
-  );
+  // #54: page scripts find no binding, in the page or in a same-origin iframe, so forged messages reach nothing.
+  out.forge = await evaluate(`(async () => {
+    const forged = JSON.stringify({ type: "events", events: [{ id: "f".repeat(16), traceId: "f".repeat(32), origin: "browser", kind: "log", name: "forged", startMs: Date.now(), status: "ok", log: { level: "info", message: "forged" } }] });
+    const blank = document.body.appendChild(document.createElement("iframe"));
+    const same = document.createElement("iframe");
+    same.src = "/api/initial";
+    await new Promise((r) => ((same.onload = r), document.body.appendChild(same)));
+    const seen = [window, blank.contentWindow, same.contentWindow].map((w) => typeof w.__shrikeEmit);
+    for (const w of [window, blank.contentWindow, same.contentWindow]) try { w.__shrikeEmit(forged); } catch {}
+    return seen;
+  })()`);
+  await sleep(200);
   out.results = await evaluate("window.__results");
   out.consoleWorks = await evaluate(`typeof console.log === "function" && console.log("x") === undefined`);
   await sleep(100);
@@ -228,6 +232,13 @@ try {
   await evaluate(`(() => { fetch("/api/slow").catch(() => {}); setTimeout(() => (location.href = "/?again"), 150); })()`);
   await sleep(1500);
   out.left = out.msgs.splice(before).flatMap((m) => m.events ?? []).filter((e) => e.kind === "http_request" && e.durationMs !== undefined);
+  // #54: main's config closure turns traceparent off (a live origin).
+  await cdp("Page.removeScriptToEvaluateOnNewDocument", { identifier: scriptId });
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: `(() => {\nconst __shrikeConfig = {"traceparent":false};\n${bundle}\n})();` });
+  await wc.loadURL(`http://127.0.0.1:${port}/?live`);
+  out.liveEcho = await evaluate(`fetch("/api/echo", { method: "POST", body: "x" }).then((r) => r.json())`);
+  out.liveConfig = await evaluate("typeof window.__shrikeConfig");
+  out.msgs.splice(before);
 } catch (err) {
   out.error = String(err?.stack ?? err);
 }

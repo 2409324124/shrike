@@ -196,7 +196,14 @@ test("browser-agent end to end in Electron", { timeout: 90_000 }, async () => {
   ]);
   assert.equal(out.flow.after, 0);
 
-  // Logs outside a window use the zero trace; buffering survived a missing binding.
+  // #54: no page script, top frame or iframe, can reach the binding; nothing forged landed.
+  assert.deepEqual(out.forge, ["undefined", "undefined", "undefined"]);
+  assert.ok(!events.some((e) => e.name === "forged"), "a forged event landed");
+  // #54: traceparent off through the config closure, which the page can't see.
+  assert.equal(out.liveEcho.headers.traceparent, undefined);
+  assert.equal(out.liveConfig, "undefined");
+
+  // Logs outside a window use the zero trace.
   const outside = events.find((e) => e.log?.message === "outside any action");
   assert.equal(outside.traceId, "0".repeat(32));
   assert.equal(outside.parentId, undefined);

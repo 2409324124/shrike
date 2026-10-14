@@ -114,6 +114,21 @@ test("B1 record: page steps and explorer requests in time order, secrets sealed,
   assert.deepEqual((await listFlows(root)).map((x) => x.id), ["add-a-todo"]);
 });
 
+test("#54 a page's flow_step outside a recording does nothing, even through a listener it kept", async () => {
+  const f = fake(mkdtempSync(join(tmpdir(), "shrike-flows-")));
+  let kept: ((m: unknown) => void) | undefined;
+  const listen = f.deps.page.listen;
+  f.deps.page.listen = (cb) => ((kept = cb), listen(cb));
+  const flows = new Flows(f.deps);
+  f.page({ type: "flow_step", step: { type: "click", name: "Pay" } });
+  await flows.startRecording();
+  await flows.stopRecording("  ");
+  const before = f.sent.length;
+  kept!({ type: "flow_step", step: { type: "click", name: "Pay" } });
+  assert.equal(f.sent.length, before);
+  assert.equal(flows.recording, false);
+});
+
 test("B2 replay: drives by name, unseals secrets, records the result; a red watched flow notifies once", async () => {
   const root = mkdtempSync(join(tmpdir(), "shrike-flows-"));
   const f = fake(root, { elements: els, broken: ["click-e2"] });

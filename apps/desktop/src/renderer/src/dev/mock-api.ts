@@ -891,6 +891,13 @@ export const mockApi: ShrikeApi = {
     await wait(120);
     return (project = { ...project, processes: list.map((p) => ({ ...p })) });
   },
+  async openLiveSite(url) {
+    return (project = { ...makeProject(MOCK_ROOT), liveUrl: url, devCommand: "", processes: [{ name: "app", command: "" }] });
+  },
+  async setLiveUrl(url) {
+    if (!project) throw new Error("No project is open.");
+    return (project = { ...project, liveUrl: url ?? undefined });
+  },
   async getMemory() {
     return memory;
   },

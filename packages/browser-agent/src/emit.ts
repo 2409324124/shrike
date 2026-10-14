@@ -12,13 +12,16 @@ const queue: string[] = [];
 let retrying = false;
 const setT = window.setTimeout.bind(window);
 
-function binding(): Binding | undefined {
-  const b = (window as unknown as { __shrikeEmit?: unknown }).__shrikeEmit;
-  return typeof b === "function" ? (b as Binding) : undefined;
-}
+// #54: taken once at document start, then removed before any page script runs (this script runs in every frame, so iframes too).
+// A page that loaded before the binding existed records nothing rather than trusting whatever sits there later.
+const w = window as unknown as { __shrikeEmit?: unknown };
+const bound = typeof w.__shrikeEmit === "function" ? (w.__shrikeEmit as Binding) : undefined;
+try {
+  delete w.__shrikeEmit;
+} catch {}
 
 function flush(): boolean {
-  const b = binding();
+  const b = bound;
   if (!b) return false;
   while (queue.length) {
     try {
@@ -41,6 +44,7 @@ function retry(): void {
 }
 
 export function send(msg: IngestMessage | PointMessage | FlowStepMessage): void {
+  if (!bound) return;
   try {
     queue.push(JSON.stringify(msg));
     if (queue.length > MAX_QUEUE) queue.shift();

@@ -1,4 +1,4 @@
-import { webContents } from "electron";
+import { BrowserWindow, webContents } from "electron";
 import type { ApprovalRequest, HttpRequestSpec, MemoryNote, ProjectInfo, RunStatus, ShrikeEvents, ShrikeHost } from "@shrike/schema";
 import { AppView } from "./app-view.ts";
 import { notePatch } from "./issue.ts";
@@ -11,8 +11,8 @@ import { startIngest, type Ingest } from "./ingest.ts";
 import { inspector } from "./inspector.ts";
 import * as patches from "./patches.ts";
 import { paths } from "./paths.ts";
-import { loadProject } from "./project.ts";
-import { portTaken, responds, Runner, shiftUrl } from "./runner.ts";
+import { liveConsent, loadProject, readConfig } from "./project.ts";
+import { liveUrlOf, portTaken, responds, Runner, shiftUrl } from "./runner.ts";
 import * as race from "./race.ts";
 import { randomHex, Store } from "./store.ts";
 
@@ -93,9 +93,14 @@ export const runner = new Runner({
 export const appView = new AppView({
   bundlePath: paths.browserAgentBundle,
   appUrl: () => (runner.status.state === "running" ? runner.status.url : undefined),
+  live: () => liveRun(),
+  traceparent: () => !liveRun() || readConfig(project!.root).liveTraceparent === true, // #50: off on live origins unless the project turns it on
   onMessage: (msg) => store.handle(msg),
   onWarning: (text) => queueOutput(null, text),
 });
+
+/** #54: the app pane shows a live site (a live project's run), not a local dev server. */
+export const liveRun = (): boolean => !!project && runner.status.state === "running" && !!liveUrlOf(project);
 
 const ingest = () => (ingestP ??= startIngest((msg) => store.handle(msg), inspector)); // inspector: I place inspector
 
@@ -141,6 +146,13 @@ let starting: Promise<RunStatus> | null = null;
 export function run(): Promise<RunStatus> {
   starting ??= (async () => {
     const p = requireProject();
+    const live = liveUrlOf(p);
+    if (live) {
+      if (runner.status.state === "running") return runner.status;
+      const win = BrowserWindow.getAllWindows().find((w) => !w.getParentWindow());
+      if (!(await liveConsent(p.root, live, win))) return runner.refuse("Shrike opens a live site only after you confirm you own it or may test it. Press Run to answer again.");
+      return runner.startLive(live);
+    }
     if (runner.status.state !== "starting" && runner.status.state !== "running") {
       // A server we didn't start would answer instead of ours, and Shrike would see none of it.
       const taken = await portTaken([shiftUrl(p.appUrl, offset()), apiUrl()]);

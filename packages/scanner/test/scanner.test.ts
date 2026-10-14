@@ -98,6 +98,12 @@ test("config overrides, lockfiles, missing or broken files", async () => {
   const ci = await detectProject(c);
   assert.equal(ci.backend, "hono");
   assert.equal(ci.frontend, "react");
+  // #54: a live site's scratch project: no dev script note, only http(s) URLs kept.
+  const live = await detectProject(project({ ".shrike/config.json": JSON.stringify({ liveUrl: "https://your-app.com", origins: ["https://api.your-app.com", "file:///etc", 3] }) }));
+  assert.equal(live.liveUrl, "https://your-app.com");
+  assert.deepEqual(live.origins, ["https://api.your-app.com"]);
+  assert.equal(live.notes, undefined);
+  assert.equal((await detectProject(project({ ".shrike/config.json": JSON.stringify({ liveUrl: "javascript:alert(1)" }) }))).liveUrl, undefined);
   await assert.doesNotReject(scanRoutes(join(a, "does-not-exist")));
 });
 

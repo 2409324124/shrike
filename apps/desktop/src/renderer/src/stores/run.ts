@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type { RunStatus } from "@shrike/schema";
 import { call } from "../lib/api.ts";
 import { useStart } from "../start/store.ts";
+import { isLiveSite, useProject } from "./project.ts";
 
 const MAX_OUTPUT = 200_000;
 
@@ -34,6 +35,12 @@ export const useRun = create<RunState>((set, get) => ({
   // R5: every Run (top bar, Setup, voice, dock) is Claude's start quest; the old package.json guess is gone from the UI.
   async start() {
     set({ status: { ...get().status, state: "starting", error: undefined } });
+    if (isLiveSite(useProject.getState().project)) {
+      // #54: no dev command to start; main asks for consent once per host, then opens the site.
+      const s = await call((a) => a.run(), "Couldn't open your live site");
+      set({ status: s ?? { state: "error", error: "Couldn't open your live site." } });
+      return;
+    }
     const p = await call((a) => a.startApp(), "Couldn't start your app");
     if (p) useStart.getState().setPlan(p);
     else set({ status: { state: "error", error: "Couldn't start your app." } });

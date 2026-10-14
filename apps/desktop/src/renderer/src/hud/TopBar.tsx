@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from "react";
 import { BookOpen, Ellipsis, GitPullRequest, Palette, Play, Route, Settings, Share2, Square } from "lucide-react";
-import { useProject } from "../stores/project.ts";
+import { isLiveSite, useProject } from "../stores/project.ts";
 import { useRun } from "../stores/run.ts";
 import { useAgent } from "../stores/agent.ts";
 import { useThread } from "../stores/thread.ts";
@@ -71,6 +71,12 @@ export function TopBar() {
       <span className="max-w-[220px] min-w-0 shrink-0 truncate text-[13px] font-medium text-ink max-xl:shrink" title={project?.root}>
         {project?.name}
       </span>
+      {/* H15 live badge (#54) */}
+      {project?.liveUrl && isLiveSite(project) && (
+        <span className="lbl shrink-0 rounded-[6px] border border-slow px-1.5 py-[3px] text-slow" title={`Live site: ${project.liveUrl}${project.liveUrl.startsWith("http:") ? " (not secure)" : ""}`}>
+          Live
+        </span>
+      )}
       <XpChip />
       <RunState />
       <IconButton label="Set up processes" onClick={() => useUi.setState({ setup: true })}>

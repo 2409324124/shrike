@@ -36,23 +36,29 @@ export function Setup() {
   const runState = useRun((s) => s.status.state);
   const [list, setList] = useState<ProcessSpec[]>([]);
   const [saving, setSaving] = useState(false);
+  const [liveUrl, setLiveUrl] = useState("");
   // Filled while rendering, not in an effect, so the first frame already lists what the scanner found.
   const [from, setFrom] = useState<typeof project>(null);
   if (from !== (open ? project : null)) {
     setFrom(open ? project : null);
+    if (open && project) setLiveUrl(project.liveUrl ?? "");
     if (open && project) setList(project.processes?.length ? project.processes.map((p) => ({ ...p })) : [{ name: "app", command: project.devCommand }]);
   }
 
   if (!open || !project) return null;
   const close = () => useUi.setState({ setup: false });
-  const err = problem(clean(list));
-  const dirty = JSON.stringify(clean(list)) !== JSON.stringify(clean(project.processes ?? []));
+  const liveDirty = liveUrl.trim() !== (project.liveUrl ?? "");
+  const liveOnly = !!liveUrl.trim() && list.every((p) => !p.command.trim()); // #54: a live site needs no command
+  const err = (liveOnly ? null : problem(clean(list))) ?? (liveUrl.trim() && !/^https?:\/\/\S+$/.test(liveUrl.trim()) ? "The live URL should start with https:// or http://." : null);
+  const procsDirty = !liveOnly && JSON.stringify(clean(list)) !== JSON.stringify(clean(project.processes ?? []));
+  const dirty = procsDirty || liveDirty;
   const edit = (i: number, patch: Partial<ProcessSpec>) => setList((l) => l.map((p, k) => (k === i ? { ...p, ...patch } : p)));
   const save = async (): Promise<boolean> => {
     if (err) return false;
     if (!dirty) return true;
     setSaving(true);
-    const ok = await useProject.getState().saveProcesses(clean(list));
+    let ok = !procsDirty || (await useProject.getState().saveProcesses(clean(list)));
+    if (ok && liveDirty) ok = await useProject.getState().saveLiveUrl(liveUrl.trim() || null);
     setSaving(false);
     if (ok) toast("Saved to .shrike/config.json", "ok");
     return ok;
@@ -102,6 +108,10 @@ export function Setup() {
           <button type="button" className="hud-btn mt-2 -ml-2" onClick={() => setList((l) => [...l, { name: "", command: "" }])}>
             <Plus size={11} /> Add a process
           </button>
+
+          <h3 className="micro mt-6 mb-1 text-faint">Live URL</h3>
+          <p className="mb-2 text-[12.5px] text-dim">Where your app is deployed. With no command to run, Run opens this site.</p>
+          <Field value={liveUrl} onChange={setLiveUrl} label="Live URL" placeholder="https://your-app.com" className="w-full" />
 
           <h3 className="micro mt-6 mb-2.5 text-faint">We think your app has</h3>
           {places.length ? (

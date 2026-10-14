@@ -23,6 +23,8 @@ const pointMsg = z.object({
 export interface AppViewOptions {
   bundlePath: string;
   appUrl(): string | undefined; // set while the run is "running"
+  live?(): boolean; // #54: the page is a live site; its events are marked live
+  traceparent?(): boolean; // #54: add traceparent to same-origin requests (default on)
   onMessage(msg: IngestMessage): void;
   onWarning(text: string): void;
 }
@@ -51,6 +53,9 @@ export function placeAppWindow(saved: unknown, displays: { id: number; workArea:
   const y = Math.min(Math.max(b.y, a.y), a.y + a.height - height);
   return { bounds: { x, y, width, height }, fullScreen: s.data.fullScreen };
 }
+
+/** The recorder bundle with its settings as a closure constant (read by browser-agent as `__shrikeConfig`). */
+export const withConfig = (source: string, config: { traceparent: boolean }): string => `(() => {\nconst __shrikeConfig = ${JSON.stringify(config)};\n${source}\n})();`;
 
 const NOT_OPEN = "The app isn't open yet. Press Run first.";
 const MAX_SHOTS = 50;
@@ -116,9 +121,12 @@ export class AppView {
     } catch {}
     if (!msg) return;
     // The page is untrusted: it may only speak for the browser side.
+    const live = this.opts.live?.() === true;
     if (msg.type === "events")
       for (const e of msg.events) {
         e.origin = "browser";
+        if (live) e.live = true;
+        else delete e.live;
         // The root is sent at open (no duration) and again at close; shoot only at open.
         if (e.kind === "user_action" && !e.parentId && e.durationMs === undefined && (e.trigger === "click" || e.trigger === "submit")) void this.capture(e.id);
       }
@@ -147,6 +155,8 @@ export class AppView {
       this.opts.onWarning(`\r\n[shrike] Browser recording is off: ${this.opts.bundlePath} is missing. Run "pnpm --filter @shrike/browser-agent build".\r\n`);
       return;
     }
+    // #54: settings go into the script's own closure, never a window property a page could read or set.
+    source = withConfig(source, { traceparent: this.opts.traceparent?.() !== false });
     const r = (await d.sendCommand("Page.addScriptToEvaluateOnNewDocument", { source })) as { identifier: string };
     this.scriptId = r.identifier;
   }

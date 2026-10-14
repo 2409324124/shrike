@@ -88,6 +88,9 @@ function startEvent(t: Target, method: string, data?: DataKind): { ev: DebugEven
 }
 
 const traceparent = (ev: DebugEvent): string => `00-${ev.traceId}-${ev.id}-01`;
+// #54: main wraps the bundle with this constant; off on live origins unless the project turns it on.
+declare const __shrikeConfig: { traceparent?: boolean } | undefined;
+const sendTraceparent = typeof __shrikeConfig === "undefined" || __shrikeConfig.traceparent !== false;
 
 async function readResponseBody(res: Response): Promise<string | undefined> {
   const ct = res.headers.get("content-type") ?? "";
@@ -150,7 +153,7 @@ function patchFetch(): void {
       const data = dataKind(t.url, method, headersObject(headers));
       if (data === "skip") return orig.apply(this, arguments as unknown as Parameters<typeof fetch>);
       ({ ev, settle } = startEvent(t, method, data));
-      if (t.sameOrigin && !headers.has("traceparent")) {
+      if (sendTraceparent && t.sameOrigin && !headers.has("traceparent")) {
         headers.set("traceparent", traceparent(ev));
         callArgs = [input, { ...init, headers }];
       }
@@ -240,7 +243,7 @@ function patchXhr(): void {
       const data = i && t && dataKind(t.url, i.method, i.headers);
       if (i && t && data !== "skip" && this.readyState === XMLHttpRequest.OPENED) {
         const { ev, settle } = startEvent(t, i.method, data);
-        if (t.sameOrigin && !("traceparent" in i.headers)) {
+        if (sendTraceparent && t.sameOrigin && !("traceparent" in i.headers)) {
           const tp = traceparent(ev);
           setHeader.call(this, "traceparent", tp);
           i.headers.traceparent = tp;

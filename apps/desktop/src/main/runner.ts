@@ -184,6 +184,10 @@ function groupAlive(pid: number): boolean {
   }
 }
 
+/** #54: a live project (a live URL and nothing to start) opens that URL instead of running a dev command. */
+export const liveUrlOf = (project: Pick<ProjectInfo, "liveUrl" | "processes" | "devCommand">): string | undefined =>
+  project.liveUrl && !project.devCommand.trim() && !project.processes.some((p) => p.command.trim()) ? project.liveUrl : undefined;
+
 export class Runner {
   status: RunStatus = { state: "idle" };
   offsetFor: (root: string) => number = () => 0; // W2: port offset of the worktree at `root`; shifts every local port
@@ -512,6 +516,16 @@ export class Runner {
     p.state = "running";
     if (url && !p.url) p.url = url;
     this.refresh();
+  }
+
+  /** #54: a live site has no dev command: running at once, at `url`. The loopback checks in start() are for local runs only. */
+  startLive(url: string): RunStatus {
+    if (this.alive().length) return this.status;
+    this.procs = [];
+    this.urls = [];
+    this.pageUrl = url;
+    this.set({ state: "running", url });
+    return this.status;
   }
 
   /** R3: every service is healthy (and the page answers): the dock switches to the live app. */

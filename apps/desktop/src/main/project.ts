@@ -31,7 +31,7 @@ export async function loadProject(root: string): Promise<{ info: ProjectInfo; se
   return { info, serverUrl: typeof serverUrl === "string" ? serverUrl : info.appUrl ? undefined : info.processes.find((p) => p.url)?.url };
 }
 
-function readConfig(root: string): Record<string, unknown> {
+export function readConfig(root: string): Record<string, unknown> {
   try {
     const v: unknown = JSON.parse(readFileSync(join(root, ".shrike/config.json"), "utf8"));
     return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
@@ -42,6 +42,49 @@ function readConfig(root: string): Record<string, unknown> {
 
 /** D12: write `processes` into .shrike/config.json, keeping every other key. */
 export function saveProcesses(root: string, processes: ProcessSpec[]): void {
+  saveConfig(root, { processes });
+}
+
+/** #54: a live URL typed by the user, as a clean http(s) URL. */
+export function liveUrlFrom(input: string): string {
+  let u: URL;
+  try {
+    u = new URL(/^[a-z][\w+.-]*:\/\//i.test(input.trim()) ? input.trim() : `https://${input.trim()}`);
+  } catch {
+    throw new Error("That isn't a web address. Paste it like https://your-app.com");
+  }
+  if (u.protocol !== "https:" && u.protocol !== "http:") throw new Error("Shrike opens web addresses only: https:// or http://");
+  return u.href;
+}
+
+/** #54: a live site with no folder gets a scratch project in userData/live/<host>/ holding only .shrike/config.json. */
+export function liveProjectRoot(url: string): string {
+  const root = join(app.getPath("userData"), "live", new URL(url).host.replace(/[^\w.-]/g, "_"));
+  saveConfig(root, { liveUrl: url });
+  return root;
+}
+
+/** #54: the user said once per host that they own the app or may test it; saved in the project's .shrike/config.json. */
+export async function liveConsent(root: string, url: string, win: BrowserWindow | undefined): Promise<boolean> {
+  const host = new URL(url).host;
+  const said = readConfig(root).liveConsent;
+  if (Array.isArray(said) && said.includes(host)) return true;
+  const opts = {
+    type: "question" as const,
+    message: `Open ${host}?`,
+    detail: "Shrike records every request this site makes, including the data real people see on it. Only open apps you own or have permission to test.",
+    buttons: ["I own this app or may test it", "Cancel"],
+    defaultId: 0,
+    cancelId: 1,
+  };
+  const r = win ? await dialog.showMessageBox(win, opts) : await dialog.showMessageBox(opts);
+  if (r.response !== 0) return false;
+  saveConfig(root, { liveConsent: [...(Array.isArray(said) ? said : []), host] });
+  return true;
+}
+
+/** Merge `patch` into .shrike/config.json, keeping every other key (null removes one). */
+export function saveConfig(root: string, patch: Record<string, unknown>): void {
   const file = join(root, ".shrike", "config.json");
   let config: Record<string, unknown> = {};
   if (existsSync(file)) {
@@ -55,7 +98,9 @@ export function saveProcesses(root: string, processes: ProcessSpec[]): void {
     if (!v || typeof v !== "object" || Array.isArray(v)) throw new Error("Shrike can't read .shrike/config.json, so it didn't change it. Fix that file, then try again.");
     config = v as Record<string, unknown>;
   }
-  writeAtomicSync(file, JSON.stringify({ ...config, processes }, null, 2) + "\n");
+  const next: Record<string, unknown> = { ...config, ...patch };
+  for (const k of Object.keys(patch)) if (patch[k] === null) delete next[k];
+  writeAtomicSync(file, JSON.stringify(next, null, 2) + "\n");
 }
 
 export async function pickFolder(win: BrowserWindow | undefined): Promise<string | undefined> {

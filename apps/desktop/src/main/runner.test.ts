@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import type { RunStatus } from "@shrike/schema";
-import { detectUrl, exitHint, portTaken, reapOrphans, Runner, trackGroups } from "./runner.ts";
+import { detectUrl, exitHint, liveUrlOf, portTaken, reapOrphans, Runner, trackGroups } from "./runner.ts";
 import { startTimeOf } from "./platform.ts";
 
 /** A killed group can linger a moment on Linux while its children are reaped. */
@@ -54,6 +54,19 @@ const s = http.createServer((q, r) => r.end("ok")).listen(0, "127.0.0.1", () => 
   assert.equal(r.status.state, "stopped");
   assert.ok(await groupGone(pid));
   assert.deepEqual(states.filter((s, i) => s !== states[i - 1]), ["starting", "running", "stopped"]);
+});
+
+test("#54 a live project runs at its live URL with no process; a project with a dev command stays local", async () => {
+  const live = { root: tmpdir(), name: "live", devCommand: "", routes: [], processes: [{ name: "app", command: "" }], expectedPlaces: [], liveUrl: "https://live.test/" };
+  assert.equal(liveUrlOf(live), "https://live.test/");
+  assert.equal(liveUrlOf({ ...live, devCommand: "npm run dev", processes: [{ name: "app", command: "npm run dev" }] }), undefined);
+  assert.equal(liveUrlOf({ ...live, liveUrl: undefined }), undefined);
+  const states: RunStatus[] = [];
+  const r = new Runner({ onStatus: (s) => states.push(s), onOutput: () => {} });
+  assert.deepEqual(r.startLive("https://live.test/"), { state: "running", url: "https://live.test/" });
+  assert.equal(r.status.processes, undefined);
+  await r.stop();
+  assert.deepEqual(states.map((s) => s.state), ["running", "stopped"]);
 });
 
 test("runner reports a failing command with its last lines", async () => {

@@ -41,11 +41,11 @@ export async function shot(app: ElectronApplication, name: string, prefix = "v5-
 }
 
 /** Launch the built app; pass `userData` to relaunch on the same data (the caller removes it). */
-export async function launch(env: Record<string, string> = {}, keep?: string): Promise<{ app: ElectronApplication; win: Page; userData: string; cleanup(): Promise<void> }> {
+export async function launch(env: Record<string, string> = {}, keep?: string, args: string[] = []): Promise<{ app: ElectronApplication; win: Page; userData: string; cleanup(): Promise<void> }> {
   const userData = keep ?? mkdtempSync(join(tmpdir(), "shrike-e2e-data-"));
   // Every Run is Claude's start quest (R5): without SHRIKE_E2E_AGENT it plays the recorded start stream (fake-start.mjs).
   const start = process.env.SHRIKE_E2E_AGENT || process.env.SHRIKE_CLAUDE_BIN ? {} : { SHRIKE_CLAUDE_BIN: startBin() };
-  const app = await _electron.launch({ executablePath: electronPath as unknown as string, args: [".", `--user-data-dir=${userData}`], cwd: process.env.SHRIKE_E2E_APP ?? desktop, env: { ...process.env, ...start, ...env } as Record<string, string> }); // SHRIKE_E2E_APP: a build kept apart from out/
+  const app = await _electron.launch({ executablePath: electronPath as unknown as string, args: [".", `--user-data-dir=${userData}`, ...args], cwd: process.env.SHRIKE_E2E_APP ?? desktop, env: { ...process.env, ...start, ...env } as Record<string, string> }); // SHRIKE_E2E_APP: a build kept apart from out/
   const win = await app.firstWindow();
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.setContentSize(1600, 1000));
   return {

@@ -60,6 +60,7 @@ export interface DebugEvent {
   caller?: { kind: "browser" | "curl" | "postman" | "explorer" | "agent" | "cron" | "test" | "service" | "other"; label: string; command?: string }; // user_action roots that didn't start in a browser
   change?: DataChange; // I3: db_query writes, captured by node-agent around the statement
   resendOf?: string; // AP: user_action roots, the trip this request edited and resent
+  live?: true; // set by main on events from a live site's page (#54); never trusted from the page
 }
 
 // docs/13 I: place inspector
@@ -148,6 +149,8 @@ export interface ProjectInfo {
   declaredPlaces?: Record<string, { kind: PlaceKind; name: string }>; // D8, from .shrike/config.json "places" (key = host:port or db target)
   notes?: string[]; // plain-words caveats about how Shrike will start it (shown in Setup)
   placesFrom?: "plan" | "skill"; // expectedPlaces came from Claude's start plan or the run skill; absent = the scanner's guess (lanes-from-plan)
+  liveUrl?: string; // .shrike/config.json "liveUrl": the deployed site (#54); with no dev command, Run opens it instead of starting anything
+  origins?: string[]; // .shrike/config.json "origins": extra API hosts the user lists for the live site
 }
 
 export interface RunStatus {
@@ -1309,6 +1312,8 @@ export interface ShrikeApi {
   openProjectDialog(): Promise<ProjectInfo | null>;
   openProject(root: string): Promise<ProjectInfo>;
   sampleProjectPath(): Promise<string>;
+  openLiveSite(url: string): Promise<ProjectInfo>; // #54: a scratch project in userData/live/<host> with .shrike/config.json { liveUrl }
+  setLiveUrl(url: string | null): Promise<ProjectInfo>; // #54: Setup's Live URL field
   getProject(): Promise<ProjectInfo | null>;
   run(): Promise<RunStatus>;
   stop(): Promise<RunStatus>;

@@ -29,7 +29,7 @@ import * as agentExtras from "./agent.ts";
 import * as hostExtras from "./host.ts";
 import { getCheckpoints } from "./checkpoints.ts";
 // setup (D12 processes, O4 per-process output)
-import { saveProcesses } from "./project.ts";
+import { liveProjectRoot, liveUrlFrom, saveConfig, saveProcesses } from "./project.ts";
 // flows (B1–B5, sessions)
 import { app as flowsApp, safeStorage, webContents } from "electron";
 import { homedir as flowsHome } from "node:os";
@@ -179,6 +179,7 @@ export function registerIpc(win: () => BrowserWindow | undefined, appWin: AppWin
   });
   handle("openProject", z.tuple([str]), (root) => openProject(root));
   handle("sampleProjectPath", none, () => sampleCopy());
+  handle("openLiveSite", z.tuple([z.string().min(1).max(2048)]), (url) => openProject(liveProjectRoot(liveUrlFrom(url))));
   handle("getProject", none, async () => getProject());
   handle("run", none, () => run());
   handle("stop", none, () => runner.stop());
@@ -267,6 +268,11 @@ export function registerIpc(win: () => BrowserWindow | undefined, appWin: AppWin
   handle("setProcesses", z.tuple([z.array(processSpec).min(1).max(20).refine((ps) => new Set(ps.map((p) => p.name)).size === ps.length, "process names must be different")]), async (processes) => {
     const root = requireProject().root;
     saveProcesses(root, processes);
+    return openProject(root);
+  });
+  handle("setLiveUrl", z.tuple([z.string().min(1).max(2048).nullable()]), async (url) => {
+    const root = requireProject().root;
+    saveConfig(root, { liveUrl: url === null ? null : liveUrlFrom(url) });
     return openProject(root);
   });
   // ---- end setup ----

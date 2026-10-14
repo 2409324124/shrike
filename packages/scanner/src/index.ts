@@ -97,9 +97,11 @@ export async function detectProject(root: string, opts: { java?: () => Promise<J
     if (fb && !processes.some((p) => p.name === fb.name)) processes.push(fb);
   }
   const devCommand = fallbackDev ?? processes[0]?.command ?? "";
+  const liveUrl = webUrl(config.liveUrl);
+  const origins = Array.isArray(config.origins) ? config.origins.map(webUrl).filter((o): o is string => !!o) : [];
   if (!processes.length) {
     processes = [{ name: "app", command: devCommand }];
-    ctx.notes.push("Shrike didn't find a dev script. Type the command you use to start your app.");
+    if (!liveUrl) ctx.notes.push("Shrike didn't find a dev script. Type the command you use to start your app.");
   }
 
   const frontend = has("@remix-run/react") ? "remix" : has("next") ? "next" : has("vite") && has("react") ? "vite-react" : has("react") ? "react" : has("vite") ? "vite" : undefined;
@@ -125,7 +127,18 @@ export async function detectProject(root: string, opts: { java?: () => Promise<J
     expectedPlaces: expectPlaces({ name, appUrl, processes, deps, usesSqlite: facts.usesSqlite, env: envSchemes(apps.map((a) => a.env)), declaredPlaces }),
     ...(declaredPlaces ? { declaredPlaces } : {}),
     ...(ctx.notes.length ? { notes: ctx.notes } : {}),
+    ...(liveUrl ? { liveUrl } : {}),
+    ...(origins.length ? { origins } : {}),
   };
+}
+
+/** An http(s) URL from .shrike/config.json, or undefined. */
+function webUrl(v: unknown): string | undefined {
+  try {
+    return typeof v === "string" && /^https?:$/.test(new URL(v).protocol) ? v.trim() : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 const START = ["dev", "start:dev", "develop", "start"];

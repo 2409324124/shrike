@@ -200,6 +200,7 @@ Stage z scale. Use these steps for anything positioned over the stage; don't inv
 | H12 | Alert banner | Warning triangle, red filled caps bar, corner brackets, barcode, segmented STANDBY box | The first failure of a flight lands with this, then fades to the caption | Now |
 | H13 | Footer tagline | Wide-tracked caps line with gradient underline | Welcome, clip outro | Now |
 | H14 | Activity (`components/Activity.tsx`) | A steady dot (solid in its tone = busy, hollow `inkFaint` = idle), a plain label, and while busy ` · 0:42` in faint mono from one shared 1s clock. No loops anywhere: no pulse, blink, breathe, ping or sweep on a status. A state change may fade once (200ms). Spinners only on a button waiting for a reply | Agent working, check running, Starting, Checking, Recording, the Ask ✦ (steady violet ring plus the timer) | Now |
+| H15 | Live badge | Mono caps `LIVE` in `slow` with a 1px `slow` border, 6px radius, next to the project name; tooltip names the site and adds "(not secure)" for `http://` | Top bar of a live project (#54) | Now |
 
 ### Motion patterns
 

@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { ArrowRight, Palette } from "lucide-react";
 import { useProject } from "../stores/project.ts";
+import { useRun } from "../stores/run.ts";
 import { relativeTime } from "../lib/format.ts";
 import { Spinner } from "../components/ui.tsx";
 import { Appearance, useTheme } from "../themes/index.ts";
@@ -11,7 +13,8 @@ import { isMac } from "../lib/platform.ts";
 const PickUpCard = slot(SLOTS.pickUp); // flows engineer's "Pick up where you left off"
 
 export function Welcome() {
-  const { recent, opening, openDialog, openSample, openRoot } = useProject();
+  const { recent, opening, openDialog, openSample, openRoot, openLive } = useProject();
+  const [liveUrl, setLiveUrl] = useState("");
 
   return (
     <Frame>
@@ -34,6 +37,19 @@ export function Welcome() {
             <button type="button" disabled={opening} onClick={() => void openDialog()} className="btn h-11 px-4">
               Open a folder
             </button>
+            {/* #54: no folder, no dev command: a scratch project that opens the site */}
+            <form
+              className="flex gap-2"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (liveUrl.trim() && (await openLive(liveUrl.trim()))) await useRun.getState().start();
+              }}
+            >
+              <input value={liveUrl} onChange={(e) => setLiveUrl(e.target.value)} aria-label="Open a live site" placeholder="https://your-app.com" inputMode="url" spellCheck={false} className="field h-11 min-w-0 flex-1" />
+              <button type="submit" disabled={opening || !liveUrl.trim()} className="btn h-11 px-4">
+                Open a live site
+              </button>
+            </form>
           </div>
 
           {PickUpCard && (
