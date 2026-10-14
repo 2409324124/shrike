@@ -13,6 +13,7 @@ import { groupRoutes, schemaRows, seenIn, testFromDoc, type SchemaRow } from "./
 
 const keyOf = (r: { method: string; path: string }) => `${r.method} ${r.path}`;
 const tone = (status: string) => (/^2/.test(status) ? "ok" : /^[45]/.test(status) ? (/^5/.test(status) ? "fail" : "slow") : "");
+const BACKOFF_MS = [2_000, 5_000, 10_000, 20_000];
 
 function Chips({ doc, seen }: { doc: RouteDoc; seen: boolean }) {
   return (
@@ -182,6 +183,7 @@ export function RoutesPage() {
   const [q, setQ] = useState("");
   const [sel, setSel] = useState<string | null>(null);
   const [picking, setPicking] = useState<Set<string> | null>(null);
+  const [freshCount, setFreshCount] = useState(0);
   const search = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLDivElement>(null);
 
@@ -190,9 +192,9 @@ export function RoutesPage() {
   useEffect(() => void useApi.getState().loadRoutes(), [address, running]); // the app just came up: its spec URL may answer now
   useEffect(() => {
     if (!running || !specless) return;
-    const t = setInterval(() => void useApi.getState().loadRoutes(), 10_000); // ponytail: polls while open; upgrade: ask once the process prints its first line
-    return () => clearInterval(t);
-  }, [running, specless]);
+    const timers = BACKOFF_MS.map((ms) => setTimeout(() => void useApi.getState().loadRoutes(true), ms)); // ponytail: polls with backoff up to 20s while open; upgrade: ask once the process prints its first line
+    return () => timers.forEach(clearTimeout);
+  }, [address, running, specless, freshCount]);
   const calls = useMemo(() => capturedCalls(byId, order), [byId, order]);
   const routes = view?.routes ?? [];
   const groups = groupRoutes(routes, q);
@@ -239,7 +241,7 @@ export function RoutesPage() {
             <Search size={11} aria-hidden />
             <input ref={search} value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => (e.key === "Escape" && q ? (e.stopPropagation(), setQ("")) : e.key === "ArrowDown" ? (e.preventDefault(), move(flat[0])) : undefined)} placeholder="Search routes" aria-label="Search routes" spellCheck={false} />
           </div>
-          <button type="button" className="ap-icon" aria-label="Look for routes again" title="Look for routes and a spec again" onClick={() => void useApi.getState().loadRoutes(true)}>
+          <button type="button" className="ap-icon" aria-label="Look for routes again" title="Look for routes and a spec again" onClick={() => (setFreshCount((c) => c + 1), void useApi.getState().loadRoutes(true))}>
             <RefreshCw size={12} />
           </button>
         </div>
