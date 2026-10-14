@@ -1,4 +1,4 @@
-import type { ActionView, DebugEvent, Place, PlaceKind, RunStatus, Status } from "@shrike/schema";
+import type { ActionView, DebugEvent, Place, PlaceKind, ProjectInfo, RunStatus, Status } from "@shrike/schema";
 import { placeWords, refusal, serviceWords, statusWords, toSteps, type PlayStep } from "./steps.ts";
 
 // The Thread: pure layout shared by the on-screen view (thread/**) and the clip painter (capture/**).
@@ -22,7 +22,7 @@ const GENERIC_SERVICE = new Set(["app", "server", "service"]); // the single-com
 
 export type Shape =
   | "worked" | "never_left_page" | "server_failed" | "db_refused" | "page_failed" | "repeated" | "slow" | "page_not_updated"
-  | "outside_refused" | "cache_never_hit" | "slow_outside";
+  | "outside_refused" | "cache_never_hit" | "slow_outside" | "came_back_empty";
 
 export interface Station {
   id: string; // event id (first event for coils)
@@ -42,6 +42,7 @@ export interface Station {
   caption: string;
   count?: number; // coil: repeated N times; express: N collapsed steps
   opaque?: boolean; // a project service that got the request but that Shrike can't see inside
+  live?: boolean; // T22: a live project's server, not visible from the browser (also opaque)
   snap?: boolean; // the thread breaks here
   cache?: "hit" | "miss" | "set"; // T15 bounce, T16 pass-through, and the later fill
   back?: string; // cache marks: the lane of the code that asked (a poke returns there)
@@ -104,10 +105,15 @@ export function lanesFor(trips: readonly Trip[], expected: readonly Place[] = []
   });
 }
 
-/** Places a trip can land in without an event naming them: the project's page (for page events recorded before its address was known) and its services with an address and no agent attached (a Python API). Pure. */
-export function knownPlaces(expected: readonly Place[] = [], procs: RunStatus["processes"] = []): Place[] {
-  return expected.filter((p) => p.kind === "client" || (p.kind === "service" && !!p.detail && !procs.some((x) => `service:${x.name}` === p.id && x.instrumented)));
+/** Places a trip can land in without an event naming them: the project's page (for page events recorded before its address was known), its services with an address and no agent attached (a Python API), and a live project's servers (T22). Pure. */
+export function knownPlaces(expected: readonly Place[] = [], procs: RunStatus["processes"] = [], live: Pick<ProjectInfo, "liveUrl" | "origins"> = {}): Place[] {
+  const hosts = [...new Set([live.liveUrl, ...(live.origins ?? [])].map((o) => o && (hostOf(o) || o).toLowerCase()).filter((h): h is string => !!h))];
+  return [
+    ...expected.filter((p) => p.kind === "client" || (p.kind === "service" && !!p.detail && !procs.some((x) => `service:${x.name}` === p.id && x.instrumented))),
+    ...hosts.map((h): Place => ({ id: `${LIVE}${h}`, kind: "service", name: "SERVER", detail: h })),
+  ];
 }
+const LIVE = "service:live:";
 
 /** Lanes a trip touches: its caller and every station's lane. */
 export function touchedBy(trip: Trip): Set<string> {
@@ -585,8 +591,14 @@ export function buildTrip(view: ActionView, expanded: ReadonlySet<string> = new 
       ...chipOf(s, () => failedBelow(steps, s.index)), status: e.status, ms: s.durationMs, caption: s.caption, cache: cacheMark(e), back: e.kind === "cache_op" ? places[parentOf[s.index]!]?.id : undefined, fork: fork && { ...fork, main: false }, eventIds: [e.id],
     });
     // A page's call to one of the project's own services with nothing recorded inside (a Python API, an agent that isn't attached): show it arrive in that lane.
-    const host = e.kind === "http_request" && e.origin === "browser" && !served.has(s.index) ? localHost(hostOf(e.http?.url)) : undefined;
-    const svc = host ? known.find((k) => k.kind === "service" && localHost(k.detail) === host) : undefined;
+    const unserved = e.kind === "http_request" && e.origin === "browser" && !served.has(s.index);
+    const host = unserved ? localHost(hostOf(e.http?.url)) : undefined;
+    const svc = host ? known.find((k) => k.kind === "service" && !k.id.startsWith(LIVE) && localHost(k.detail) === host) : undefined;
+    const srv: Place | undefined = unserved && !svc ? liveServer(known, host ?? (place as Place).detail) : undefined; // a same-origin url has no host: it went to the page's own
+    if (srv) {
+      raw.push({ id: `${e.id}:in`, stepIndex: s.index, lane: srv.id, place: srv, sub: 0, kind: "http_request", ...unseen(e, isRsc(e)), status: e.status, ms: s.durationMs, opaque: true, live: true, fork: fork && { ...fork, main: false }, eventIds: [e.id] });
+      prevLane = srv.id;
+    }
     if (svc) {
       const what = `${e.http?.method ?? ""} ${pathOf(e.http?.url)}`.trim();
       const res = e.http?.status ? `: ${statusWords(e.http.status)}` : "";
@@ -597,6 +609,10 @@ export function buildTrip(view: ActionView, expanded: ReadonlySet<string> = new 
       prevLane = svc.id;
     }
   }
+
+  // T22: a live page's own load with nothing recorded on its server was rendered there.
+  const loadedOn = view.root.trigger === "navigation" && caller.browser && !served.size ? liveServer(known, places.find((q) => q.kind === "client")?.detail) : undefined;
+  if (loadedOn) raw.unshift({ id: `${view.root.id}:in`, stepIndex: 0, lane: loadedOn.id, place: loadedOn, sub: 0, kind: "http_request", ...unseen(view.root, true), status: "ok", ms: 0, opaque: true, live: true, eventIds: [view.root.id] });
 
   // Snap: the first failing station with no failing station inside it (the innermost failure, in run order).
   const failsInside = (i: number) => {
@@ -626,6 +642,7 @@ export function buildTrip(view: ActionView, expanded: ReadonlySet<string> = new 
   const returned =
     to ? `Server sent your page to ${pathOf(to)}`
     : httpStatus ? (httpStatus >= 400 ? statusWords(httpStatus) : `Server replied ${statusWords(httpStatus)}`)
+    : loadedOn ? "Rendered on the server"
     : caller.browser ? "Your page never called the server"
     : view.status === "error" ? "It stopped with an error"
     : "It finished";
@@ -636,6 +653,30 @@ export function buildTrip(view: ActionView, expanded: ReadonlySet<string> = new 
 }
 
 const depthOf = (st: Station, steps: PlayStep[]) => steps[st.stepIndex]!.depth;
+
+/** T22: the live server lane a request to `host` (the page's own when unknown) lands in; none on a project without `liveUrl`. */
+function liveServer(known: readonly Place[], host?: string): Place | undefined {
+  const live = known.filter((k) => k.id.startsWith(LIVE));
+  return host ? live.find((k) => k.detail === host.toLowerCase()) : live[0]; // ponytail: an unknown page host is taken as the live page; a project with a local page and liveUrl (#62) should pass the pane's host
+}
+
+// Next.js page data: the router's fetch carries an RSC header and an _rsc query.
+const isRsc = (e: DebugEvent) => e.http?.reqHeaders?.rsc === "1" || /[?&]_rsc=/.test(e.http?.url ?? "");
+const CDN_HIT = ["x-vercel-cache", "cf-cache-status", "x-cache"];
+// #59: Server-Timing entries ("db 180 ms, render 40 ms") become the station's chip here.
+const serverTiming = (_e: DebugEvent): string | undefined => undefined;
+
+/** T22 words: what answered, its status and time, and why Shrike can't show more. */
+function unseen(e: DebugEvent, rendered: boolean): Pick<Station, "label" | "where" | "caption" | "chip"> {
+  const h = e.http;
+  const where = h?.status ? statusWords(h.status) : rendered && !h ? "page load" : undefined;
+  const what = h ? `${h.method} ${pathOf(h.url)}` : "your page";
+  const chip = serverTiming(e);
+  if (CDN_HIT.some((k) => /^hit\b/i.test(h?.resHeaders?.[k] ?? ""))) return { label: "From cache", where, chip, caption: `A cache answered ${what}, not your server.` };
+  // ponytail: every live page load reads as rendered on the server; telling a static page apart needs the document's response headers
+  if (rendered) return { label: "Rendered on the server", where, chip, caption: `The server rendered ${what}. Your browser only sees the finished result.` };
+  return { label: "Server, not visible from your browser", where, chip, caption: `The server got ${what}${where ? `: ${where}` : ""}. What happened inside isn't visible from your browser.` };
+}
 
 // Plain "why" captions: the call that got the bad value names who passed it; a call the failure only went through names what failed.
 function explainFailures(raw: Station[], steps: PlayStep[]): void {
@@ -780,7 +821,9 @@ function classify(view: ActionView, st: Station[], caller: TripCaller, multi: bo
   const snap = st.find((s) => s.snap);
   const coil = st.find((s) => (s.count ?? 0) >= 3 && s.kind === "db_query");
   const reachedServer = st.some((s) => !s.opaque && s.place.kind !== "client" && s.place.kind !== "caller");
-  const blind = st.find((s) => s.opaque)?.place;
+  const blind = st.find((s) => s.opaque && !s.live)?.place;
+  const live = st.some((s) => s.live);
+  const inside = live ? "What happened inside isn't visible from your browser." : `Shrike can't see inside ${blind ? "it" : "that server"}.`;
   const where = (s: Station) => (multi && s.place.kind === "service" ? serviceWords(s.place).replace(/^t/, "T") : "The server");
   if (snap?.place.kind === "data") return { shape: "db_refused", verdict: snap.caption };
   if (snap?.place.kind === "outside") {
@@ -789,18 +832,21 @@ function classify(view: ActionView, st: Station[], caller: TripCaller, multi: bo
     return { shape: "outside_refused", verdict: why ? `${placeWords(snap.place)} refused: ${why.replace(/\.$/, "")}.` : `${placeWords(snap.place)} said no${e ? `: ${e}` : ""}.` };
   }
   if (snap?.place.kind === "cache") return { shape: "server_failed", verdict: snap.caption };
-  if (snap?.opaque) return { shape: "server_failed", verdict: `${serviceWords(snap.place).replace(/^t/, "T")} said no${httpStatus ? `: ${statusWords(httpStatus)}` : ""}. Shrike can't see inside it.` };
+  if (snap?.opaque) return { shape: "server_failed", verdict: `${snap.live ? "The server" : serviceWords(snap.place).replace(/^t/, "T")} said no${httpStatus ? `: ${statusWords(httpStatus)}` : ""}. ${snap.live ? inside : "Shrike can't see inside it."}` };
   if (snap?.place.kind === "service") return { shape: "server_failed", verdict: `${where(snap)} failed in ${snap.label}.` };
   if (snap?.kind === "error") return { shape: "page_failed", verdict: `Your page's code threw an error: ${snap.chip ?? "unknown"}` };
   if (snap) return { shape: "page_failed", verdict: `Your page's code failed in ${snap.label}.` };
   if (!reachedServer && caller.browser) {
-    if (!httpStatus) return { shape: "never_left_page", verdict: "Your page never called the server." };
+    if (!httpStatus) return live ? { shape: "worked", verdict: `The server rendered this page. ${inside}` } : { shape: "never_left_page", verdict: "Your page never called the server." };
     const who = blind ? serviceWords(blind) : "the server";
-    if (httpStatus >= 400) return { shape: "server_failed", verdict: `${who.replace(/^t/, "T")} said no: ${statusWords(httpStatus)}. Shrike can't see inside ${blind ? "it" : "that server"}.` };
-    if (redirect) return { shape: "worked", verdict: `The server sent your page to ${redirect}. Shrike can't see inside that server.` };
+    if (httpStatus >= 400) return { shape: "server_failed", verdict: `${who.replace(/^t/, "T")} said no: ${statusWords(httpStatus)}. ${inside}` };
+    if (redirect) return { shape: "worked", verdict: `The server sent your page to ${redirect}. ${live ? inside : "Shrike can't see inside that server."}` };
+    if (live) return { shape: "worked", verdict: `Your page called the server. ${inside}` };
     return { shape: "worked", verdict: blind ? `Your page called ${who}, which Shrike can't see inside.` : "Your page called a server Shrike can't see inside." };
   }
   if (httpStatus && httpStatus >= 400) return { shape: "server_failed", verdict: `The server said no: ${statusWords(httpStatus)}.` };
+  const empty = view.flags.find((f) => f.kind === "empty_result" && f.message.includes(" 0 rows")); // same pick as the correlator's headline
+  if (empty) return { shape: "came_back_empty", verdict: `${empty.message.split(". ")[0]}.` };
   if (coil) return { shape: "repeated", verdict: `The same database question was asked ${coil.count} times.` };
   const reads = st.filter((s) => s.cache === "hit" || s.cache === "miss");
   if (reads.reduce((n, s) => n + (s.count ?? 1), 0) >= 2 && !reads.some((s) => s.cache === "hit"))
@@ -1030,7 +1076,7 @@ export function layoutTrip(trip: Trip, width: number, timeMode = false, lanes: L
   }
   // A left label yields to a right label on a near row (a fork's side rows sit half a row apart): its text starts after theirs.
   // ponytail: text width is estimated from mono character counts; measure the DOM if labels ever use a proportional font.
-  const textW = (q: PlacedStation) => Math.max(q.label.length * 7.6, [q.where, `${Math.round(q.ms)}ms`].filter(Boolean).join(" · ").length * 6.9, q.chip ? q.chip.length * 6.9 + 18 : 0); // the value chip is often the widest line
+  const textW = (q: PlacedStation) => Math.max(q.label.length * 7.6, subLine(q).length * 6.9, q.chip ? q.chip.length * 6.9 + 18 : 0); // the value chip is often the widest line
   for (const p of placed) {
     if (!p.left) continue;
     const near = placed.filter((q) => q !== p && !q.left && q.x < p.x && Math.abs(q.y - p.y) < (q.chip ? 46 : 40));
@@ -1041,6 +1087,9 @@ export function layoutTrip(trip: Trip, width: number, timeMode = false, lanes: L
   }
   return { height: endY + TAIL, shotY, endY, stations: placed, outPts: pts, out: toD(pts), ret, forks, callerX, lanes };
 }
+
+/** A station's second line: where it ran and how long it took (a live page load has no time of its own). */
+export const subLine = (s: Pick<Station, "where" | "ms" | "live">) => [s.where, s.live && !s.ms ? "" : `${Math.round(s.ms)}ms`].filter(Boolean).join(" · ");
 
 const toD = (pts: [number, number][]) => pts.map(([x, y], i) => `${i ? "L" : "M"} ${x} ${y}`).join(" ");
 

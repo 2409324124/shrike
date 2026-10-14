@@ -63,7 +63,7 @@ export function AfterShot({ trip, x, y }: { trip: Trip; x: number; y: number }) 
       <span className="tag">AFTER</span>
       <div className="txt">
         <b className={bad ? "e" : "ok"}>{trip.returned}</b>
-        <span className="v">{trip.verdict}</span>
+        <span className={`v${trip.shape === "came_back_empty" ? " warn" : ""}`}>{trip.verdict}</span>
       </div>
     </div>
   );

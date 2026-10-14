@@ -147,6 +147,13 @@ export function DiveCard({ view, st, at, width }: { view: ActionView; st: Placed
       <div className="why">
         {st.caption}
       </div>
+      {st.live && (
+        <details className="th-see">
+          <summary>See inside</summary>
+          <p>Run the app on your computer to see inside its server: Shrike records each function and query there, and an OpenTelemetry SDK can send its traces to Shrike locally.</p>
+          <p>Nothing is installed on your live server. Shrike's recorder only runs on your computer.</p>
+        </details>
+      )}
     </div>
   );
 }

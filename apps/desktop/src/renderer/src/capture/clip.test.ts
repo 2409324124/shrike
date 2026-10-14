@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import type { ActionView, DebugEvent } from "@shrike/schema";
 import type { Trip } from "../lib/thread-layout.ts";
-import { buildTrip, FALLBACK, LANE_X, layoutTrip } from "../lib/thread-layout.ts";
+import { buildTrip, FALLBACK, knownPlaces, LANE_X, layoutTrip } from "../lib/thread-layout.ts";
 import { curlSignup, payNow } from "../thread/fixtures.ts";
 import { cropAround, diveTarget, fitValue, frameCount, frameFor, lengthOf, outPoints, partial, phaseAt, retPoints, rng, snippetRange, timeline, toCanvas, totalOf } from "./paint.ts";
 
@@ -107,4 +108,15 @@ test("many lanes in a portrait clip: every lane on canvas, short names, forks an
   const curl = buildTrip(curlSignup(0));
   assert.equal(curl.caller.browser, false);
   assert.ok(retPoints(layoutTrip(curl, f.LW))[2]![0] === layoutTrip(curl, f.LW).callerX);
+});
+
+test("a live trip's grey server station is on the clip's thread (T22)", () => {
+  const f = frameFor("9:16");
+  const root = { id: "r", traceId: "t", origin: "browser", kind: "user_action", name: 'Clicked "Save"', trigger: "click", startMs: 0, status: "ok", source: { file: "app/page.tsx", line: 3, precision: "exact" } } satisfies DebugEvent;
+  const req = { id: "q", traceId: "t", origin: "browser", kind: "http_request", name: "POST", startMs: 5, durationMs: 120, status: "ok", http: { method: "POST", url: "/api/save", status: 200 } } satisfies DebugEvent;
+  const view = { id: "r", traceId: "t", trigger: "click", label: root.name, startMs: 0, durationMs: 130, status: "ok", complete: true, tree: [{ event: req, children: [] }], root, summary: { headline: "", steps: [], stats: { files: 0, functions: 0, requests: 1, queries: 0, logs: 0, errors: 0, totalMs: 130 } }, flags: [] } satisfies ActionView;
+  const g = layoutTrip(buildTrip(view, new Set(), knownPlaces([], [], { liveUrl: "https://shop.example.com" })), f.LW);
+  const i = g.stations.findIndex((s) => s.live);
+  assert.ok(i > 0 && g.stations[i]!.x > 0 && g.stations[i]!.x < f.LW);
+  assert.ok(isFinite(outPoints(g).at[i]!), "the tip reaches it, so the painter draws it");
 });

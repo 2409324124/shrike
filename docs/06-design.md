@@ -52,6 +52,8 @@ Because every trip uses the same lanes, the outline of the thread is the diagnos
 | Coil ×N in DATABASE (T5) | The same question asked N times | "The same database question was asked 47 times." |
 | Very tall in time view | Slow | "Most of the 1.2s was spent in fetchActivity()." |
 | Returns green, SCREEN after unchanged | The page didn't update | "The server saved it, but your page didn't show it." |
+| Returns green, verdict in amber | Supabase answered with no rows (`empty_result`) | "Supabase answered with 0 rows from orders." |
+| Ends at a grey dashed station in SERVER (T22, live projects) | The live server answered; nothing inside it is visible from the browser | "Your page called the server. What happened inside isn't visible from your browser." A page load or Next.js page data says "Rendered on the server" |
 
 ## Navigation: three verbs, no camera
 

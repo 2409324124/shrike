@@ -435,3 +435,58 @@ test("lane heads fit: the name, else a short form, else the glyph; never a cut w
   assert.equal(fitHead("7 services", 30, 8), "7");
   assert.equal(fitHead("NOTIFICATIONS", 10, 6.8), "");
 });
+
+// ---------------------------------------------------------------- live projects (T22, #58)
+
+import { subLine } from "./thread-layout.ts";
+
+test("live: a same-origin request with nothing recorded inside lands on a grey SERVER station, never on a local project", () => {
+  const known = knownPlaces([], [], { liveUrl: "https://Shop.example.com/app", origins: ["https://api.example.com"] });
+  assert.deepEqual(known.map((p) => p.id), ["service:live:shop.example.com", "service:live:api.example.com"]);
+  const page: Place = { id: "client:https://shop.example.com", kind: "client", name: "WEB · shop", detail: "shop.example.com" };
+  const click = ev({ kind: "user_action", origin: "browser", name: 'Clicked "Save"', trigger: "click", source: src("app/page.tsx", 9) });
+  const call = (url: string, p: Partial<DebugEvent> = {}) => ev({ startMs: 10, durationMs: 180, kind: "http_request", origin: "browser", name: "POST", place: page, http: { method: "POST", url, status: 200 }, ...p });
+  const ok = buildTrip(view(click, [node(call("/api/save"))], "ok"), new Set(), known);
+  const st = ok.stations.find((s) => s.live)!;
+  assert.equal(st.lane, "service:live:shop.example.com");
+  assert.ok(st.opaque);
+  assert.deepEqual([st.label, subLine(st)], ["Server, not visible from your browser", "OK (200) · 180ms"]);
+  assert.equal(ok.verdict, "Your page called the server. What happened inside isn't visible from your browser.");
+  assert.equal(lanesFor([ok]).find((l) => l.id === st.lane)!.label, "SERVER");
+  const bad = buildTrip(view(click, [node(call("/api/save", { status: "error", http: { method: "POST", url: "/api/save", status: 500 } }))], "error"), new Set(), known);
+  assert.equal(bad.stations.find((s) => s.snap)!.lane, "service:live:shop.example.com", "it breaks where it arrived");
+  assert.equal(bad.verdict, "The server said no: Server error (500). What happened inside isn't visible from your browser.");
+  assert.equal(buildTrip(view(click, [node(call("https://api.example.com/v1/cart"))], "ok"), new Set(), known).stations.find((s) => s.live)?.lane, "service:live:api.example.com", "a host in origins");
+  assert.ok(!buildTrip(view(click, [node(call("https://other.example.org/x"))], "ok"), new Set(), known).stations.some((s) => s.live), "a host not in origins is not the server");
+  const served = call("/api/save");
+  assert.ok(!buildTrip(view(click, [node(served, [node(ev({ startMs: 11, kind: "http_request", parentId: served.id, name: "POST /api/save", http: { method: "POST", url: "/api/save", status: 200 } }))])], "ok"), new Set(), known).stations.some((s) => s.live), "a recorder answered: no grey station");
+  assert.ok(!buildTrip(view(click, [node(call("/api/save"))], "ok"), new Set(), knownPlaces([page])).stations.some((s) => s.live), "a local project never shows it");
+  assert.equal(buildTrip(view(click, [node(call("/api/save", { http: { method: "GET", url: "/api/save", status: 200, resHeaders: { "x-vercel-cache": "HIT" } } }))], "ok"), new Set(), known).stations.find((s) => s.live)!.label, "From cache");
+});
+
+test("live: a Next.js page load and its page data (RSC) say Rendered on the server", () => {
+  const known = knownPlaces([], [], { liveUrl: "https://shop.example.com" });
+  const nav = ev({ kind: "user_action", origin: "browser", name: "Opened /", trigger: "navigation" });
+  const load = buildTrip({ ...view(nav, [], "ok"), trigger: "navigation" }, new Set(), known);
+  const st = load.stations[0]!;
+  assert.deepEqual([st.live, st.label, subLine(st)], [true, "Rendered on the server", "page load"]);
+  assert.equal(load.returned, "Rendered on the server");
+  assert.equal(load.verdict, "The server rendered this page. What happened inside isn't visible from your browser.");
+  assert.equal(layoutTrip(load, 1000).stations.length, 1);
+  assert.ok(!buildTrip(view(nav, [], "ok")).stations.length, "a local page load draws nothing new");
+  const click = ev({ kind: "user_action", origin: "browser", name: 'Clicked "Orders"', trigger: "click", source: src("app/nav.tsx", 4) });
+  const rsc = ev({ startMs: 10, durationMs: 90, kind: "http_request", origin: "browser", name: "GET", http: { method: "GET", url: "/orders?_rsc=1x2y", status: 200, reqHeaders: { rsc: "1" } } });
+  assert.equal(buildTrip(view(click, [node(rsc)], "ok"), new Set(), known).stations.find((s) => s.live)!.label, "Rendered on the server");
+});
+
+test("empty_result: a Supabase read with 0 rows says so in the verdict, in the warning shape", () => {
+  const click = ev({ kind: "user_action", origin: "browser", name: 'Clicked "Load orders"', trigger: "click", source: src("src/Orders.tsx", 12) });
+  const q = ev({ startMs: 10, kind: "db_query", origin: "browser", name: "SELECT", db: { system: "supabase", statement: "db.orders.select()" } });
+  const message = "Supabase answered with 0 rows from orders. Row level security can do this when no policy matches the signed-in user.";
+  const trip = buildTrip({ ...view(click, [node(q)], "ok"), flags: [{ kind: "empty_result", eventId: q.id, message }] });
+  assert.equal(trip.shape, "came_back_empty");
+  assert.equal(trip.verdict, "Supabase answered with 0 rows from orders.");
+  const unknown = buildTrip({ ...view(click, [node(q)], "ok"), flags: [{ kind: "empty_result", eventId: q.id, message: "Supabase didn't say how many rows changed in orders. If Save did nothing, row level security may have matched 0 rows." }] });
+  assert.equal(unknown.verdict, "Supabase didn't say how many rows changed in orders.", "an unknown count is never shown as 0");
+  assert.equal(buildTrip(view(click, [node(q)], "ok")).shape, "worked");
+});

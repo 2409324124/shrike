@@ -125,6 +125,7 @@
 .th-shot b { display: block; font: 700 10px system-ui; margin-bottom: 3px; }
 .th-shot .ok { color: color-mix(in srgb, var(--ok) 55%, var(--shot-ink)); }
 .th-shot .e { color: color-mix(in srgb, var(--fail) 85%, var(--shot-ink)); }
+.th-shot .v.warn { color: color-mix(in srgb, var(--slow) 85%, var(--shot-ink)); }
 .th-shot .v { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; color: color-mix(in srgb, var(--shot-ink) 65%, var(--shot-bg)); margin-top: 2px; }
 .th-ret-mark { position: absolute; border: 1.5px solid var(--cyan); border-radius: 4px; box-shadow: 0 0 10px var(--cyan); pointer-events: none; }
 .th-retlab { position: absolute; transform: translateY(-50%); font: 500 12.5px var(--mono); white-space: nowrap; z-index: 3; transition: top .5s var(--ease); }
@@ -237,6 +238,11 @@
 .th-lab.hit .n { color: var(--ok); }
 .th-lab.miss .n { color: var(--slow); }
 .th-lab.set .n { color: var(--ink-dim); }
+.th-st.live:not(.error) { border: 1.5px dashed var(--ink-dim); } /* T22: a live server the browser can't see into */
+.th-lab.live .n { color: var(--ink-dim); }
+.th-dive .th-see { padding: 0 14px 10px; color: var(--ink-dim); font-size: 12px; }
+.th-dive .th-see summary { cursor: pointer; color: var(--cyan); }
+.th-dive .th-see p { margin: 6px 0 0; }
 .th-forklab { position: absolute; transform: translateY(-50%); font: 500 10px var(--mono); letter-spacing: .12em; color: var(--ink-dim); white-space: nowrap; z-index: 3; text-shadow: 0 0 3px var(--void), 0 0 8px var(--void); transition: top .5s var(--ease), left .5s var(--ease); }
 .th-trip.pending .th-forklab, .th-trip.pending .th-fork { opacity: 0; }
 .th-forklab.flip { transform: translate(calc(-100% - 20px), -50%); } /* left of the fork: the first branch's label sits right of it */

@@ -80,7 +80,9 @@ export function Thread() {
   const procs = useRun((s) => s.status.processes);
   const runState = useRun((s) => s.status.state);
   const hasPage = useProject((s) => !s.project || !!s.project.appUrl);
-  const known = useMemo(() => knownPlaces(expected, procs), [expected, procs]);
+  const liveUrl = useProject((s) => s.project?.liveUrl);
+  const origins = useProject((s) => s.project?.origins);
+  const known = useMemo(() => knownPlaces(expected, procs, { liveUrl, origins }), [expected, procs, liveUrl, origins]);
 
   const feed = useRef<HTMLDivElement>(null);
   const miniOn = useRef<HTMLButtonElement>(null);

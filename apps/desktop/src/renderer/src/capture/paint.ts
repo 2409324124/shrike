@@ -1,7 +1,7 @@
 import { color, font } from "@shrike/design";
 import type { Token } from "../lib/highlight.ts";
 import { enclosingFunction } from "../lib/panes.ts";
-import { firstFailure, layoutTrip, type PlacedStation, type Trip, type TripGeometry } from "../lib/thread-layout.ts";
+import { firstFailure, layoutTrip, subLine, type PlacedStation, type Trip, type TripGeometry } from "../lib/thread-layout.ts";
 
 // Canvas2D painter for REC clips (docs/06-design.md "Recording clips"). paint(ctx, scene, t) is a pure function of t:
 // frame n at any fps paints the same image every time. Pure helpers are exported for clip.test.ts.
@@ -720,7 +720,7 @@ function drawTip(ctx: Ctx, p: Pt, c: string): void {
 
 function drawStation(ctx: Ctx, st: PlacedStation, scale: number, knit: boolean, hot: boolean): void {
   const err = st.status === "error" && hot && !knit; // one red focal point: where it broke
-  const c = err ? color.fail : st.cache === "hit" ? color.ok : st.cache === "miss" || st.status === "slow" ? color.slow : knit ? color.ok : color.cyan;
+  const c = err ? color.fail : st.cache === "hit" ? color.ok : st.cache === "miss" || st.status === "slow" ? color.slow : st.live ? color.inkDim : knit ? color.ok : color.cyan;
   ctx.save();
   ctx.translate(st.x, st.y);
   ctx.scale(scale, scale);
@@ -732,7 +732,8 @@ function drawStation(ctx: Ctx, st: PlacedStation, scale: number, knit: boolean, 
   }
   ctx.fillStyle = err ? color.failDeep : st.cache === "hit" ? color.ok : color.abyss;
   if (st.cache !== "miss") ctx.fill(); // T16: hollow
-  ctx.lineWidth = 2;
+  ctx.lineWidth = st.live && !err ? 1.5 : 2;
+  if (st.live && !err) ctx.setLineDash([3, 3]); // T22
   ctx.strokeStyle = c;
   if (st.snap && err) {
     ctx.shadowColor = color.fail;
@@ -796,7 +797,7 @@ function drawChip(ctx: Ctx, text: string, x: number, y: number, size: number, er
 function drawLabel(ctx: Ctx, s: ClipScene, st: PlacedStation, since: number, hot: boolean): void {
   const LW = s.frame.LW;
   const label = `${st.label}${st.count && st.kind !== "express" ? ` ×${st.count}` : ""}`;
-  const sub = [st.where, `${Math.round(st.ms)}ms`].filter(Boolean).join(" · ");
+  const sub = subLine(st);
   const chip = st.chipError && (s.knit || (st.status === "error" && !hot)) ? undefined : st.chip;
   const err = !!st.chipError && !s.knit;
   ctx.font = mono(13.5, 500);
@@ -816,7 +817,7 @@ function drawLabel(ctx: Ctx, s: ClipScene, st: PlacedStation, since: number, hot
   ctx.textAlign = left ? "right" : "left";
   ctx.textBaseline = "alphabetic";
   ctx.font = mono(13.5, 500);
-  ctx.fillStyle = st.cache === "hit" ? color.ok : st.cache === "miss" ? color.slow : color.ink;
+  ctx.fillStyle = st.cache === "hit" ? color.ok : st.cache === "miss" ? color.slow : st.live ? color.inkDim : color.ink;
   haloText(ctx, fitText(ctx, label, room), x, top + 13);
   ctx.font = mono(11, 400);
   ctx.letterSpacing = "0.6px";

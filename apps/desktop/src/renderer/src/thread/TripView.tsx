@@ -1,7 +1,7 @@
 import { memo, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { ActionView, FlowStep } from "@shrike/schema";
 import { cssColor as color } from "@shrike/design";
-import type { Trip, TripGeometry, PlacedStation } from "../lib/thread-layout.ts";
+import { subLine, type Trip, type TripGeometry, type PlacedStation } from "../lib/thread-layout.ts";
 import { firstFailure, type useThread } from "../stores/thread.ts";
 import { BeforeShot, AfterShot, TerminalCard, SHOT_W } from "./Shot.tsx";
 import { TripDecor } from "./TripDecor.tsx";
@@ -75,7 +75,7 @@ function Label({ st, below, width }: { st: St; below: boolean; width: number }) 
     );
   return (
     <div
-      className={`th-lab${left ? " left" : below ? " below" : ""}${st.hot ? " hot" : ""}${st.post ? " post" : ""}${st.cache ? ` ${st.cache}` : ""}`}
+      className={`th-lab${left ? " left" : below ? " below" : ""}${st.hot ? " hot" : ""}${st.post ? " post" : ""}${st.cache ? ` ${st.cache}` : ""}${st.live ? " live" : ""}`}
       data-i={st.i}
       style={{ left: x, top: st.y, ...(left ? { "--mw": `${room}px`, "--edge": `${x - EDGE}px` } : { maxWidth: room }) } as CSSProperties}
     >
@@ -83,7 +83,7 @@ function Label({ st, below, width }: { st: St; below: boolean; width: number }) 
         {st.label}
         {coil && <span className="x"> ×{st.count}</span>}
       </span>
-      <small>{[st.where, `${Math.round(st.ms)}ms`].filter(Boolean).join(" · ")}</small>
+      <small>{subLine(st)}</small>
       {st.chip && !coil && !st.post && !(below && !st.chipError) && !(st.chipError && st.status === "error" && !st.hot) && <span className={`th-chip${st.chipError ? " error" : ""}`} title={st.chip}>{st.chip}</span>}
     </div>
   );
@@ -238,7 +238,7 @@ export const TripView = memo(function TripView(p: Props) {
           key={s.id}
           data-i={s.i}
           data-lane={s.lane}
-          className={`th-st${s.status === "slow" || (s.status === "error" && s.hot) ? ` ${s.status}` : ""}${s.kind === "express" ? " express" : ""}${s.cache ? ` ${s.cache}` : ""}${s.post ? " post" : ""}${focusSt === s ? " focus" : ""}`}
+          className={`th-st${s.status === "slow" || (s.status === "error" && s.hot) ? ` ${s.status}` : ""}${s.kind === "express" ? " express" : ""}${s.cache ? ` ${s.cache}` : ""}${s.live ? " live" : ""}${s.post ? " post" : ""}${focusSt === s ? " focus" : ""}`}
           style={{ left: s.x, top: s.y }}
           aria-label={s.caption}
           title={s.caption}

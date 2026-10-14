@@ -41,7 +41,10 @@ interface ThreadState {
 }
 
 /** Trips oldest first (feed order, newest at the bottom). */
-export const projectPlaces = () => knownPlaces(useProject.getState().project?.expectedPlaces, useRun.getState().status.processes);
+export const projectPlaces = () => {
+  const p = useProject.getState().project;
+  return knownPlaces(p?.expectedPlaces, useRun.getState().status.processes, { liveUrl: p?.liveUrl, origins: p?.origins });
+};
 
 export function tripOrder(): string[] {
   const { order, byId } = useActions.getState();
