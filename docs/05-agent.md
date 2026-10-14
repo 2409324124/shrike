@@ -76,7 +76,7 @@ Planned. Today every run works at the Fix level (`packages/agent/src/index.ts`);
 | Level | Can do | Needs approval for |
 |---|---|---|
 | **Explain** | Read recordings and code | (nothing else allowed) |
-| **Investigate** (default) | + drive the app, send requests, deep-capture, re-run scenarios | Requests that change data and weren't part of the user's own reproduction; anything outside allowed origins |
+| **Investigate** (default) | + drive the app, send requests, deep-capture, re-run scenarios | Requests that change data and weren't part of the user's own reproduction; anything outside allowed origins. On a live origin: data-changing requests are refused outright, clicks and typing ask, and a GET asks once per path |
 | **Fix** | + propose patches | Every patch apply. Always. |
 
 There is no level that applies code without a click.
@@ -184,9 +184,15 @@ On hitting a limit, the agent must call `report_findings` with what it has, labe
 
 - **Tool results are data, not instructions.** Page text, logs, response bodies and code comments can contain prompt-injection text. The system prompt says so, and tool outputs are wrapped in clearly delimited blocks.
 - **Network scope:** `app_navigate` and `send_request` only reach the project's own origins from `config.json`, including a live project's `liveUrl` and listed `origins`. No arbitrary internet.
-- **Live origins are read-only (#50, #53).** No data-changing `send_request`. Clicks and typing in the live app ask first, one card per scenario listing its steps. Same-origin navigation is allowed; GETs that look state-changing (`/logout`, `/unsubscribe`, `/api/cron`) ask once per path. Live tool output can carry end-user data, so it goes through personal-data detection and value masking before it reaches the model.
+- **Live origins are read-only (#50, #53).** A live origin is the origin of `liveUrl` plus each entry in `origins`, matched exactly (`www.` and the apex are separate unless both are listed). In a live project a relative `send_request` path like `/api/x` goes to the live origin.
+  - `send_request`: only GET and HEAD. Anything else is refused with a plain message and no approval card, so a habit click can't change real data. A GET or HEAD asks once per path, and the answer holds for the session. A path list can't catch every GET that changes state; this card is the backstop.
+  - `save_request` is allowed (saving doesn't send).
+  - `app_navigate`: same-origin pages open without asking. Paths that look like they change state (`logout`, `signout`, `unsubscribe`, `delete`, `cron`, `webhook`, or a `token=` query) ask once per path.
+  - `app_click` and `app_type` on a live page ask first, naming the element. `run_scenario` shows one card listing every step; declining returns a refusal the agent can read.
+  - An agent's request never follows a redirect off its origin. A page redirect inside the app pane isn't stopped yet. The host enforces the origin list, the GET and HEAD rule and the redirect rule too (`http-send.ts`, `api/exec.ts`, `appNavigate` in `host.ts`), so a new tool can't skip them. There is no autopilot that answers these cards.
+  - Live tool output can carry end-user data. Today emails become `[email#1]` in every tool's output in a live project (`maskPersonal` in `packages/mcp-server/src/tools.ts`); phone numbers, the Vercel bypass token (#51) and value masking (#52) plug in at the same place.
 - **No shell tool for the debug agent.** It can't run commands; it can suggest one for the user to run. Only Shrike's own start agent and `preflight` run commands, through the guarded shell (R6).
-- **Data-changing requests:** `POST/PUT/PATCH/DELETE` outside a recorded user scenario need an approval click.
+- **Data-changing requests:** `POST/PUT/PATCH/DELETE` to the local app outside a recorded user scenario need an approval click. On a live origin they're refused.
 - **Secrets:** login forms. The agent asks the user to log in in the app pane, or uses a scenario step marked `secret` whose value never enters model context.
 - **Redaction** runs on every tool output before it reaches the model ([07-security-privacy.md](07-security-privacy.md)).
 - **Patches touch user files only** inside the project root, never `node_modules`, `.env*`, lockfiles or `.git`.

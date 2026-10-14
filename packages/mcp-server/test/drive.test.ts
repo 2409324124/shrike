@@ -70,3 +70,65 @@ test("B5: outside clients can drive Shrike; Shrike's own brain never sees these 
     await fs.rm(root, { recursive: true, force: true });
   }
 });
+
+test("#53: a live site is read-only, with one card per path or scenario, and personal data masked", async () => {
+  let lv = ["https://demo.example.com"];
+  const asked: { title: string; reason: string }[] = [];
+  const did: string[] = [];
+  const host = {
+    projectRoot: () => os.tmpdir(),
+    listActions: () => [],
+    liveOrigins: () => lv,
+    requestApproval: async (r: { title: string; reason: string }) => (asked.push(r), true),
+    sendRequest: async (s: { method: string; url: string }) => (did.push(`${s.method} ${s.url}`), { response: { status: 200, statusText: "OK", headers: {}, body: "ok", durationMs: 1 }, actionId: "" }),
+    appSnapshot: async () => ({ url: "https://demo.example.com/orders", title: "Orders", elements: [{ ref: "e1", role: "button", name: "Delete" }, { ref: "e2", role: "textbox", name: "Note" }], text: "Ordered by ada@example.com" }),
+    appClick: async (ref: string) => (did.push(`click ${ref}`), { actionId: null }),
+    appType: async (ref: string) => (did.push(`type ${ref}`), { actionId: null }),
+    appNavigate: async (url: string) => (did.push(`open ${url}`), { actionId: null }),
+  } as unknown as ShrikeHost;
+  const server = await startMcpServer(host);
+  const c = new Client({ name: "shrike", version: "0" });
+  await c.connect(new StreamableHTTPClientTransport(new URL(server.url), { requestInit: { headers: { Authorization: `Bearer ${server.token}`, [INTERNAL_HEADER]: "1" } } }));
+  const call = async (name: string, args: Record<string, unknown> = {}) => {
+    const r = await c.callTool({ name, arguments: args });
+    return { text: (r.content as { text: string }[]).map((x) => x.text).join("\n"), isError: r.isError === true };
+  };
+  try {
+    assert.equal((await call("send_request", { method: "GET", url: "https://demo.example.com/api/x" })).isError, false);
+    await call("send_request", { method: "GET", url: "https://demo.example.com/api/x?page=2" });
+    assert.equal(asked.length, 1, "a GET asks once per path");
+    const post = await call("send_request", { method: "POST", url: "https://demo.example.com/api/x", body: "{}" });
+    assert.equal(post.isError, true);
+    assert.match(post.text, /This is your live site\. Shrike won't change live data/);
+    assert.equal(asked.length, 1, "a data-changing request is refused with no card");
+    await call("send_request", { method: "GET", url: "/api/y" });
+    assert.equal(did.at(-1), "GET https://demo.example.com/api/y", "a relative path goes to the live origin");
+    assert.equal((await call("send_request", { method: "GET", url: "https://www.demo.example.com/" })).isError, true, "www. is a different origin unless listed");
+
+    asked.length = 0;
+    await call("app_navigate", { url: "/settings" });
+    assert.equal(asked.length, 0, "same-origin pages open without asking");
+    await call("app_navigate", { url: "/logout" });
+    await call("app_navigate", { url: "/logout" });
+    assert.equal(asked.length, 1, "a state-looking path asks once");
+    assert.equal((await call("app_navigate", { url: "https://evil.example/" })).isError, true);
+
+    asked.length = 0;
+    await call("app_click", { name: "Delete" });
+    assert.match(asked[0]!.title, /Click .*Delete.* on your live site\?/);
+    asked.length = 0;
+    const steps = [{ action: "click", name: "Delete" }, { action: "type", name: "Note", text: "hi" }, { action: "navigate", url: "/settings" }, { action: "wait", ms: 1 }];
+    assert.match((await call("run_scenario", { steps })).text, /PASS/);
+    assert.equal(asked.length, 1, "one card for the whole scenario");
+    assert.equal(asked[0]!.reason.split("\n").length, 4, "listing every step");
+    host.requestApproval = async () => false;
+    assert.match((await call("run_scenario", { steps })).text, /declined this scenario/);
+
+    assert.match((await call("app_snapshot")).text, /Ordered by \[email#1\]/);
+    lv = [];
+    assert.match((await call("app_snapshot")).text, /Ordered by ada@example\.com/, "a local project shows the real address");
+  } finally {
+    await c.close();
+    await server.close();
+  }
+});

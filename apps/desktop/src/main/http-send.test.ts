@@ -10,6 +10,27 @@ test("resolveTarget only allows local http(s)", () => {
   assert.throws(() => resolveTarget("https://example.com/", undefined), /only sends requests to your local app/);
   assert.throws(() => resolveTarget("file:///etc/passwd", undefined), /Only http/);
   assert.throws(() => resolveTarget("/api", undefined), /Run your app first/);
+  // #53: a live project's own origins too, and nothing else
+  assert.equal(resolveTarget("https://demo.example.com/x", undefined, ["https://demo.example.com"]).host, "demo.example.com");
+  assert.throws(() => resolveTarget("https://other.example.com/x", undefined, ["https://demo.example.com"]), /only sends requests to your local app/);
+});
+
+test("#53: on a live origin an agent can't change data, and no traceparent is added", async () => {
+  let seen: string | undefined;
+  const srv = createServer((req, res) => {
+    seen = req.headers.traceparent as string | undefined;
+    if (req.url === "/out") return void res.writeHead(302, { location: "https://shrike-outside.test/x" }).end();
+    res.end("ok");
+  }).listen(0, "127.0.0.1");
+  await new Promise((r) => srv.once("listening", r));
+  const base = `http://127.0.0.1:${(srv.address() as AddressInfo).port}`;
+  const store = new Store({ projectRoot: () => "/p", onUpdate: () => {} });
+  await assert.rejects(sendRequest(store, { method: "POST", url: "/x", body: "{}" }, base, "agent", [base]), /This is your live site/);
+  assert.equal(seen, undefined, "refused before anything is sent");
+  assert.equal((await sendRequest(store, { method: "GET", url: "/x" }, base, "agent", [base])).response.body, "ok");
+  assert.equal(seen, undefined);
+  assert.equal((await sendRequest(store, { method: "GET", url: "/out" }, base, "agent", [base])).response.status, 302, "a redirect off the live origin is never followed");
+  srv.close();
 });
 
 test("sendRequest records an explorer action with traceparent", async () => {

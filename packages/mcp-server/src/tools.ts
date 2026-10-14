@@ -38,11 +38,11 @@ export function registerTools(mcp: McpServer, host: ShrikeHost, ctx: ToolContext
       let n = 0;
       const beat = token === undefined ? undefined : setInterval(() => void extra!.sendNotification({ method: "notifications/progress", params: { progressToken: token, progress: ++n } }).catch(() => {}), 30_000);
       try {
-        return { content: [{ type: "text", text: redactText(await run(args)) }] };
+        return { content: [{ type: "text", text: shown(await run(args)) }] };
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         const text = err instanceof ToolError ? message : `${name} failed: ${message}`;
-        return { content: [{ type: "text", text: redactText(text) }], isError: true };
+        return { content: [{ type: "text", text: shown(text) }], isError: true };
       } finally {
         clearInterval(beat);
       }
@@ -51,6 +51,31 @@ export function registerTools(mcp: McpServer, host: ShrikeHost, ctx: ToolContext
   };
 
   // ---- helpers bound to host ----
+
+  // #53: a live project's origins; empty for a local project
+  const live = () => host.liveOrigins?.() ?? [];
+  const shown = (text: string) => (live().length ? maskPersonal(redactText(text)) : redactText(text));
+
+  const answered = new Map<string, boolean>(); // #53: once-per-path answers on the live site, for this session
+  const askOnce = async (key: string, title: string, reason: string, declined: string, request?: { method: string; url: string }) => {
+    if (!answered.has(key)) answered.set(key, await host.requestApproval({ kind: "request", title, reason, ...(request ? { request } : {}) }));
+    if (!answered.get(key)) throw new ToolError(declined);
+  };
+
+  const pageIsLive = async () => {
+    try {
+      return live().includes(new URL((await host.appSnapshot()).url).origin);
+    } catch {
+      return false;
+    }
+  };
+
+  // #53: clicks and typing on the live site ask first, naming the element
+  const askLiveAct = async (what: string) => {
+    if (!live().length || !(await pageIsLive())) return;
+    const ok = await host.requestApproval({ kind: "request", title: `${what} on your live site?`, reason: "This is your live site, so the agent asks before it clicks or types. It may change real data." });
+    if (!ok) throw new ToolError(`The user declined: ${what}. Don't retry it; ask the user, or try it on your local app.`);
+  };
 
   const actionIdForTrace = (traceId: string) => host.listActions().find((a) => a.traceId === traceId)?.id;
 
@@ -245,6 +270,7 @@ export function registerTools(mcp: McpServer, host: ShrikeHost, ctx: ToolContext
     },
     async ({ ref, name }) => {
       const el = await resolveElement(ref, name, ["button", "link"]);
+      await askLiveAct(`Click ${el.label}`);
       const { actionId } = await host.appClick(el.ref);
       return (await waitText(actionId, `Clicked ${el.label}`)).text;
     },
@@ -261,6 +287,7 @@ export function registerTools(mcp: McpServer, host: ShrikeHost, ctx: ToolContext
     },
     async ({ ref, name, text, submit }) => {
       const el = await resolveElement(ref, name, TEXT_ROLES);
+      await askLiveAct(`Type into ${el.label}${submit ? " and submit" : ""}`);
       const { actionId } = await host.appType(el.ref, text, submit);
       return (await waitText(actionId, `Typed into ${el.label}${submit ? " and submitted" : ""}`)).text;
     },
@@ -268,10 +295,13 @@ export function registerTools(mcp: McpServer, host: ShrikeHost, ctx: ToolContext
 
   tool(
     "app_navigate",
-    "Open a page of the user's app, e.g. /settings. Only the app's own local addresses are allowed. Returns what the page load did.",
+    "Open a page of the user's app, e.g. /settings. Only the app's own addresses are allowed: local, or the project's live site. Returns what the page load did.",
     { url: z.string().describe("Path like /todos, or a full local URL") },
     async ({ url }) => {
-      checkLocal(url);
+      if (originOf(url, live()) === "live" && changesState(url)) {
+        const u = new URL(url, "http://x");
+        await askOnce(`page ${url.startsWith("/") ? "" : u.origin}${u.pathname}`, `Open ${url} on your live site?`, "This path looks like it changes something (sign out, unsubscribe, delete). Shrike asks once per path on your live site.", `The user declined opening ${url}. Don't retry it; find another way or explain why it is needed.`);
+      }
       const { actionId } = await host.appNavigate(url);
       return (await waitText(actionId, `Opened ${url}`)).text;
     },
@@ -297,6 +327,17 @@ export function registerTools(mcp: McpServer, host: ShrikeHost, ctx: ToolContext
         .max(20),
     },
     async ({ steps }) => {
+      const lv = live();
+      if (lv.length) {
+        // #53: one card for the whole scenario on the live site, listing every step
+        const goesLive = steps.some((s) => s.action === "navigate" && s.url && inProject(s.url, lv) && originOf(s.url, lv) === "live");
+        const acts = steps.some((s) => s.action === "click" || s.action === "type" || (s.action === "navigate" && s.url && changesState(s.url)));
+        if (acts && (goesLive || (await pageIsLive()))) {
+          const list = steps.map((s, i) => `${i + 1}. ${stepLine(s)}`).join("\n");
+          const ok = await host.requestApproval({ kind: "request", title: `Run these ${steps.length} steps on your live site?`, reason: redactText(list) });
+          if (!ok) throw new ToolError("The user declined this scenario on your live site. Don't retry it; ask the user, or try it on your local app.");
+        }
+      }
       const out: string[] = [];
       const errors: string[] = [];
       let broken = false;
@@ -309,7 +350,7 @@ export function registerTools(mcp: McpServer, host: ShrikeHost, ctx: ToolContext
             r = { text: `Waited ${step.ms ?? 500}ms` };
           } else if (step.action === "navigate") {
             if (!step.url) throw new ToolError("navigate needs url");
-            checkLocal(step.url);
+            originOf(step.url, lv);
             r = await waitText((await host.appNavigate(step.url)).actionId, `Opened ${step.url}`);
           } else if (step.action === "click") {
             const el = await resolveElement(step.ref, step.name, ["button", "link"]);
@@ -354,7 +395,7 @@ export function registerTools(mcp: McpServer, host: ShrikeHost, ctx: ToolContext
 
   tool(
     "send_request",
-    "Send an HTTP request to the user's app backend and record what the server did. Requests other than GET or HEAD ask the user for approval first. Returns status, body and the server-side Action tree.",
+    "Send an HTTP request to the user's app backend and record what the server did. Requests other than GET or HEAD ask the user for approval first. On the project's live site only GET and HEAD are allowed, and each path asks once; in a live project a path like /api/x goes to the live site. Returns status, body and the server-side Action tree.",
     {
       method: z.string().describe("GET, POST, PUT, PATCH, DELETE, ..."),
       url: z.string().describe("Path like /api/todos, or a full local URL"),
@@ -368,13 +409,21 @@ export function registerTools(mcp: McpServer, host: ShrikeHost, ctx: ToolContext
       const spec = { method: m, url, headers, body };
       const checks = assertions?.map(parseAssertion);
       if (checks?.length && !host.api) throw new ToolError("Assertions need the API client, which isn't available here.");
-      if (host.api && !isLocal(url)) {
+      const lv = live();
+      if (host.api && !inProject(url, lv)) {
         // AP: outside the app always asks first, GET included
         const ok = await host.requestApproval({ kind: "request", title: `Send ${m} ${url}? It's outside your app.`, reason: reason ?? "The agent wants to reach an address that isn't your local app.", request: spec });
         if (!ok) throw new ToolError(`The user declined ${m} ${url}. Don't retry it; find another way or explain why it is needed.`);
         return sentText(await host.api.send(spec, checks), m, url);
       }
-      checkLocal(url);
+      if (originOf(url, lv) === "live") {
+        if (m !== "GET" && m !== "HEAD") throw new ToolError(LIVE_WRITE); // no card: one clicked by habit could change real data
+        const target = new URL(url, lv[0]);
+        const where = `${target.origin}${target.pathname}`;
+        const liveSpec = { ...spec, url: target.href };
+        await askOnce(`send ${where}`, `Send ${m} ${where} to your live site?`, reason ?? "Even a GET can change data on a live site (a sign out or unsubscribe link). Shrike asks once per path.", `The user declined ${m} ${url}. Don't retry it; find another way or explain why it is needed.`, { method: m, url: target.href });
+        return sentText(host.api ? await host.api.send(liveSpec, checks) : await host.sendRequest(liveSpec), m, url);
+      }
       if (m !== "GET" && m !== "HEAD") {
         const ok = await host.requestApproval({
           kind: "request",
@@ -424,7 +473,7 @@ export function registerTools(mcp: McpServer, host: ShrikeHost, ctx: ToolContext
       if (!host.api) throw new ToolError("The API client isn't available here.");
       if (folder && (folder.includes("..") || folder.startsWith("/"))) throw new ToolError("The folder must be a plain name inside the collection.");
       const m = method.toUpperCase();
-      if (!isLocal(url.replace(/^\{\{\s*baseUrl\s*\}\}/, ""))) {
+      if (!inProject(url.replace(/^\{\{\s*baseUrl\s*\}\}/, ""), live())) {
         const ok = await host.requestApproval({ kind: "request", title: `Save a request to ${url}? It's outside your app.`, reason: reason ?? "The agent wants to save a request to an address that isn't your local app.", request: { method: m, url, headers, body } });
         if (!ok) throw new ToolError(`The user declined saving ${m} ${url}.`);
       }
@@ -823,27 +872,62 @@ function parseAssertion(a: string | { expr: string; op: string; value?: string }
   return { expr: m[1]!, op: m[2]!, value: m[3]!.trim(), enabled: true };
 }
 
-function isLocal(url: string): boolean {
+function inProject(url: string, live: string[]): boolean {
   try {
-    checkLocal(url);
+    originOf(url, live);
     return true;
   } catch {
     return false;
   }
 }
 
-// ponytail: "local" means localhost/127.0.0.1/::1 or a relative path; projects on custom dev hostnames need the config allowlist.
-function checkLocal(url: string) {
-  if (url.startsWith("/") && !url.startsWith("//")) return;
+// #53: loopback, or one of a live project's origins (exact, so www. and the apex are separate). A relative path is live in a live project.
+// ponytail: custom dev hostnames aren't local; list them as origins in .shrike/config.json.
+function originOf(url: string, live: string[]): "local" | "live" {
+  if (url.startsWith("/") && !url.startsWith("//")) return live.length ? "live" : "local";
   let u: URL;
   try {
     u = new URL(url);
   } catch {
     throw new ToolError(`"${url}" is not a valid URL. Use a path like /api/todos.`);
   }
+  if (/^https?:$/.test(u.protocol) && live.includes(u.origin)) return "live";
   const h = u.hostname.replace(/^\[|\]$/g, "");
   const local = h === "localhost" || h.endsWith(".localhost") || h === "127.0.0.1" || h === "::1";
   if (!local || !/^https?:$/.test(u.protocol)) {
-    throw new ToolError(`Only the app's own local addresses are allowed, not ${url}. Use a path like /api/todos.`);
+    throw new ToolError(`Only the app's own addresses are allowed, not ${url}. Use a path like /api/todos.`);
   }
+  return "local";
+}
+
+const LIVE_WRITE = "This is your live site. Shrike won't change live data. Try it on your local app.";
+
+// #53: GETs that often change state. ponytail: a list can't catch every one; send_request's once-per-path card is the backstop.
+const STATE_PATH = /(?:^|[^a-z])(?:log[-_]?out|sign[-_]?out|unsubscribe|delete|cron|webhooks?)(?:$|[^a-z])/i;
+function changesState(url: string): boolean {
+  try {
+    const u = new URL(url, "http://x");
+    return STATE_PATH.test(u.pathname) || /[?&][\w-]*token=/i.test(u.search);
+  } catch {
+    return false;
+  }
+}
+
+function stepLine(s: { action: string; ref?: string; name?: string; text?: string; submit?: boolean; url?: string; ms?: number }): string {
+  const el = s.name ? `"${s.name}"` : (s.ref ?? "?");
+  if (s.action === "click") return `Click ${el}`;
+  if (s.action === "type") return `Type "${s.text ?? ""}" into ${el}${s.submit ? " and submit" : ""}`;
+  if (s.action === "navigate") return `Open ${s.url ?? "?"}`;
+  return `Wait ${s.ms ?? 500}ms`;
+}
+
+// #53 seam for #51 and #52: live tool output masks emails as [email#n] before it reaches the model.
+// ponytail: emails only, numbered per output. Upgrade: #51's detectors (phones, Vercel bypass token) and #52's maskValues here.
+function maskPersonal(s: string): string {
+  const seen = new Map<string, number>();
+  return s.replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g, (m) => {
+    const k = m.toLowerCase();
+    if (!seen.has(k)) seen.set(k, seen.size + 1);
+    return `[email#${seen.get(k)}]`;
+  });
 }

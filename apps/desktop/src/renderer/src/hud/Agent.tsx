@@ -595,7 +595,7 @@ function RequestCard({ req }: { req: ApprovalRequest }) {
           {req.request.method} {req.request.url}
         </p>
       )}
-      <p className="mt-1 mb-2.5 text-[12.5px] text-dim">{req.reason}</p>
+      <p className="mt-1 mb-2.5 text-[12.5px] whitespace-pre-line text-dim">{req.reason}</p>
       <div className="flex gap-2">
         <button type="button" className="btn go" onClick={() => void useAgent.getState().answer(req.id, true)}>
           Allow {keys("⌘↵")}

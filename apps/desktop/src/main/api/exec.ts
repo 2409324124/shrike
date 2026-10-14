@@ -35,7 +35,10 @@ export interface SendContext {
   resendOf?: string; // AP16: the trip this edits, so the new one sits under it
   verifyTls?: boolean;
   timeoutMs?: number;
+  live?: string[]; // #53: the live project's origins; an agent can't change data there
 }
+
+export const LIVE_WRITE = "This is your live site. Shrike won't change live data. Try it on your local app.";
 
 // ponytail: name=value per host, no path/expiry/domain matching. Upgrade: tough-cookie if a login flow needs it.
 export class CookieJar {
@@ -268,8 +271,10 @@ export async function execute(req: ApiRequest, ctx: SendContext = {}): Promise<A
   const traceId = randomHex(16);
   const start = Date.now();
   const trigger = ctx.trigger ?? "explorer";
+  const onLive = !!ctx.live?.includes(p.url.origin);
+  if (onLive && trigger === "agent" && p.method !== "GET" && p.method !== "HEAD") throw new Error(LIVE_WRITE);
   const local = !!ctx.baseUrl && new URL(ctx.baseUrl).origin === p.url.origin ? true : isLoopback(p.url);
-  if (local) setHeader(p.headers, "traceparent", `00-${traceId}-${randomHex(8)}-01`);
+  if (local && !onLive) setHeader(p.headers, "traceparent", `00-${traceId}-${randomHex(8)}-01`);
   if (!hasHeader(p.headers, "user-agent")) p.headers["user-agent"] = "Shrike";
   if (!hasHeader(p.headers, "accept-encoding")) p.headers["accept-encoding"] = "gzip, deflate, br";
   const cookie = ctx.jar?.header(p.url);

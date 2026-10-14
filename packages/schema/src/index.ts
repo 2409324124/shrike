@@ -1690,6 +1690,7 @@ export interface ShrikeHost {
   reportFindings(findings: Finding[], summary: string): void;
   remember(note: { text: string; file?: string; line?: number }): Promise<MemoryNote>; // A5, MCP tool "remember"
   noteWatch(client: string, actionIds: string[]): void; // A11, called when an MCP client reads trips
+  liveOrigins?(): string[]; // #53: set by main; the live project's origins (liveUrl's first). Empty or missing: a local project
   drive?: ShrikeDriver; // B5: set by main; its tools are offered to outside MCP clients only (flows engineer)
   askOptions?(req: OptionsAsk): Promise<OptionsReply>; // M1: set by main; waits for the user's cards, or times out with action "waiting"
   preflight?(): Promise<string>; // CI3: set by main; runs only legs from the CI config or the lessons skill, through the guarded shell

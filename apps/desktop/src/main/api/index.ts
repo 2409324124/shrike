@@ -24,6 +24,7 @@ export interface ApiDeps {
   pickFolder?: (title: string) => Promise<string | undefined>;
   pickFile?: (title: string, exts?: string[]) => Promise<string | undefined>;
   ask?: (prompt: string) => Promise<string>; // AP22: a read-only, one-shot run of the user's agent; its whole answer
+  liveOrigins?: () => string[]; // #53
 }
 
 export function createApi(d: ApiDeps) {
@@ -37,7 +38,7 @@ export function createApi(d: ApiDeps) {
     const key = opts?.collectionId ?? "";
     const jar = jars.get(key) ?? new CookieJar();
     jars.set(key, jar);
-    const ctx: SendContext = { baseUrl: d.baseUrl(), jar, store: d.store, trigger, runtime: trigger === "agent" ? {} : (runtime.get(key) ?? {}), runScripts: trigger === "explorer", ...(opts?.resendOf ? { resendOf: opts.resendOf } : {}) };
+    const ctx: SendContext = { baseUrl: d.baseUrl(), live: d.liveOrigins?.(), jar, store: d.store, trigger, runtime: trigger === "agent" ? {} : (runtime.get(key) ?? {}), runScripts: trigger === "explorer", ...(opts?.resendOf ? { resendOf: opts.resendOf } : {}) };
     if (opts?.collectionId) {
       const layers = cols.layers(opts.collectionId, req.path || "x");
       ctx.root = cols.ref(opts.collectionId).root;

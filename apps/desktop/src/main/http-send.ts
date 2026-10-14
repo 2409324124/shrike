@@ -1,5 +1,5 @@
 import type { DebugEvent, HttpRequestSpec, HttpResponseSpec } from "@shrike/schema";
-import { friendlyError, isBinary } from "./api/exec.ts";
+import { friendlyError, isBinary, LIVE_WRITE } from "./api/exec.ts";
 import { randomHex, type Store } from "./store.ts";
 
 const MAX_EVENT_BODY = 64 * 1024;
@@ -8,7 +8,7 @@ const LOOPBACK = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
 
 const cut = (s: string, max: number) => (s.length > max ? `${s.slice(0, max)}…[truncated]` : s);
 
-export function resolveTarget(raw: string, baseUrl: string | undefined): URL {
+export function resolveTarget(raw: string, baseUrl: string | undefined, live: string[] = []): URL {
   let url: URL;
   try {
     url = new URL(raw, baseUrl);
@@ -16,8 +16,8 @@ export function resolveTarget(raw: string, baseUrl: string | undefined): URL {
     throw new Error(baseUrl ? `That isn't a valid URL: ${raw}` : "Run your app first so relative URLs have somewhere to go.");
   }
   if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error(`Only http and https URLs can be sent: ${raw}`);
-  // ponytail: loopback only, so agents can't reach other origins. Upgrade: allowlist in .shrike/config.json.
-  if (!LOOPBACK.has(url.hostname)) throw new Error(`Shrike only sends requests to your local app (localhost), not ${url.host}.`);
+  // #53: loopback, plus a live project's own origins from .shrike/config.json
+  if (!LOOPBACK.has(url.hostname) && !live.includes(url.origin)) throw new Error(`Shrike only sends requests to your local app (localhost) or your project's live site, not ${url.host}.`);
   return url;
 }
 
@@ -26,11 +26,14 @@ export async function sendRequest(
   spec: HttpRequestSpec,
   baseUrl: string | undefined,
   trigger: "explorer" | "agent",
+  live: string[] = [],
 ): Promise<{ response: HttpResponseSpec; actionId: string }> {
-  const url = resolveTarget(spec.url, baseUrl);
+  const url = resolveTarget(spec.url, baseUrl, live);
   const hidden = [spec.url, spec.body ?? "", ...Object.values(spec.headers ?? {})].join("\n").match(/\[redacted:[\w.-]*\]/)?.[0];
   if (hidden) throw new Error(`Type the real value for ${hidden} first. Shrike hid it in the recording.`);
   const method = spec.method.toUpperCase();
+  const onLive = live.includes(url.origin);
+  if (onLive && trigger === "agent" && method !== "GET" && method !== "HEAD") throw new Error(LIVE_WRITE);
   const path = url.pathname + url.search;
   const traceId = randomHex(16);
   const reqId = randomHex(8);
@@ -49,7 +52,7 @@ export async function sendRequest(
   };
   store.handle({ type: "events", events: [root] });
 
-  const reqHeaders: Record<string, string> = { ...spec.headers, traceparent: `00-${traceId}-${reqId}-01` };
+  const reqHeaders: Record<string, string> = { ...spec.headers, ...(onLive ? {} : { traceparent: `00-${traceId}-${reqId}-01` }) }; // docs/02: no traceparent on live origins
   const hasBody = spec.body !== undefined && method !== "GET" && method !== "HEAD";
   if (hasBody && !Object.keys(reqHeaders).some((k) => k.toLowerCase() === "content-type")) reqHeaders["content-type"] = "application/json";
   const event: DebugEvent = {
@@ -76,7 +79,7 @@ export async function sendRequest(
       if (res.status < 300 || res.status > 399 || !loc || hops >= 5) break;
       let next: URL;
       try {
-        next = resolveTarget(loc, cur.href);
+        next = resolveTarget(loc, cur.href, live);
       } catch {
         break;
       }

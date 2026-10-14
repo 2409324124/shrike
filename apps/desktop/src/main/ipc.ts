@@ -1165,6 +1165,7 @@ export function registerIpc(win: () => BrowserWindow | undefined, appWin: AppWin
     },
     store,
     baseUrl: () => hostExtras.appBaseUrl(),
+    liveOrigins: () => hostExtras.liveOrigins(),
     routes: () => getProject()?.routes ?? [],
     getAction: (id) => store.getAction(id),
     pickFolder: (title) => pick(title, ["openDirectory"]),

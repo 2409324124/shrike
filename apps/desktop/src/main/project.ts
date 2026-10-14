@@ -1,6 +1,7 @@
 import { app, dialog, type BrowserWindow } from "electron";
 import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { z } from "zod";
 import type { ProcessSpec, ProjectInfo } from "@shrike/schema";
 import { detectProject, plannedPlaces } from "@shrike/scanner";
 import { runSkillId, runSkillPath } from "./start/runskill.ts";
@@ -27,9 +28,17 @@ export async function loadProject(root: string): Promise<{ info: ProjectInfo; se
     writeAtomicSync(stateFile(), JSON.stringify({ lastProject: info.root }));
   } catch {}
   // A project with no web page sends explorer requests straight to its first process that listens.
-  const serverUrl = readConfig(info.root).serverUrl;
+  const config = readConfig(info.root);
+  const serverUrl = config.serverUrl;
+  // #53: a live project's origins; a bad value is dropped, so it never widens what agents can reach
+  const live = liveZ.parse(config); // authoritative over the scanner's lenient read
+  info.liveUrl = live.liveUrl;
+  info.origins = live.origins?.length ? live.origins : undefined;
   return { info, serverUrl: typeof serverUrl === "string" ? serverUrl : info.appUrl ? undefined : info.processes.find((p) => p.url)?.url };
 }
+
+const httpUrl = z.string().url().refine((u) => /^https?:$/.test(new URL(u).protocol));
+const liveZ = z.object({ liveUrl: httpUrl.optional().catch(undefined), origins: z.array(httpUrl).max(20).optional().catch(undefined) });
 
 export function readConfig(root: string): Record<string, unknown> {
   try {

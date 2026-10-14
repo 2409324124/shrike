@@ -171,10 +171,13 @@ export function clearActions(): void {
   emit("actions:cleared", null);
 }
 
+/** #53: the live project's origins, liveUrl's first. Validated when the project loads (project.ts). */
+export const liveOrigins = (): string[] => [...new Set([project?.liveUrl, ...(project?.origins ?? [])].filter((u): u is string => !!u).map((u) => new URL(u).origin))];
+
 export const appBaseUrl = () => apiUrl() ?? (runner.status.state === "running" ? runner.status.url : undefined) ?? project?.appUrl;
 export function sendRequest(req: HttpRequestSpec, trigger: "explorer" | "agent") {
   requireProject();
-  return sendHttp(store, req, appBaseUrl(), trigger);
+  return sendHttp(store, req, appBaseUrl(), trigger, liveOrigins());
 }
 
 export function requestApproval(req: Omit<ApprovalRequest, "id">): Promise<boolean> {
@@ -330,13 +333,15 @@ export const host: ShrikeHost = {
     const appUrl = runner.status.state === "running" ? runner.status.url : undefined;
     if (!appUrl) throw new Error("The app isn't running. Press Run first.");
     const target = new URL(url, appView.currentUrl() ?? appUrl);
-    if (target.origin !== new URL(appUrl).origin) throw new Error(`Only pages of your app (${new URL(appUrl).origin}) can be opened.`);
+    const allowed = [new URL(appUrl).origin, ...liveOrigins()]; // #53: a live project's own origins too, never anything else
+    if (!allowed.includes(target.origin)) throw new Error(`Only pages of your app (${allowed.join(", ")}) can be opened.`);
     const next = store.nextAction((root) => root.trigger === "navigation", 10_000);
     await appView.load(target.href);
     return { actionId: await next };
   },
   waitForAction: (id, timeoutMs) => store.waitForAction(id, timeoutMs),
   requestApproval,
+  liveOrigins,
   proposePatch: (files, rationale, from) => patches.proposePatch(patchDeps(), files, rationale, from),
   revertPatch,
   // ponytail: the agent package turns report_findings calls into "findings" steps itself, so nothing to do here.
