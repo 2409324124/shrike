@@ -13,7 +13,8 @@ import { buildTrip } from "../lib/thread-layout.ts";
 import { useActions } from "../stores/actions.ts";
 import { projectPlaces, useThread } from "../stores/thread.ts";
 import { compareLocalLive } from "@shrike/correlator/compare";
-import { diveTarget, frameCount, makeScene, maskTrip, maxCodeRows, paint, paintSplit, snippetRange, splitFrame, type Aspect, type ClipScene, type DiveCode, type Shot } from "./paint.ts";
+import { useProject } from "../stores/project.ts";
+import { diveTarget, forShare, frameCount, makeScene, maxCodeRows, paint, paintSplit, snippetRange, splitFrame, type Aspect, type ClipScene, type DiveCode, type Shot } from "./paint.ts";
 
 const FPS = 30;
 
@@ -47,11 +48,11 @@ async function loadShot(actionId: string, target: Shot["target"]): Promise<Shot 
 }
 
 /** Everything a clip needs, loaded up front so painting never waits. */
-export async function prepareClip(opts: { actionId: string; aspect: Aspect; captions: boolean; mask?: boolean }): Promise<ClipScene> {
-  const view = useActions.getState().byId[opts.actionId];
-  if (!view) throw new Error("That click isn't in this session anymore. Pick another one.");
-  const built = buildTrip(view, useThread.getState().expanded, projectPlaces());
-  const trip = opts.mask ? maskTrip(built) : built; // #62: the live side of a split, per #52
+export async function prepareClip(opts: { actionId: string; aspect: Aspect; captions: boolean; showPage?: boolean }): Promise<ClipScene> {
+  const raw = useActions.getState().byId[opts.actionId];
+  if (!raw) throw new Error("That click isn't in this session anymore. Pick another one.");
+  const { view, shot: withShot } = forShare(raw, !!opts.showPage, useProject.getState().project?.redact?.keep); // #52
+  const trip = buildTrip(view, useThread.getState().expanded, projectPlaces());
   if (!trip.stations.length) throw new Error("This click has nothing to show yet.");
   const steps = toSteps(view);
 
@@ -59,12 +60,12 @@ export async function prepareClip(opts: { actionId: string; aspect: Aspect; capt
   await Promise.allSettled([...fonts, '700 20px "JetBrains Mono"'].map((f) => document.fonts.load(f)));
 
   let dive: DiveCode | undefined;
-  const di = opts.mask ? -1 : diveTarget(trip);
+  const di = diveTarget(trip);
   const st = trip.stations[di];
   const e = st ? steps[st.stepIndex]?.event : undefined;
   const loc = e?.kind === "function" && e.callSite ? e.callSite : e?.source;
   const [shot, text] = await Promise.all([
-    opts.mask ? undefined : loadShot(view.id, view.root.target),
+    withShot ? loadShot(view.id, view.root.target) : undefined,
     loc ? api().readFile(loc.file).catch(() => undefined) : undefined,
   ]);
   if (st && e && loc && text !== undefined) {
@@ -80,12 +81,12 @@ type Painter = { W: number; H: number; frames: number; draw(ctx: CanvasRendering
 type Pair = { local: string; live: string };
 
 /** T23 (#62): the local and the live trip as two 9:16 panes in one 16:9 clip; the live pane masked (#52). */
-async function splitPainter(pair: Pair, captions: boolean): Promise<Painter> {
+async function splitPainter(pair: Pair, captions: boolean, showPage: boolean): Promise<Painter> {
   const { byId } = useActions.getState();
   const a = byId[pair.local];
   const b = byId[pair.live];
   if (!a || !b) throw new Error("One of these trips isn't in this session anymore. Compare again.");
-  const scenes = await Promise.all([prepareClip({ actionId: pair.local, aspect: "9:16", captions }), prepareClip({ actionId: pair.live, aspect: "9:16", captions, mask: true })]);
+  const scenes = await Promise.all([pair.local, pair.live].map((actionId) => prepareClip({ actionId, aspect: "9:16", captions, showPage })));
   const panes = scenes.map((s) => {
     const c = document.createElement("canvas");
     c.width = s.frame.W;
@@ -107,11 +108,28 @@ async function splitPainter(pair: Pair, captions: boolean): Promise<Painter> {
   };
 }
 
+type ClipOpts = { actionId?: string; aspect: Aspect; captions: boolean; compare?: Pair | null; showPage?: boolean };
+
+const painterFor = (opts: ClipOpts, actionId: string | undefined): Promise<Painter> =>
+  opts.compare
+    ? splitPainter(opts.compare, opts.captions, !!opts.showPage)
+    : prepareClip({ actionId: actionId!, aspect: opts.aspect, captions: opts.captions, showPage: opts.showPage }).then((scene) => ({ W: scene.frame.W, H: scene.frame.H, frames: frameCount(scene.tl, FPS), draw: (c: CanvasRenderingContext2D, t: number) => paint(c, scene, t) }));
+
+/** LV3 (#52): one frame of the clip exactly as it will be saved, early in the drop where the page screenshot shows. */
+export async function previewClip(opts: ClipOpts, canvas: HTMLCanvasElement): Promise<void> {
+  const clip = await painterFor(opts, opts.actionId ?? useThread.getState().focus.actionId ?? undefined);
+  canvas.width = clip.W;
+  canvas.height = clip.H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Couldn't set up the clip canvas.");
+  clip.draw(ctx, 1);
+}
+
 /**
  * Paints the trip into a clip (M1 drop, M2 snap, M3 return, M4 dive, verdict; M8 for verified re-runs) and saves it.
  * actionId defaults to the focused trip; compare records the local vs live split instead. Resolves once saved (or the save dialog is cancelled).
  */
-export async function startClip(opts: { actionId?: string; aspect: Aspect; captions: boolean; compare?: Pair | null }): Promise<void> {
+export async function startClip(opts: ClipOpts): Promise<void> {
   if (useRec.getState().recording) throw new Error("A clip is already recording.");
   const actionId = opts.actionId ?? useThread.getState().focus.actionId;
   if (!actionId && !opts.compare) throw new Error("Pick a click first, then press REC.");
@@ -130,9 +148,7 @@ export async function startClip(opts: { actionId?: string; aspect: Aspect; capti
   };
   let stream: MediaStream | undefined;
   try {
-    const clip: Painter = opts.compare
-      ? await splitPainter(opts.compare, opts.captions)
-      : await prepareClip({ actionId: actionId!, aspect: opts.aspect, captions: opts.captions }).then((scene) => ({ W: scene.frame.W, H: scene.frame.H, frames: frameCount(scene.tl, FPS), draw: (c: CanvasRenderingContext2D, t: number) => paint(c, scene, t) }));
+    const clip = await painterFor(opts, actionId ?? undefined);
     const canvas = document.createElement("canvas");
     canvas.width = clip.W;
     canvas.height = clip.H;

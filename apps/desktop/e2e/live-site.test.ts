@@ -93,6 +93,21 @@ test("live site: consent once, a click records fetch, XHR, console and Supabase,
     await mcp.close();
     await shot(app, "live-site-01-recorded");
 
+    // #52: REC on a live trip previews the exact frame, without the page until Show the page is ticked.
+    const rec = win.getByRole("button", { name: "Rec", exact: true });
+    await rec.click();
+    const menu = win.getByRole("dialog", { name: "Record a clip" });
+    const page = menu.getByRole("checkbox", { name: "Show the page" });
+    assert.equal(await page.isChecked(), false);
+    await menu.getByText("Live values are hidden, and so is your live page.", { exact: false }).waitFor();
+    await waitFor("the preview frame", async () => (await menu.getByLabel("Preview of the clip").evaluate((c) => (c as HTMLCanvasElement).width)) > 300);
+    await shot(app, "live-site-03-rec-preview");
+    await page.check();
+    await menu.getByText("Live values are hidden. Then asks where to save.", { exact: false }).waitFor();
+    await win.waitForTimeout(500);
+    await shot(app, "live-site-04-rec-show-page");
+    await rec.click();
+
     // The same host never asks again.
     await win.evaluate(() => window.shrike.stop());
     assert.equal((await win.evaluate(() => window.shrike.run())).state, "running");

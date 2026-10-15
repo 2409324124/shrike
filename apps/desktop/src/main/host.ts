@@ -36,6 +36,7 @@ export const store = new Store({
   projectRoot: () => project?.root ?? "",
   projectName: () => project?.name,
   declaredPlaces: () => shiftPlaces(project?.declaredPlaces),
+  redactRules: () => project?.redact,
   onUpdate: (views) => emit("actions:update", views),
   onHello: (msg) => {
     if (msg.source !== "server") return;
@@ -390,6 +391,7 @@ export const host: ShrikeHost = {
   waitForAction: (id, timeoutMs) => store.waitForAction(id, timeoutMs),
   requestApproval,
   liveOrigins,
+  redactKeep: () => project?.redact?.keep,
   proposePatch: (files, rationale, from) => patches.proposePatch(patchDeps(), files, rationale, from),
   revertPatch,
   // ponytail: the agent package turns report_findings calls into "findings" steps itself, so nothing to do here.

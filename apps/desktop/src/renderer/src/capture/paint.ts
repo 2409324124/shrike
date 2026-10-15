@@ -1,4 +1,6 @@
 import { color, font } from "@shrike/design";
+import { maskAction } from "@shrike/redact";
+import type { ActionView } from "@shrike/schema";
 import type { Token } from "../lib/highlight.ts";
 import { enclosingFunction } from "../lib/panes.ts";
 import { firstFailure, layoutTrip, subLine, type PlacedStation, type Trip, type TripGeometry } from "../lib/thread-layout.ts";
@@ -1144,8 +1146,10 @@ export function splitFrame(): { W: number; H: number; panes: [Box, Box] } {
   return { W, H, panes: [{ x, y: top, w, h }, { x: x + w + gap, y: top, w, h }] };
 }
 
-// ponytail: #52 kept minimal for the live side of a split: no value chips here, no screenshot or dive card (recorder.ts). Upgrade: #52's maskValues over captions too.
-export const maskTrip = (trip: Trip): Trip => ({ ...trip, stations: trip.stations.map((s) => ({ ...s, chip: undefined, chipError: undefined })) });
+/** #52: what a clip may show of a trip. A live trip's values are masked, and its page screenshot is left out unless the user turns it on. */
+export function forShare(view: ActionView, showPage: boolean, keep?: string[]): { view: ActionView; shot: boolean } {
+  return view.root.live ? { view: maskAction(view, { keep }), shot: showPage } : { view, shot: true };
+}
 
 /** Composes two painted 9:16 clip frames into the split. */
 export function paintSplit(ctx: Ctx, panes: [CanvasImageSource, CanvasImageSource], verdict: string): void {

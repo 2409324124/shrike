@@ -4,7 +4,7 @@ import type { ActionView, DebugEvent } from "@shrike/schema";
 import type { Trip } from "../lib/thread-layout.ts";
 import { buildTrip, FALLBACK, knownPlaces, LANE_X, layoutTrip } from "../lib/thread-layout.ts";
 import { curlSignup, payNow } from "../thread/fixtures.ts";
-import { cropAround, diveTarget, fitValue, frameCount, frameFor, lengthOf, maskTrip, outPoints, partial, phaseAt, retPoints, rng, snippetRange, splitFrame, timeline, toCanvas, totalOf } from "./paint.ts";
+import { cropAround, diveTarget, fitValue, forShare, frameCount, frameFor, lengthOf, makeScene, outPoints, partial, phaseAt, retPoints, rng, snippetRange, splitFrame, timeline, toCanvas, totalOf } from "./paint.ts";
 
 const PL = [FALLBACK.screen, FALLBACK.page, FALLBACK.server, FALLBACK.database];
 const st = (lane: 0 | 1 | 2 | 3, p: Partial<Trip["stations"][number]> = {}): Trip["stations"][number] => ({
@@ -16,15 +16,29 @@ const trip: Trip = {
   stations: [st(1), st(1, { sub: 1 }), st(2), st(2, { sub: 1, chip: "{ userId: undefined }", chipError: true, status: "error" }), st(3, { snap: true, status: "error", kind: "db_query" }), st(2)],
 };
 
-test("local vs live split (#62): 16:9 with two equal 9:16 panes inside it, live values dropped", () => {
+test("local vs live split (#62): 16:9 with two equal 9:16 panes inside it", () => {
   const f = splitFrame();
   assert.equal(f.W / f.H, 16 / 9);
   const [l, r] = f.panes;
   assert.ok(Math.abs(l.w / l.h - 9 / 16) < 0.01 && l.w === r.w && l.h === r.h && l.y === r.y);
   assert.ok(l.x > 0 && l.x + l.w < r.x && r.x + r.w < f.W && l.y + l.h <= f.H);
-  const masked = maskTrip(trip);
-  assert.ok(trip.stations.some((s) => s.chip) && masked.stations.every((s) => s.chip === undefined && s.chipError === undefined));
-  assert.equal(masked.stations.length, trip.stations.length);
+});
+
+test("#52: a live trip's clip has masked values and no screenshot unless shown; a local trip is unchanged", () => {
+  const local = payNow(0);
+  assert.deepEqual(forShare(local, false), { view: local, shot: true }, "local trips record exactly as before");
+  const live = { ...local, root: { ...local.root, live: true as const } };
+  const fn = local.tree[0]!.children[0]!.children[0]!;
+  live.tree = [{ ...local.tree[0]!, children: [{ ...local.tree[0]!.children[0]!, children: [{ ...fn, event: { ...fn.event, args: ["{ name: 'Ada Lovelace', street: '12 Crescent Road', status: 'pending' }"] }, children: fn.children }] }] }];
+  const shared = forShare(live, false);
+  assert.equal(shared.shot, false);
+  const chips = buildTrip(shared.view).stations.map((s) => s.chip ?? "").join(" ");
+  assert.doesNotMatch(chips, /Ada|Crescent/);
+  assert.match(chips, /\[text#1\].*pending/);
+  const scene = makeScene({ aspect: "9:16", trip: buildTrip(shared.view), intro: "", knit: false, captions: true });
+  assert.ok(!("shot" in scene) || scene.shot === undefined, "the screenshot is absent, not covered");
+  assert.equal(forShare(live, true).shot, true, "the user can turn the page on");
+  assert.match(buildTrip(forShare(live, false, ["name"]).view).stations.map((s) => s.chip ?? "").join(" "), /Ada Lovelace/, "redact.keep spares a key");
 });
 
 test("timeline: about 8s with every phase, shorter without snap/dive; frames are exact", () => {
