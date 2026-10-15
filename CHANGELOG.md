@@ -4,7 +4,11 @@ Notable changes to Shrike. The format follows [Keep a Changelog](https://keepach
 
 ## [Unreleased]
 
-Thanks to our first outside contributor, [@AK-Lmn](https://github.com/AK-Lmn).
+Thanks to our outside contributors, [@AK-Lmn](https://github.com/AK-Lmn) and [@ShlokGhadekar](https://github.com/ShlokGhadekar).
+
+### Added
+
+- The browser recorder reads `Server-Timing` and `traceresponse` headers, so the grey "not visible from your browser" station on a live trip shows real server numbers (like "db 53ms") when the host sends them ([#71](https://github.com/SumantxD/shrike/pull/71), thanks [@ShlokGhadekar](https://github.com/ShlokGhadekar)).
 
 ### Fixed
 
