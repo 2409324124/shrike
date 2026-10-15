@@ -11,6 +11,7 @@ import { join } from "node:path";
 import type { ElectronApplication, Page } from "playwright";
 import type { ActionView } from "@shrike/schema";
 import { actions, flatten, freePort, launch, mcpClient, shot, waitFor } from "./helpers.ts";
+import { stub } from "../../../fixtures/live-supabase/stub.ts";
 
 const SUPA = "abcdefghijklmnopqrst.supabase.co";
 const PAGE = `<!doctype html><title>Live</title><button id="go">Load orders</button><script src="/app.js"></script>`;
@@ -391,5 +392,50 @@ test("live sign-in: own session that survives a restart, plain user agent, recor
     }
   } finally {
     await cleanup();
+  }
+});
+
+// #61: the fixtures/live-supabase build against its stub, opened as a live site (its strict CSP and service worker included).
+test("live-supabase fixture: Save works with no 403, the list reads 0 rows with the caption, the fixed policy reads rows", { timeout: 240_000 }, async () => {
+  const fixture = join(import.meta.dirname, "../../../fixtures/live-supabase");
+  const port = await freePort();
+  const dist = mkdtempSync(join(tmpdir(), "shrike-e2e-live-supabase-"));
+  const url = `http://live.test:${port}/`;
+  execFileSync(join(fixture, "node_modules/.bin/vite"), ["build", "--outDir", dist, "--emptyOutDir"], { cwd: fixture, stdio: "ignore", env: { ...process.env, VITE_SUPABASE_URL: `http://live.test:${port}`, VITE_SUPABASE_ANON_KEY: "stub-anon-key" } });
+  const supa = stub({ empty: true, dist });
+  await new Promise<void>((ok) => supa.server.listen(port, "127.0.0.1", ok));
+  const { app, win, cleanup } = await launch({}, undefined, ["--host-resolver-rules=MAP live.test 127.0.0.1"]);
+  try {
+    await app.evaluate(({ dialog }) => void (dialog.showMessageBox = (async () => ({ response: 0, checkboxChecked: false })) as typeof dialog.showMessageBox));
+    await win.getByRole("textbox", { name: "Open a live site" }).fill(url);
+    await win.getByRole("button", { name: "Open a live site" }).click();
+    const guest = await waitFor("the live page", () => app.windows().find((p) => p.url().startsWith(url)), 30_000);
+    await guest.getByText("No orders yet.").waitFor();
+
+    const save = async (after: number) => {
+      await guest.getByRole("button", { name: "Save" }).click();
+      return waitFor("the Save trip", async () => (await actions(win)).find((a) => a.label === 'Clicked "Save"' && a.complete && a.startMs > after && flatten(a.tree).some((e) => e.db?.statement.startsWith("SELECT"))), 20_000);
+    };
+    const read = (a: ActionView) => flatten(a.tree).find((e) => e.db?.statement === "SELECT id,item,qty,customer FROM orders");
+
+    const planted = await save(0);
+    const evs = flatten(planted.tree);
+    assert.equal(evs.find((e) => e.db?.statement === "INSERT INTO orders")?.http?.status, 201, "Save succeeds");
+    assert.ok(!evs.some((e) => e.status === "error" || (e.http?.status ?? 0) >= 400), "no 403 in the planted version");
+    assert.equal(read(planted)?.returned, "0 rows");
+    assert.ok(planted.flags.some((f) => f.kind === "empty_result" && f.message.startsWith("Supabase answered with 0 rows from orders.")), JSON.stringify(planted.flags));
+    await guest.getByText("Saved.").waitFor();
+    await guest.getByText("No orders yet.").waitFor();
+
+    supa.state.empty = false; // fix.sql applied
+    const fixed = await save(planted.startMs);
+    assert.match(read(fixed)?.returned ?? "", /^[1-9]\d* rows?$/);
+    assert.ok(!fixed.flags.some((f) => f.kind === "empty_result"));
+    await guest.getByText("Blue mug x1, You").first().waitFor();
+    await shot(app, "live-site-03-live-supabase");
+  } finally {
+    await cleanup();
+    supa.server.close();
+    rmSync(dist, { recursive: true, force: true });
   }
 });
