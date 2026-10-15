@@ -1,10 +1,14 @@
 // #54: open a deployed site from Welcome, consent once per host, record a click; page scripts can't forge events. Run `pnpm build` first.
+// #55: sign-in on a live site (its own session, plain user agent, popups, basic auth, service worker, certificates).
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
+import { createServer as createHttpsServer } from "node:https";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { ElectronApplication, Page } from "playwright";
 import type { ActionView } from "@shrike/schema";
 import { actions, flatten, freePort, launch, mcpClient, shot, waitFor } from "./helpers.ts";
 
@@ -109,7 +113,7 @@ test("local vs live: a switch on the app pane, then the two trips side by side w
   const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "*" };
   const live = createServer((req, res) => {
     if (req.method === "OPTIONS") return void res.writeHead(204, cors).end();
-    if (req.url === "/") return void res.writeHead(200, { "content-type": "text/html" }).end(SAVE_PAGE);
+    if (req.url === "/") return void res.writeHead(200, { "content-type": "text/html", "set-cookie": "sid=live1; Max-Age=86400; Path=/" }).end(SAVE_PAGE); // #55: a live login
     if (req.url === "/app.js") return void res.writeHead(200, { "content-type": "text/javascript" }).end(SAVE_APP(`http://${SUPA}:${livePort}`));
     setTimeout(() => res.writeHead(200, { ...cors, "content-type": "application/json" }).end(liveRows), 250); // live is slower
   });
@@ -185,6 +189,20 @@ createServer((req, res) => {
     await sides.getByRole("button", { name: "Local" }).click();
     await waitFor("the local page again", () => app.windows().find((p) => p.url().startsWith(appUrl)), 30_000);
     await waitFor("the LIVE badge to go", async () => (await win.locator('span[title^="Live site:"]').count()) === 0);
+
+    // #55: Local, Live, Local again: the live login stays in the live site's own partition, never the local one.
+    const partition = (await win.evaluate(() => window.shrike.getProject()))!.livePartition!;
+    const sid = (p: string) => app.evaluate(async ({ session }, part) => (await session.fromPartition(part).cookies.get({ name: "sid" })).map((c) => c.value), p);
+    const onlyLive = async () => assert.deepEqual([await sid(partition), await sid("persist:shrike-app")], [["live1"], []]);
+    await onlyLive();
+    await sides.getByRole("button", { name: "Live" }).click();
+    const again = await waitFor("the live page again", () => app.windows().find((p) => p.url().startsWith(liveUrl)), 30_000);
+    assert.match(await again.evaluate(() => document.cookie), /\bsid=live1\b/, "the live side still has its login");
+    await onlyLive();
+    await sides.getByRole("button", { name: "Local" }).click();
+    const back = await waitFor("the local page once more", () => app.windows().find((p) => p.url().startsWith(appUrl)), 30_000);
+    assert.doesNotMatch(await back.evaluate(() => document.cookie), /sid=/);
+    await onlyLive();
   } finally {
     await cleanup();
     live.close();
@@ -210,5 +228,153 @@ test("local vs live: a local project without a liveUrl has no switch", { timeout
   } finally {
     await cleanup();
     rmSync(root, { recursive: true, force: true });
+  }
+});
+
+const SIGNIN_PAGE = `<!doctype html><title>Live</title><button id="signin">Sign in with Google</button><button id="cached">Load cached</button><a id="staging" href="/staging">Staging</a><script src="/signin-app.js"></script>`;
+const SIGNIN_APP = `
+navigator.serviceWorker.register("/sw.js");
+document.getElementById("signin").addEventListener("click", () => window.open("/signin", "signin", "width=400,height=500"));
+addEventListener("message", async (e) => { if (e.data === "signed-in") { await fetch("/api/me"); document.title = "signed in"; } });
+document.getElementById("cached").addEventListener("click", () => fetch("/api/cached").then((r) => r.text()).then((t) => (document.title = "cached:" + t)));`;
+const SW = `
+self.addEventListener("install", (e) => { self.skipWaiting(); e.waitUntil(caches.open("c").then((c) => c.put("/api/cached", new Response("from-sw")))); });
+self.addEventListener("activate", (e) => e.waitUntil(clients.claim()));
+self.addEventListener("fetch", (e) => { if (new URL(e.request.url).pathname === "/api/cached") e.respondWith(caches.match("/api/cached")); });`;
+const BASIC = `Basic ${Buffer.from("tester:s3cret-staging").toString("base64")}`;
+
+test("live sign-in: own session that survives a restart, plain user agent, recorded popup, basic auth once, service worker, sign out, bad certificate", { timeout: 300_000 }, async (t) => {
+  const agents = new Set<string>();
+  const seen: string[] = [];
+  let challenges = 0;
+  const server = createServer((req, res) => {
+    const path = req.url ?? "";
+    seen.push(`${req.method} ${path}`);
+    agents.add(req.headers["user-agent"] ?? "");
+    const html = { "content-type": "text/html" };
+    if (path === "/") return void res.writeHead(200, html).end(SIGNIN_PAGE);
+    if (path === "/signin-app.js") return void res.writeHead(200, { "content-type": "text/javascript" }).end(SIGNIN_APP);
+    if (path === "/sw.js") return void res.writeHead(200, { "content-type": "text/javascript" }).end(SW);
+    if (path === "/signin") return void res.writeHead(200, html).end(`<script>location.replace("/callback")</script>`); // the provider's page, sending you back
+    if (path === "/callback") return void res.writeHead(200, html).end(`<script>fetch("/api/session", { method: "POST" }).then(() => { opener.postMessage("signed-in", "*"); window.close(); })</script>`);
+    if (path === "/api/session") return void res.writeHead(200, { "content-type": "application/json", "set-cookie": "sid=abc123; Max-Age=86400; Path=/" }).end('{"ok":true}');
+    if (path === "/api/me") return void res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ user: /\bsid=abc123\b/.test(req.headers.cookie ?? "") ? "ana" : null }));
+    if (path === "/api/cached") return void res.writeHead(200, { "content-type": "text/plain" }).end("from-network");
+    if (path.startsWith("/staging")) {
+      if (req.headers.authorization !== BASIC) return void (challenges++, res.writeHead(401, { "www-authenticate": 'Basic realm="Staging"' }).end());
+      return void res.writeHead(200, html).end("<title>staging ok</title>");
+    }
+    res.writeHead(404).end();
+  });
+  await new Promise<void>((ok) => server.listen(0, "127.0.0.1", ok));
+  const port = (server.address() as { port: number }).port;
+  const url = `http://live.test:${port}/`;
+  const args = [`--host-resolver-rules=MAP live.test 127.0.0.1, MAP bad.test 127.0.0.1`, `--unsafely-treat-insecure-origin-as-secure=${url}`]; // a service worker needs a secure origin
+  const userData = mkdtempSync(join(tmpdir(), "shrike-e2e-data-"));
+  t.after(() => (server.closeAllConnections(), server.close(), rmSync(userData, { recursive: true, force: true })));
+  const open = async (app: ElectronApplication, win: Page) => {
+    await app.evaluate(({ dialog }) => void (dialog.showMessageBox = (async () => ({ response: 0, checkboxChecked: false })) as unknown as typeof dialog.showMessageBox));
+    await win.getByRole("textbox", { name: "Open a live site" }).fill(url);
+    await win.getByRole("button", { name: "Open a live site" }).click();
+    const guest = await waitFor("the live page", () => app.windows().find((p) => p.url().startsWith(url)), 30_000);
+    await guest.locator("#signin").waitFor();
+    return guest;
+  };
+  const cookies = (app: ElectronApplication, partition: string) => app.evaluate(async ({ session }, p) => (await session.fromPartition(p).cookies.get({ name: "sid" })).map((c) => c.value), partition);
+  const allEvents = async (win: Page) => (await actions(win)).flatMap((a: ActionView) => [a.root, ...flatten(a.tree)]);
+
+  let { app, win, cleanup } = await launch({}, userData, args);
+  try {
+    const guest = await open(app, win);
+    const partition = (await win.evaluate(() => window.shrike.getProject()))!.livePartition!;
+    assert.match(partition, /^persist:live-[0-9a-f]{16}$/);
+
+    // A Google-style popup opens with its opener, the request its page makes is recorded, and it hands back to the pane.
+    await guest.locator("#signin").click();
+    await waitFor("the popup to hand back", async () => (await guest.title()) === "signed in", 20_000);
+    const evs = await waitFor("the popup's request", async () => {
+      const all = await allEvents(win);
+      return all.some((e) => e.http?.method === "POST" && e.http.url === "/api/session") && all.some((e) => e.http?.url === "/api/me") && all;
+    });
+    assert.ok(evs.filter((e) => e.http?.url === "/api/session").every((e) => e.live), "popup steps are marked live");
+    assert.deepEqual(await cookies(app, partition), ["abc123"]);
+    assert.deepEqual(await cookies(app, "persist:shrike-app"), [], "the local pane doesn't share the live login");
+    assert.ok(seen.includes("GET /callback"));
+    for (const ua of agents) assert.ok(!/electron|shrike/i.test(ua) && /Chrome\//.test(ua), `user agent: ${ua}`);
+
+    // The service worker is bypassed by default: the network answers.
+    await guest.locator("#cached").click();
+    await waitFor("a network answer", async () => (await guest.title()) === "cached:from-network");
+
+    // Basic auth asks once; the second visit goes straight in.
+    await guest.evaluate(() => document.getElementById("staging")!.click()); // a navigation waiting on the dialog
+    const ask = win.getByRole("dialog", { name: `Sign in to live.test:${port}` });
+    await ask.waitFor();
+    await ask.getByLabel("Username").fill("tester");
+    await ask.getByLabel("Password").fill("s3cret-staging");
+    await ask.getByRole("button", { name: "Sign in" }).click();
+    await waitFor("the staging page", async () => (await guest.title()) === "staging ok");
+    await guest.evaluate(() => void (location.href = "/staging?again"));
+    await waitFor("the staging page again", async () => guest.url().endsWith("?again") && (await guest.title()) === "staging ok");
+    assert.equal(challenges, 1, "asked once");
+    assert.equal(await ask.count(), 0);
+
+    // Keep the worker: its cached answer is labelled from cache and never reaches the server.
+    const root = (await win.evaluate(() => window.shrike.getProject()))!.root;
+    const cfg = join(root, ".shrike/config.json");
+    writeFileSync(cfg, JSON.stringify({ ...JSON.parse(readFileSync(cfg, "utf8")), liveServiceWorker: true }));
+    await guest.evaluate(() => void (location.href = "/"));
+    await guest.locator("#cached").waitFor();
+    await win.evaluate(() => window.shrike.reloadApp());
+    await waitFor("the service worker to control the page", () => guest.evaluate(() => !!navigator.serviceWorker.controller).catch(() => false));
+    const before = seen.filter((s) => s === "GET /api/cached").length;
+    await guest.locator("#cached").click();
+    await waitFor("the worker's answer", async () => (await guest.title()) === "cached:from-sw");
+    assert.equal(seen.filter((s) => s === "GET /api/cached").length, before, "the worker answered, not the server");
+    await waitFor("a step labelled from cache", async () => (await allEvents(win)).some((e) => e.http?.url === "/api/cached" && e.http.fromCache));
+  } finally {
+    await cleanup();
+  }
+
+  try {
+    // A restart keeps the live login; the basic-auth password was never written down.
+    ({ app, win, cleanup } = await launch({}, userData, args));
+    const guest = await open(app, win);
+    assert.match(await guest.evaluate(() => document.cookie), /\bsid=abc123\b/);
+    assert.deepEqual(await guest.evaluate(() => fetch("/api/me").then((r) => r.json())), { user: "ana" });
+    let leaks = "";
+    try {
+      leaks = execFileSync("grep", ["-rlF", "s3cret-staging", userData], { encoding: "utf8" });
+    } catch {} // grep exits 1 when nothing matches
+    assert.equal(leaks, "", `the password was written to: ${leaks}`);
+
+    // Sign out clears the live session and reopens the page signed out.
+    await win.getByRole("button", { name: "More", exact: true }).click();
+    await win.getByRole("button", { name: "Sign out of your live site" }).click();
+    await win.getByText("Signed out of your live site.").waitFor();
+    const partition = (await win.evaluate(() => window.shrike.getProject()))!.livePartition!;
+    assert.deepEqual(await cookies(app, partition), []);
+    await guest.locator("#signin").waitFor();
+    assert.doesNotMatch(await guest.evaluate(() => document.cookie), /sid=/);
+    await shot(app, "live-signin-02-signed-out");
+
+    // A self-signed certificate is refused in plain words, never trusted.
+    const dir = mkdtempSync(join(tmpdir(), "shrike-e2e-cert-"));
+    execFileSync("openssl", ["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-keyout", join(dir, "k.pem"), "-out", join(dir, "c.pem"), "-days", "1", "-subj", "/CN=bad.test"], { stdio: "ignore" });
+    const bad = createHttpsServer({ key: readFileSync(join(dir, "k.pem")), cert: readFileSync(join(dir, "c.pem")) }, (_req, res) => void res.writeHead(200, { "content-type": "text/html" }).end("<title>trusted</title>"));
+    await new Promise<void>((ok) => bad.listen(0, "127.0.0.1", ok));
+    try {
+      const badUrl = `https://bad.test:${(bad.address() as { port: number }).port}/`;
+      await win.evaluate((u) => window.shrike.openLiveSite(u), badUrl);
+      await win.reload(); // the renderer picks the new project (and its partition) up from main
+      await win.evaluate(() => window.shrike.run());
+      await win.getByText("This site's certificate isn't valid", { exact: false }).first().waitFor({ timeout: 20_000 });
+      assert.ok(!app.windows().some((p) => p.url().startsWith(badUrl)), "the page didn't open");
+    } finally {
+      bad.close();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  } finally {
+    await cleanup();
   }
 });

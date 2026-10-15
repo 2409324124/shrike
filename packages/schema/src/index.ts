@@ -47,6 +47,7 @@ export interface DebugEvent {
     resHeaders?: Record<string, string>;
     reqBody?: string; // ≤ 64KB, truncated with "…[truncated]"
     resBody?: string;
+    fromCache?: true; // #55: the browser's cache or the site's service worker answered, not the network
   };
   db?: { system: string; statement: string; params?: string };
   log?: { level: "debug" | "info" | "warn" | "error"; message: string };
@@ -151,6 +152,7 @@ export interface ProjectInfo {
   placesFrom?: "plan" | "skill"; // expectedPlaces came from Claude's start plan or the run skill; absent = the scanner's guess (lanes-from-plan)
   liveUrl?: string; // .shrike/config.json "liveUrl": the deployed site (#54); with no dev command, Run opens it instead of starting anything
   origins?: string[]; // .shrike/config.json "origins": extra API hosts the user lists for the live site
+  livePartition?: string; // set by main with liveUrl: the live site's own session (#55), so its logins survive restarts and never mix with the local pane's
 }
 
 export interface RunStatus {
@@ -1317,6 +1319,9 @@ export interface ShrikeApi {
   openLiveSite(url: string): Promise<ProjectInfo>; // #54: a scratch project in userData/live/<host> with .shrike/config.json { liveUrl }
   setLiveUrl(url: string | null): Promise<ProjectInfo>; // #54: Setup's Live URL field
   setAppSide(side: AppSide): Promise<AppSide>; // #62: the Local / Live switch; asks for consent once per host, answers the side now shown
+  appPartition(): Promise<string>; // #55: the app pane's partition now (follows the Local / Live side); the app window asks on every run:status
+  signOutLive(): Promise<void>; // #55: clears the live site's session (cookies, storage, cache, basic-auth) and reloads it
+  answerLiveLogin(id: string, login: { username: string; password: string } | null): Promise<void>; // #55: the answer to "live:login"; null cancels
   getProject(): Promise<ProjectInfo | null>;
   run(): Promise<RunStatus>;
   stop(): Promise<RunStatus>;
@@ -1622,6 +1627,8 @@ export interface ShrikeEvents {
   "process:output": { process: string; chunk: string }; // O4
   "point:picked": PointPick; // O1
   "point:cancelled": null; // O1: Esc pressed inside the app page
+  "live:login": { id: string; host: string; realm: string }; // #55: a page asked for a username and password (basic auth); answered with answerLiveLogin
+  "live:notice": string; // #55: a plain message about the app page (a bad certificate, a sign-in that refuses embedded browsers)
   "app:window": boolean; // true while the app is in its own window
   "agent:usage": AgentUsage; // A7
   "agent:cursor": { x: number; y: number; label: string; click?: boolean } | null; // O2, app-pane CSS px; null hides it
