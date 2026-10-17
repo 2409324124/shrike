@@ -123,8 +123,8 @@ function placeholder(seen: PiiSeen, kind: string, value: string): string {
   const key = `${kind}:${value}`;
   let p = seen.get(key);
   if (!p) {
-    let n = 1;
-    for (const k of seen.keys()) if (k.startsWith(`${kind}:`)) n++;
+    const n = Number(seen.get(`#${kind}`) ?? 0) + 1; // a counter per kind, so a big trip stays linear
+    seen.set(`#${kind}`, String(n));
     seen.set(key, (p = `[${kind}#${n}]`));
   }
   return p;

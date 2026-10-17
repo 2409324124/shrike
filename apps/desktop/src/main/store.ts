@@ -96,7 +96,7 @@ export class Store {
 
   private add(raw: DebugEvent): void {
     const traceId = this.aliases.get(raw.traceId) ?? raw.traceId;
-    const e = redactEvent(clampBodies(raw), this.opts.redactRules?.(), raw.live ? this.piiOf(traceId) : undefined); // live is set by main, never the page
+    const e = redactEvent(clampBodies(raw), this.opts.redactRules?.(), raw.live ? (traceId === ZERO_TRACE ? new Map() : this.piiOf(traceId)) : undefined); // live is set by main, never the page; ZERO_TRACE is never evicted
     e.traceId = traceId;
     if (e.source && (e.origin === "browser" || isAbsolute(e.source.file))) e.source = { ...e.source, file: relativize(e.source.file, this.opts.projectRoot()) }; // OpenTelemetry SDKs send absolute paths
     if ((e.kind === "http_request" || e.kind === "db_query" || e.kind === "user_action") && e.origin === "browser" && e.stack) {
