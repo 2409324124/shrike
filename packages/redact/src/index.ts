@@ -193,6 +193,7 @@ export function redactEvent(e: DebugEvent, rules?: RedactRules, pii?: PiiSeen): 
     if (e.error.stack !== undefined) r.error.stack = t(e.error.stack);
   }
   if (e.cache?.key !== undefined) r.cache = { ...e.cache, key: t(e.cache.key) };
+  if (e.cache?.path !== undefined) r.cache = { ...(r.cache ?? e.cache), path: t(e.cache.path) }; // a JSONPath filter can hold values
   if (e.caller) r.caller = { ...e.caller, label: t(e.caller.label), ...(e.caller.command !== undefined ? { command: t(e.caller.command) } : {}) };
   if (e.change?.rows) r.change = { ...e.change, rows: e.change.rows.map((x) => ({ ...x, ...(x.before ? { before: redactRow(x.before, rules, pii) } : {}), ...(x.after ? { after: redactRow(x.after, rules, pii) } : {}) })) };
   if (e.args) r.args = e.args.map(t);

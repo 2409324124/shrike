@@ -304,7 +304,7 @@ At the start every project ran but none had a working database lane, and only on
 - Popups are allowed in the app pane (Firebase and OAuth sign-in).
 - The redactor no longer eats URL ports and paths, `className` values, or UUID parts of Redis keys.
 - ANSI colour codes are stripped from log lines.
-- Marked keys written by JSON.SET and other module commands in the cache inspector (#28)
+- Marked keys written by JSON.SET and other module commands in the cache inspector (#28).
 
 ## What remains
 

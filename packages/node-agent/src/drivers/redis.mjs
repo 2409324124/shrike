@@ -37,13 +37,14 @@ function hit(op, v) {
   if (typeof v === "object" && !Buffer.isBuffer(v)) return Object.keys(v).length > 0;
   return true;
 }
+
 function record(fn, self, op, key, path, call) {
   if (!op || SKIP.has(op)) return call();
   return libCall(
     fn,
     () => {
       const k = key === undefined ? undefined : safeKey(str(key));
-      const p = path === undefined ? undefined : str(path);
+      const p = path === undefined ? undefined : safeKey(str(path));
       return { origin: "db", kind: "cache_op", name: k === undefined ? op.toUpperCase() : `${op.toUpperCase()} ${k}`, cache: { op, key: k, path: p }, place: placeOf(self) };
     },
     call,
@@ -74,7 +75,7 @@ export function patchRedis(mod, file) {
   }
   const exec = proto.commandsExecutor;
   if (typeof exec !== "function") return;
- const patched = function commandsExecutor(command, args, name) {
+  const patched = function commandsExecutor(command, args, name) {
     const list = Array.isArray(args) ? args : [];
     const key = list.find((x) => typeof x === "string" || Buffer.isBuffer(x));
     const op = String(name ?? command?.NAME ?? "").replace(/^(json|ft)_?/i, (m) => `${m.replace(/_$/, "")}.`).toLowerCase();

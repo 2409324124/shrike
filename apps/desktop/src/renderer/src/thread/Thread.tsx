@@ -210,12 +210,6 @@ export function Thread() {
   }, []);
 
   const onMiniKey = (e: React.KeyboardEvent<HTMLElement>) => {
-    if (e.key === "Escape") {
-      e.preventDefault();
-      e.stopPropagation();
-      (e.target as HTMLElement).blur();
-      return;
-    }
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
       e.stopPropagation();
