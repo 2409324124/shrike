@@ -4,18 +4,20 @@ Notable changes to Shrike. The format follows [Keep a Changelog](https://keepach
 
 ## [Unreleased]
 
-Thanks to our outside contributors, [@AK-Lmn](https://github.com/AK-Lmn), [@ShlokGhadekar](https://github.com/ShlokGhadekar), [@tingtingtingtin](https://github.com/tingtingtingtin) and [@yashexc2002](https://github.com/yashexc2002).
+Thanks to our outside contributors, [@AK-Lmn](https://github.com/AK-Lmn), [@ShlokGhadekar](https://github.com/ShlokGhadekar), [@tingtingtingtin](https://github.com/tingtingtingtin), [@yashexc2002](https://github.com/yashexc2002), [@AkashGowdaNC](https://github.com/AkashGowdaNC) and [@iamcipherdev](https://github.com/iamcipherdev).
 
 ### Added
 
 - The browser recorder reads `Server-Timing` and `traceresponse` headers, so the grey "not visible from your browser" station on a live trip shows real server numbers (like "db 53ms") when the host sends them ([#71](https://github.com/SumantxD/shrike/pull/71), thanks [@ShlokGhadekar](https://github.com/ShlokGhadekar)).
 - Live trips hide emails, phone numbers and IBANs as `[email#1]`, `[phone#1]` and `[iban#1]`, numbered so the same person reads the same across a trip. Local trips keep the real values. The Vercel preview bypass token is hidden everywhere ([#75](https://github.com/SumantxD/shrike/pull/75), thanks [@ShlokGhadekar](https://github.com/ShlokGhadekar)).
 - The cache inspector marks keys written by RedisJSON commands like `JSON.SET` and `JSON.DEL` ([#72](https://github.com/SumantxD/shrike/pull/72), thanks [@yashexc2002](https://github.com/yashexc2002)).
+- A request the browser blocked explains why in plain words: a cross-origin call with no CORS answer, or an http call from a live https page (mixed content) ([#74](https://github.com/SumantxD/shrike/pull/74), thanks [@AkashGowdaNC](https://github.com/AkashGowdaNC)).
 
 ### Fixed
 
 - The Routes page no longer asks a spec-less app for its spec every 10 seconds for as long as it's open. It checks a few times while the app starts (2, 5, 10 and 20 seconds), then stops; a new Run, a changed address or the refresh button looks again ([#49](https://github.com/SumantxD/shrike/pull/49), thanks [@AK-Lmn](https://github.com/AK-Lmn)).
 - `F` focuses the trip list, as the docs always said it would; ↑ ↓ move between trips and Esc goes back to the Thread ([#76](https://github.com/SumantxD/shrike/pull/76), thanks [@tingtingtingtin](https://github.com/tingtingtingtin)).
+- Live trips no longer hide file names like `logo@2x.png` as emails, and emails with accented letters (`jöhn@shop.com`) are hidden fully instead of partly ([#86](https://github.com/SumantxD/shrike/pull/86), [#87](https://github.com/SumantxD/shrike/pull/87), thanks [@iamcipherdev](https://github.com/iamcipherdev)).
 
 ## [0.2.0] - 2026-10-12
 
