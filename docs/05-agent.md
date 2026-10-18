@@ -232,6 +232,7 @@ These feed the What happened? card and flow review. The AI explains them; it doe
 | Duplicate requests | identical method + URL + body twice in one Action |
 | Swallowed error | server error event, but HTTP status 200 |
 | Empty result (Supabase) | a PostgREST read answers 2xx with `[]` (or HEAD `content-range: */0`), or an update/delete answers 2xx with `content-range: */0`: "can do this" wording points at row level security; an unknown count (`Prefer: return=minimal`) says so instead of claiming 0 |
+| Blocked request (`blocked_request`) | a browser call that fails with no HTTP status, skipping analytics hosts: an `http://` URL from a live (https) page reads "The browser blocked an http request from an https page (mixed content)."; any other absolute URL reads "The browser blocked this request, or api.x.com didn't answer. If the server is up, it's CORS: it doesn't allow requests from this page."; a relative URL stays quiet (same origin, the server is down). Mixed content is live only, since a local page's protocol isn't known. The caption also leads the What happened headline. Cookies dropped by SameSite on cross-site requests are a follow-up: it needs the recorder to note credentials mode |
 | Silent frontend failure | response ≥ 400 and no render or visible text change afterwards |
 
 ## Outside Shrike: MCP for any agent

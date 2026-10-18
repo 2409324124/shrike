@@ -3,7 +3,7 @@ import { test } from "node:test";
 import type { DebugEvent } from "@shrike/schema";
 import { buildActionView, compareActions, compareLocalLive, findFlags, formatActionTree, relativize } from "../src/index.ts";
 import { normalizeSql } from "../src/flags.ts";
-import { addTodo, addTodoFixed, ev, payNow } from "./fixtures.ts";
+import { addTodo, addTodoFixed, corsBlocked, ev, mixedContent, payNow, sameOriginDown } from "./fixtures.ts";
 
 test("buildActionView: Add Todo tree, status, duration, framework", () => {
   const { root, events, ids } = addTodo();
@@ -322,4 +322,35 @@ test("flags: empty_result names a silent Supabase row level security miss", () =
   assert.equal(unknown.flags[0]!.message, "Supabase didn't say how many rows changed in orders. If Save did nothing, row level security may have matched 0 rows.");
   assert.doesNotMatch(unknown.summary.headline, /0 rows/, "an unknown count is never claimed as 0");
   assert.equal(trip({ method: "HEAD", url: `${url}?select=*`, status: 200, resHeaders: { "content-range": "*/0" } }).flags[0]!.kind, "empty_result");
+});
+
+test("flags: blocked_request explains CORS on a cross-origin failure with no status", () => {
+  const { root, events } = corsBlocked();
+  const flags = findFlags(buildActionView(root, events, true));
+  const blocked = flags.find((f) => f.kind === "blocked_request");
+  assert.ok(blocked, "expected a blocked_request flag");
+  assert.match(blocked.message, /CORS/);
+  assert.match(blocked.message, /api\.example\.com/);
+});
+
+test("flags: blocked_request explains mixed content on an http URL from an https page", () => {
+  const { root, events } = mixedContent();
+  const flags = findFlags(buildActionView(root, events, true));
+  const blocked = flags.find((f) => f.kind === "blocked_request");
+  assert.ok(blocked, "expected a blocked_request flag");
+  assert.match(blocked.message, /mixed content/);
+});
+
+test("flags: a same-origin failure with no status does not say CORS", () => {
+  const { root, events } = sameOriginDown();
+  const flags = findFlags(buildActionView(root, events, true));
+  const blocked = flags.find((f) => f.kind === "blocked_request");
+  assert.equal(blocked, undefined, "a same-origin failure must not read as CORS");
+});
+
+test("summary: the What happened headline shows the blocked request caption", () => {
+  const { root, events } = corsBlocked();
+  const v = buildActionView(root, events, true);
+  assert.equal(v.summary.headline, `You clicked "Load profile". ${v.flags.find((f) => f.kind === "blocked_request")!.message}`);
+  assert.doesNotMatch(v.summary.headline, /got no response/);
 });

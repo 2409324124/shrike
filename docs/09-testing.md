@@ -17,6 +17,7 @@
 | Module | Check |
 |---|---|
 | `correlator` tree builder | Out-of-order events with parent links produce the right tree |
+| `correlator` blocked request (`packages/correlator/test/correlator.test.ts`) | A cross-origin browser call with no status says CORS and names the host, an `http://` call from a live page says mixed content, a same-origin one stays quiet, and the What happened headline shows the caption instead of "got no response". SameSite is a follow-up |
 | `correlator` clock alignment (planned) | Browser/server skew of ±300ms still nests correctly |
 | `redact` | Every rule in [07-security-privacy.md](07-security-privacy.md#redaction-rules-shrikeredact) masks its sample and leaves non-secrets alone |
 | `scanner` | Finds every route in both fixtures with handler file:line |

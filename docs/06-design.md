@@ -53,6 +53,7 @@ Because every trip uses the same lanes, the outline of the thread is the diagnos
 | Very tall in time view | Slow | "Most of the 1.2s was spent in fetchActivity()." |
 | Returns green, SCREEN after unchanged | The page didn't update | "The server saved it, but your page didn't show it." |
 | Returns amber, verdict in amber; the return reads "Your page asked Supabase directly" | Supabase answered with no rows (`empty_result`); wins over every "worked" shape | "Supabase answered with 0 rows from orders." |
+| Snaps red on a page call that got no status (`blocked_request`) | The browser blocked the call (CORS or mixed content), or the server didn't answer | "The browser blocked this request, or api.x.com didn't answer. If the server is up, it's CORS: it doesn't allow requests from this page." On a live page, an http call reads "The browser blocked an http request from an https page (mixed content)." |
 | Ends at a grey dashed station in SERVER (T22, live projects) | The live server answered; nothing inside it is visible from the browser | "Your page called the server. What happened inside isn't visible from your browser." A page load or Next.js page data says "Rendered on the server" |
 
 ## Navigation: three verbs, no camera
