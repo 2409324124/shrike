@@ -84,7 +84,7 @@ When function hooks are unavailable, degrade to **OTel-only**: HTTP and DB spans
 
 | Need | Mechanism |
 |---|---|
-| Network, console, exceptions | `@shrike/browser-agent`: patched `fetch`/XHR, console and error hooks |
+| Network, console, exceptions | `@shrike/browser-agent`: patched `fetch`/XHR/`sendBeacon`, console and error hooks |
 | Clicks, inputs, navigation | `@shrike/browser-agent` injected with `Page.addScriptToEvaluateOnNewDocument` through `webContents.debugger`. DOM replay (rrweb) is planned |
 | Element → component → file:line | React DevTools global hook (bippy approach). React ≤18: `_debugSource`. React 19: the element's `_debugStack` goes to main as the action's `stack` and is mapped through source maps like a fetch's. |
 | Request ↔ click linking | Patched `fetch`/XHR inherit the open action window; W3C `traceparent` header joins the backend |

@@ -9,6 +9,7 @@ Thanks to our outside contributors, [@AK-Lmn](https://github.com/AK-Lmn), [@Shlo
 ### Added
 
 - The browser recorder reads `Server-Timing` and `traceresponse` headers, so the grey "not visible from your browser" station on a live trip shows real server numbers (like "db 53ms") when the host sends them ([#71](https://github.com/SumantxD/shrike/pull/71), thanks [@ShlokGhadekar](https://github.com/ShlokGhadekar)).
+- `navigator.sendBeacon` calls (analytics, saving on page leave) show up on the trip, and a beacon the browser refused is marked failed ([#90](https://github.com/SumantxD/shrike/pull/90), thanks [@ShlokGhadekar](https://github.com/ShlokGhadekar)).
 - Live trips hide emails, phone numbers and IBANs as `[email#1]`, `[phone#1]` and `[iban#1]`, numbered so the same person reads the same across a trip. Local trips keep the real values. The Vercel preview bypass token is hidden everywhere ([#75](https://github.com/SumantxD/shrike/pull/75), thanks [@ShlokGhadekar](https://github.com/ShlokGhadekar)).
 - The cache inspector marks keys written by RedisJSON commands like `JSON.SET` and `JSON.DEL` ([#72](https://github.com/SumantxD/shrike/pull/72), thanks [@yashexc2002](https://github.com/yashexc2002)).
 - A request the browser blocked explains why in plain words: a cross-origin call with no CORS answer, or an http call from a live https page (mixed content) ([#74](https://github.com/SumantxD/shrike/pull/74), thanks [@AkashGowdaNC](https://github.com/AkashGowdaNC)).
