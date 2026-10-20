@@ -144,7 +144,15 @@ export function redactPii(s: string, seen: PiiSeen = new Map()): string {
     .replace(PHONE, (m) => {
       const digits = m.replace(/%2B/i, "+").replace(/[^\d+]/g, "");
       const n = digits.replace("+", "").length;
-      return n < 8 || n > 15 ? m : placeholder(seen, "phone", digits); // E.164 allows 15 at most
+      if (n < 8 || n > 15) return m; // E.164 allows 15 at most
+      // #79: a "+" value with exactly one "." and no other separator is a decimal - a latitude like
+      // +37.774912 - not a phone number, so it stays. Dots between groups (+1.415.555.0123) are a
+      // real way to write a number, and spaces, dashes or parens mean E.164, so both still mask.
+      if (/^(?:\+|%2B)/i.test(m)) {
+        const rest = m.replace(/^(?:\+|%2B)/i, "");
+        if (!/[- ()]/.test(rest) && (rest.match(/\./g) ?? []).length === 1) return m;
+      }
+      return placeholder(seen, "phone", digits);
     })
     .replace(IBAN, (m) => (ibanValid(m) ? placeholder(seen, "iban", m.replace(/ /g, "")) : m));
 }
