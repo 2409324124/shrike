@@ -4,7 +4,7 @@ Notable changes to Shrike. The format follows [Keep a Changelog](https://keepach
 
 ## [Unreleased]
 
-Thanks to our outside contributors, [@AK-Lmn](https://github.com/AK-Lmn), [@ShlokGhadekar](https://github.com/ShlokGhadekar), [@tingtingtingtin](https://github.com/tingtingtingtin), [@yashexc2002](https://github.com/yashexc2002), [@AkashGowdaNC](https://github.com/AkashGowdaNC) and [@iamcipherdev](https://github.com/iamcipherdev).
+Thanks to our outside contributors, [@AK-Lmn](https://github.com/AK-Lmn), [@ShlokGhadekar](https://github.com/ShlokGhadekar), [@tingtingtingtin](https://github.com/tingtingtingtin), [@yashexc2002](https://github.com/yashexc2002), [@AkashGowdaNC](https://github.com/AkashGowdaNC), [@iamcipherdev](https://github.com/iamcipherdev) and [@Yuren0312](https://github.com/Yuren0312).
 
 ### Added
 
@@ -19,6 +19,7 @@ Thanks to our outside contributors, [@AK-Lmn](https://github.com/AK-Lmn), [@Shlo
 - The Routes page no longer asks a spec-less app for its spec every 10 seconds for as long as it's open. It checks a few times while the app starts (2, 5, 10 and 20 seconds), then stops; a new Run, a changed address or the refresh button looks again ([#49](https://github.com/SumantxD/shrike/pull/49), thanks [@AK-Lmn](https://github.com/AK-Lmn)).
 - `F` focuses the trip list, as the docs always said it would; ↑ ↓ move between trips and Esc goes back to the Thread ([#76](https://github.com/SumantxD/shrike/pull/76), thanks [@tingtingtingtin](https://github.com/tingtingtingtin)).
 - Live trips no longer hide file names like `logo@2x.png` as emails, and emails with accented letters (`jöhn@shop.com`) are hidden fully instead of partly ([#86](https://github.com/SumantxD/shrike/pull/86), [#87](https://github.com/SumantxD/shrike/pull/87), thanks [@iamcipherdev](https://github.com/iamcipherdev)).
+- Coordinates and decimals like `+37.774912` are no longer hidden as phone numbers on live trips ([#89](https://github.com/SumantxD/shrike/pull/89), thanks [@Yuren0312](https://github.com/Yuren0312)).
 
 ## [0.2.0] - 2026-10-12
 
