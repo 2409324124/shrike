@@ -4,12 +4,14 @@ Notable changes to Shrike. The format follows [Keep a Changelog](https://keepach
 
 ## [Unreleased]
 
-Thanks to our outside contributors, [@AK-Lmn](https://github.com/AK-Lmn), [@ShlokGhadekar](https://github.com/ShlokGhadekar), [@tingtingtingtin](https://github.com/tingtingtingtin), [@yashexc2002](https://github.com/yashexc2002), [@AkashGowdaNC](https://github.com/AkashGowdaNC), [@iamcipherdev](https://github.com/iamcipherdev) and [@Yuren0312](https://github.com/Yuren0312).
+Thanks to our outside contributors, [@AK-Lmn](https://github.com/AK-Lmn), [@ShlokGhadekar](https://github.com/ShlokGhadekar), [@tingtingtingtin](https://github.com/tingtingtingtin), [@yashexc2002](https://github.com/yashexc2002), [@AkashGowdaNC](https://github.com/AkashGowdaNC), [@iamcipherdev](https://github.com/iamcipherdev), [@Yuren0312](https://github.com/Yuren0312) and [@reney-0202](https://github.com/reney-0202).
 
 ### Added
 
 - The browser recorder reads `Server-Timing` and `traceresponse` headers, so the grey "not visible from your browser" station on a live trip shows real server numbers (like "db 53ms") when the host sends them ([#71](https://github.com/SumantxD/shrike/pull/71), thanks [@ShlokGhadekar](https://github.com/ShlokGhadekar)).
 - `navigator.sendBeacon` calls (analytics, saving on page leave) show up on the trip, and a beacon the browser refused is marked failed ([#90](https://github.com/SumantxD/shrike/pull/90), thanks [@ShlokGhadekar](https://github.com/ShlokGhadekar)).
+- Each trip header shows how long ago it started ("just now", "4m ago"), with the clock time on hover ([#101](https://github.com/SumantxD/shrike/pull/101), thanks [@iamcipherdev](https://github.com/iamcipherdev)).
+- The API client's History has a Clear button, which asks first and leaves saved requests alone ([#102](https://github.com/SumantxD/shrike/pull/102), thanks [@iamcipherdev](https://github.com/iamcipherdev)).
 - `list_trips` takes optional `status` (broke, slow or worked) and `match` filters, so your agent can ask for only the broken trips on one route ([#92](https://github.com/SumantxD/shrike/pull/92), thanks [@iamcipherdev](https://github.com/iamcipherdev)).
 - Live trips hide emails, phone numbers and IBANs as `[email#1]`, `[phone#1]` and `[iban#1]`, numbered so the same person reads the same across a trip. Local trips keep the real values. The Vercel preview bypass token is hidden everywhere ([#75](https://github.com/SumantxD/shrike/pull/75), thanks [@ShlokGhadekar](https://github.com/ShlokGhadekar)).
 - The cache inspector marks keys written by RedisJSON commands like `JSON.SET` and `JSON.DEL` ([#72](https://github.com/SumantxD/shrike/pull/72), thanks [@yashexc2002](https://github.com/yashexc2002)).
@@ -22,6 +24,7 @@ Thanks to our outside contributors, [@AK-Lmn](https://github.com/AK-Lmn), [@Shlo
 - Home and End jump to the first and last trip in the trip list ([#91](https://github.com/SumantxD/shrike/pull/91), thanks [@iamcipherdev](https://github.com/iamcipherdev)).
 - Live trips no longer hide file names like `logo@2x.png` as emails, and emails with accented letters (`jöhn@shop.com`) are hidden fully instead of partly ([#86](https://github.com/SumantxD/shrike/pull/86), [#87](https://github.com/SumantxD/shrike/pull/87), thanks [@iamcipherdev](https://github.com/iamcipherdev)).
 - Coordinates and decimals like `+37.774912` are no longer hidden as phone numbers on live trips ([#89](https://github.com/SumantxD/shrike/pull/89), thanks [@Yuren0312](https://github.com/Yuren0312)).
+- Emails with non-English domains like `user@münchen.de` are hidden on live trips too ([#100](https://github.com/SumantxD/shrike/pull/100), thanks [@reney-0202](https://github.com/reney-0202)).
 
 ## [0.2.0] - 2026-10-12
 
