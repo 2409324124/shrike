@@ -4,7 +4,7 @@ Notable changes to Shrike. The format follows [Keep a Changelog](https://keepach
 
 ## [Unreleased]
 
-Thanks to our outside contributors, [@AK-Lmn](https://github.com/AK-Lmn), [@ShlokGhadekar](https://github.com/ShlokGhadekar), [@tingtingtingtin](https://github.com/tingtingtingtin), [@yashexc2002](https://github.com/yashexc2002), [@AkashGowdaNC](https://github.com/AkashGowdaNC), [@iamcipherdev](https://github.com/iamcipherdev), [@Yuren0312](https://github.com/Yuren0312) and [@reney-0202](https://github.com/reney-0202).
+Thanks to our outside contributors, [@AK-Lmn](https://github.com/AK-Lmn), [@ShlokGhadekar](https://github.com/ShlokGhadekar), [@tingtingtingtin](https://github.com/tingtingtingtin), [@yashexc2002](https://github.com/yashexc2002), [@AkashGowdaNC](https://github.com/AkashGowdaNC), [@iamcipherdev](https://github.com/iamcipherdev), [@Yuren0312](https://github.com/Yuren0312), [@reney-0202](https://github.com/reney-0202) and [@Amandot](https://github.com/Amandot).
 
 ### Added
 
@@ -12,6 +12,9 @@ Thanks to our outside contributors, [@AK-Lmn](https://github.com/AK-Lmn), [@Shlo
 - `navigator.sendBeacon` calls (analytics, saving on page leave) show up on the trip, and a beacon the browser refused is marked failed ([#90](https://github.com/SumantxD/shrike/pull/90), thanks [@ShlokGhadekar](https://github.com/ShlokGhadekar)).
 - Each trip header shows how long ago it started ("just now", "4m ago"), with the clock time on hover ([#101](https://github.com/SumantxD/shrike/pull/101), thanks [@iamcipherdev](https://github.com/iamcipherdev)).
 - The API client's History has a Clear button, which asks first and leaves saved requests alone ([#102](https://github.com/SumantxD/shrike/pull/102), thanks [@iamcipherdev](https://github.com/iamcipherdev)).
+- Copy a trip as a few lines of text (verdict, steps, where it broke) to paste into a chat or your agent; a live trip is copied with its values masked ([#103](https://github.com/SumantxD/shrike/pull/103), thanks [@iamcipherdev](https://github.com/iamcipherdev)).
+- Right-click a row in the inspector to copy it as JSON or as an SQL INSERT ([#104](https://github.com/SumantxD/shrike/pull/104), thanks [@iamcipherdev](https://github.com/iamcipherdev)).
+- Find works in the Raw view and in non-JSON responses, with a match count and next and previous ([#105](https://github.com/SumantxD/shrike/pull/105), thanks [@Amandot](https://github.com/Amandot)).
 - `list_trips` takes optional `status` (broke, slow or worked) and `match` filters, so your agent can ask for only the broken trips on one route ([#92](https://github.com/SumantxD/shrike/pull/92), thanks [@iamcipherdev](https://github.com/iamcipherdev)).
 - Live trips hide emails, phone numbers and IBANs as `[email#1]`, `[phone#1]` and `[iban#1]`, numbered so the same person reads the same across a trip. Local trips keep the real values. The Vercel preview bypass token is hidden everywhere ([#75](https://github.com/SumantxD/shrike/pull/75), thanks [@ShlokGhadekar](https://github.com/ShlokGhadekar)).
 - The cache inspector marks keys written by RedisJSON commands like `JSON.SET` and `JSON.DEL` ([#72](https://github.com/SumantxD/shrike/pull/72), thanks [@yashexc2002](https://github.com/yashexc2002)).
