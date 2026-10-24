@@ -232,6 +232,31 @@ export function cookiesOf(headers: Record<string, string>): { name: string; valu
   });
 }
 
+/** Find all non-overlapping start indices of query in text (case-insensitive). */
+export function findMatches(text: string, query: string, preLowerText?: string): number[] {
+  if (!query || !text) return [];
+  const lowerText = preLowerText ?? text.toLowerCase();
+  const lowerQuery = query.toLowerCase();
+  const qLen = lowerQuery.length;
+  if (qLen === 0) return [];
+  const indices: number[] = [];
+  let pos = 0;
+  while ((pos = lowerText.indexOf(lowerQuery, pos)) !== -1) {
+    indices.push(pos);
+    pos += qLen;
+  }
+  return indices;
+}
+
+/** Step to the next or previous match index, wrapping around. */
+export function stepMatch(current: number, total: number, direction: "next" | "prev"): number {
+  if (total <= 0) return 0;
+  if (direction === "prev") {
+    return (current - 1 + total) % total;
+  }
+  return (current + 1) % total;
+}
+
 // ---------- From what the app already did ----------
 
 const DROP = new Set(["host", "content-length", "connection", "traceparent", "tracestate", "accept-encoding", "keep-alive", "transfer-encoding", "upgrade", "x-shrike-trace"]);

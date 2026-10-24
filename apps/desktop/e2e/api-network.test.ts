@@ -84,6 +84,36 @@ test("api client: unreachable, untrusted TLS, binary and a huge answer end in a 
     assert.ok(prettyGap < 1000 && rawGap < 1000, `the window froze for ${Math.max(prettyGap, rawGap)}ms on a 12MB answer`);
     await sheet.getByText(/Showing the first/).first().waitFor();
     await shot(app, "api-net-05-huge-raw");
+
+    const findInput = sheet.getByRole("textbox", { name: "Find in the response" });
+    await findInput.waitFor();
+    const typeGap = await longestFrameGap(win, () => findInput.pressSequentially("buy milk", { delay: 10 }));
+    console.log(`longest frame gap: pretty ${prettyGap}ms, raw ${rawGap}ms, find typing ${typeGap}ms`);
+    assert.ok(typeGap < 1000, `the window froze for ${typeGap}ms while typing in Find on a 12MB answer`);
+
+    const count = sheet.locator(".ap-find-count");
+    await count.waitFor();
+    const text1 = await count.innerText();
+    assert.match(text1, /^1 of \d+$/, `expected count to be '1 of M', got '${text1}'`);
+    const total = text1.split(" of ")[1]!;
+
+    await findInput.press("Enter");
+    await sheet.getByText(`2 of ${total}`).waitFor({ timeout: 5000 });
+    assert.equal(await count.innerText(), `2 of ${total}`);
+
+    await findInput.press("Shift+Enter");
+    await sheet.getByText(`1 of ${total}`).waitFor({ timeout: 5000 });
+    assert.equal(await count.innerText(), `1 of ${total}`);
+
+    await findInput.fill("nonexistentqueryxyz");
+    await sheet.getByText("No matches").waitFor({ timeout: 5000 });
+
+    await findInput.fill("");
+    await count.waitFor({ state: "detached", timeout: 5000 });
+
+    await sheet.getByRole("tab", { name: "Pretty" }).click();
+    await sheet.getByRole("textbox", { name: "Find in the response" }).waitFor({ timeout: 5000 });
+    await shot(app, "api-net-06-huge-find");
   } finally {
     await cleanup();
     srv.close();

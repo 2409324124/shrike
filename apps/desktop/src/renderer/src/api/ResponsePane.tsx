@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { ChevronRight, Copy } from "lucide-react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { ChevronDown, ChevronRight, ChevronUp, Copy } from "lucide-react";
 import type { ActionView, ApiSendResult } from "@shrike/schema";
 import { CodeBlock, cx, Kbd, Pairs, Spinner } from "../components/ui.tsx";
 import { ShrikeEmblem } from "../brand/index.ts";
@@ -7,7 +7,7 @@ import { allEvents, formatBytes, formatDuration, prettyBody, statusWords } from 
 import { useActions } from "../stores/actions.ts";
 import { toast, useUi } from "../stores/ui.ts";
 import { viewTrip } from "../hud/commands.ts";
-import { cookiesOf, pathOf, tryJson } from "./model.ts";
+import { cookiesOf, findMatches, pathOf, stepMatch, tryJson } from "./model.ts";
 import { useApi } from "./store.ts";
 
 // AP-res, AP-trip, AP-empty: what came back, and what the app did to answer.
@@ -21,6 +21,7 @@ const copy = (text: string, what: string) =>
   );
 
 const SHOW_MAX = 256 * 1024; // ponytail: a longer body shows its start, Copy takes all of it. Upgrade: a virtualised viewer.
+const MAX_HIGHLIGHTS = 1000;
 
 const tone = (code: number) => (code === 0 || code >= 500 ? "fail" : code >= 400 ? "slow" : "ok");
 
@@ -123,6 +124,9 @@ export function ResponsePane({ tabId }: { tabId: string }) {
   const view = useActions((s) => (result?.actionId ? s.byId[result.actionId] : undefined));
   const [tab, setTab] = useState<ResTab>("pretty");
   const [needle, setNeedle] = useState("");
+  const [matchIndex, setMatchIndex] = useState(0);
+  const curMatchRef = useRef<HTMLElement | null>(null);
+  const deferredNeedle = useDeferredValue(needle);
   const res = result?.response;
   const binary = res?.bodyEncoding === "base64";
   const json = useMemo(() => (binary ? undefined : tryJson(res?.body)), [res?.body, binary]);
@@ -132,6 +136,102 @@ export function ResponsePane({ tabId }: { tabId: string }) {
   const ctype = res?.contentType ?? "";
   const image = binary && ctype.startsWith("image/");
   const cookies = cookiesOf(res?.headers ?? {});
+
+  const isPrettyJson = tab === "pretty" && json !== undefined;
+  const isRawText = tab === "raw" && !binary && !!res?.body;
+  const isPrettyText = tab === "pretty" && json === undefined && !binary && !!res?.body;
+  const isTextSearch = isRawText || isPrettyText;
+  const showFind = isPrettyJson || isTextSearch;
+
+  const displayText = isPrettyText ? pretty : shown;
+  const lowerText = useMemo(() => displayText.toLowerCase(), [displayText]);
+  const trimmedQuery = deferredNeedle.trim();
+  const matches = useMemo(
+    () => (isTextSearch && trimmedQuery ? findMatches(displayText, trimmedQuery, lowerText) : []),
+    [isTextSearch, displayText, trimmedQuery, lowerText],
+  );
+
+  const safeIndex = matches.length > 0 ? Math.min(matchIndex, matches.length - 1) : 0;
+
+  useEffect(() => {
+    setMatchIndex(0);
+  }, [tabId, tab, res?.body]);
+
+  useEffect(() => {
+    if (isTextSearch && matches.length > 0 && curMatchRef.current) {
+      curMatchRef.current.scrollIntoView({ block: "nearest" });
+    }
+  }, [isTextSearch, safeIndex, trimmedQuery, matches.length]);
+
+  const prevMatch = () => {
+    if (matches.length > 0) {
+      setMatchIndex((i) => stepMatch(i, matches.length, "prev"));
+    }
+  };
+
+  const nextMatch = () => {
+    if (matches.length > 0) {
+      setMatchIndex((i) => stepMatch(i, matches.length, "next"));
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (e.shiftKey) {
+        prevMatch();
+      } else {
+        nextMatch();
+      }
+    }
+  };
+
+  const countText = !trimmedQuery
+    ? ""
+    : matches.length === 0
+      ? "No matches"
+      : `${safeIndex + 1} of ${matches.length}`;
+
+  const highlightedContent = useMemo(() => {
+    if (!isTextSearch || !trimmedQuery || matches.length === 0) {
+      return displayText;
+    }
+    const qLen = trimmedQuery.length;
+    const half = Math.floor(MAX_HIGHLIGHTS / 2);
+    let renderStart = Math.max(0, safeIndex - half);
+    let renderEnd = renderStart + MAX_HIGHLIGHTS;
+    if (renderEnd > matches.length) {
+      renderEnd = matches.length;
+      renderStart = Math.max(0, renderEnd - MAX_HIGHLIGHTS);
+    }
+
+    const nodes: ReactNode[] = [];
+    let cursor = 0;
+
+    for (let i = renderStart; i < renderEnd; i++) {
+      const matchPos = matches[i]!;
+      if (matchPos > cursor) {
+        nodes.push(displayText.slice(cursor, matchPos));
+      }
+      const isCur = i === safeIndex;
+      nodes.push(
+        <mark
+          key={matchPos}
+          ref={isCur ? curMatchRef : undefined}
+          className={cx("hit", isCur && "cur")}
+        >
+          {displayText.slice(matchPos, matchPos + qLen)}
+        </mark>,
+      );
+      cursor = matchPos + qLen;
+    }
+
+    if (cursor < displayText.length) {
+      nodes.push(displayText.slice(cursor));
+    }
+
+    return nodes;
+  }, [isTextSearch, displayText, trimmedQuery, matches, safeIndex]);
 
   if (sending)
     return (
@@ -192,14 +292,58 @@ export function ResponsePane({ tabId }: { tabId: string }) {
       <div className="ap-subtabs">
         <div role="tablist" aria-label="Response" className="contents">
         {tabs.map((t) => (
-          <button key={t.id} role="tab" type="button" aria-selected={tab === t.id} className={cx("ap-subtab", tab === t.id && "on")} onClick={() => setTab(t.id)}>
+          <button key={t.id} role="tab" type="button" aria-selected={tab === t.id} className={cx("ap-subtab", tab === t.id && "on")} onClick={() => { setTab(t.id); setMatchIndex(0); }}>
             {t.label}
             {!!t.n && <sup>{t.n}</sup>}
           </button>
         ))}
         </div>
         <div className="flex-1" />
-        {tab === "pretty" && json !== undefined && <input className="ap-find" value={needle} onChange={(e) => setNeedle(e.target.value)} placeholder="Find" aria-label="Find in the response" spellCheck={false} />}
+        {showFind && (
+          <div className="flex items-center gap-1">
+            <input
+              className="ap-find"
+              value={needle}
+              onChange={(e) => {
+                setNeedle(e.target.value);
+                setMatchIndex(0);
+              }}
+              onKeyDown={isTextSearch ? handleKeyDown : undefined}
+              placeholder="Find"
+              aria-label="Find in the response"
+              spellCheck={false}
+            />
+            {isTextSearch && countText && (
+              <span className="ap-find-count font-mono text-[11px] text-faint" aria-live="polite">
+                {countText}
+              </span>
+            )}
+            {isTextSearch && (
+              <>
+                <button
+                  type="button"
+                  className="ap-icon"
+                  aria-label="Previous match"
+                  title="Previous match (Shift+Enter)"
+                  disabled={matches.length === 0}
+                  onClick={prevMatch}
+                >
+                  <ChevronUp size={12} />
+                </button>
+                <button
+                  type="button"
+                  className="ap-icon"
+                  aria-label="Next match"
+                  title="Next match (Enter)"
+                  disabled={matches.length === 0}
+                  onClick={nextMatch}
+                >
+                  <ChevronDown size={12} />
+                </button>
+              </>
+            )}
+          </div>
+        )}
         <button type="button" className="ap-icon" aria-label="Copy the response body" title="Copy the body" disabled={binary} onClick={() => copy(res.body, "the body")}>
           <Copy size={12} />
         </button>
@@ -207,8 +351,8 @@ export function ResponsePane({ tabId }: { tabId: string }) {
       <div role="tabpanel" className="ap-res-body">
         {(tab === "pretty" || tab === "raw") && binary && !image && <p className="ap-hint">A binary answer ({ctype || "no content type"}, {formatBytes(res.size)}). Nothing to show as text.</p>}
         {(tab === "pretty" || tab === "raw") && long && (json === undefined || tab === "raw") && <p className="ap-hint">Showing the first {formatBytes(SHOW_MAX)} here. Copy takes everything Shrike kept.</p>}
-        {tab === "pretty" && !binary && (json !== undefined ? <div className="ap-json selectable"><Node v={json} path={[]} depth={0} needle={needle.trim().toLowerCase()} /></div> : res.body ? <CodeBlock className="border-0 bg-transparent p-0">{pretty}</CodeBlock> : <p className="ap-hint">Empty body.</p>)}
-        {tab === "raw" && !binary && (res.body ? <CodeBlock className="border-0 bg-transparent p-0">{shown}</CodeBlock> : <p className="ap-hint">Empty body.</p>)}
+        {tab === "pretty" && !binary && (json !== undefined ? <div className="ap-json selectable"><Node v={json} path={[]} depth={0} needle={needle.trim().toLowerCase()} /></div> : res.body ? <CodeBlock className="border-0 bg-transparent p-0">{highlightedContent}</CodeBlock> : <p className="ap-hint">Empty body.</p>)}
+        {tab === "raw" && !binary && (res.body ? <CodeBlock className="border-0 bg-transparent p-0">{highlightedContent}</CodeBlock> : <p className="ap-hint">Empty body.</p>)}
         {(tab === "pretty" || tab === "image") && image && <img className="ap-img" src={`data:${ctype};base64,${res.body}`} alt="The response image" />}
         {tab === "headers" && <Pairs data={res.headers} />}
         {tab === "cookies" &&

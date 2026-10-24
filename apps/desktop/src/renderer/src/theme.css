@@ -12,6 +12,7 @@
   --ink: var(--c-ink);
   --ink-dim: var(--c-ink-dim);
   --ink-faint: var(--c-ink-faint);
+  --core: var(--c-core);
   --signal: var(--c-cyan);
   --violet: var(--c-violet);
   --ok: var(--c-ok);

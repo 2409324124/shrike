@@ -168,6 +168,7 @@
 .ap-res-body { min-height: 0; flex: 1; overflow: auto; padding: var(--s-3) var(--s-4) var(--s-4); }
 .ap-find { width: 88px; flex-shrink: 1; min-width: 50px; height: 24px; padding: 0 8px; border: 1px solid var(--hair); border-radius: 5px; background: transparent; color: var(--ink); font: 11.5px var(--mono); outline: none; }
 .ap-find:focus { border-color: color-mix(in srgb, var(--signal) 50%, transparent); }
+.ap-find-count { font: 11px var(--mono); color: var(--ink-faint); padding: 0 4px; white-space: nowrap; user-select: none; }
 .ap-json { font: 12px/19px var(--mono); }
 .ap-jrow { position: relative; white-space: pre-wrap; overflow-wrap: anywhere; }
 .ap-jfold { position: relative; display: inline-grid; place-items: center; width: 14px; height: 14px; vertical-align: -2px; color: var(--ink-faint); }
@@ -179,6 +180,8 @@
 .ap-jv.n { color: var(--code-number); }
 .ap-jv.k { color: var(--code-keyword); }
 .ap-jk.hit, .ap-jv.hit { background: color-mix(in srgb, var(--signal) 18%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--signal) 40%, transparent); }
+mark.hit { background: color-mix(in srgb, var(--signal) 18%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--signal) 40%, transparent); border-radius: 2px; color: inherit; }
+mark.hit.cur { background: color-mix(in srgb, var(--signal) 45%, transparent); box-shadow: 0 0 0 1.5px var(--signal); color: var(--core); }
 .ap-table { width: 100%; border-collapse: collapse; font: 11.5px var(--mono); }
 .ap-table th { text-align: left; font: 500 11px var(--display); color: var(--ink-faint); padding: 4px 8px 6px 0; }
 .ap-table td { padding: 5px 8px 5px 0; border-top: 1px solid var(--hair); color: var(--ink); vertical-align: top; }

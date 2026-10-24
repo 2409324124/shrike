@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { ApiRequest } from "@shrike/schema";
-import { blankReq, bulkParse, bulkText, cookiesOf, fromApi, fromCapture, fromRoute, hiddenSecret, isKnown, makeScope, paramsFromUrl, pathOf, pathParams, row, scrubReq, segments, toApi, urlWithParams } from "./model.ts";
+import { blankReq, bulkParse, bulkText, cookiesOf, findMatches, fromApi, fromCapture, fromRoute, hiddenSecret, isKnown, makeScope, paramsFromUrl, pathOf, pathParams, row, scrubReq, segments, stepMatch, toApi, urlWithParams } from "./model.ts";
 
 test("{{vars}} split into highlightable segments; the scope says which are known", () => {
   assert.deepEqual(segments("{{baseUrl}}/todos/{{ id }}?x=1"), [{ text: "{{baseUrl}}", name: "baseUrl" }, { text: "/todos/" }, { text: "{{ id }}", name: "id" }, { text: "?x=1" }]);
@@ -78,4 +78,20 @@ test("tabs kept between restarts hide secret values but keep {{vars}}; a hidden 
   assert.equal(s.vars[0]!.value, "[redacted:pw]");
   assert.ok(!JSON.stringify(s).includes("abc") && !JSON.stringify(s).includes("hunter2"));
   assert.ok(hiddenSecret(s) && !hiddenSecret(r));
+});
+
+test("find matches in text: case-insensitive, non-overlapping, wrap-around navigation", () => {
+  const text = "Buy milk, buy Milk, BUY MILK!";
+  assert.deepEqual(findMatches(text, "buy milk"), [0, 10, 20]);
+  assert.deepEqual(findMatches(text, "MILK"), [4, 14, 24]);
+  assert.deepEqual(findMatches(text, "coffee"), []);
+  assert.deepEqual(findMatches("", "milk"), []);
+  assert.deepEqual(findMatches(text, ""), []);
+  assert.deepEqual(findMatches("aaaa", "aa"), [0, 2]);
+
+  assert.equal(stepMatch(0, 3, "next"), 1);
+  assert.equal(stepMatch(2, 3, "next"), 0);
+  assert.equal(stepMatch(0, 3, "prev"), 2);
+  assert.equal(stepMatch(2, 3, "prev"), 1);
+  assert.equal(stepMatch(0, 0, "next"), 0);
 });

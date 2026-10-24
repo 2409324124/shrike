@@ -58,7 +58,7 @@ export function Tabs<const T extends string>({ tabs, value, onChange, label }: {
   );
 }
 
-export function CodeBlock({ children, className }: { children: string; className?: string }) {
+export function CodeBlock({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <pre className={cx("selectable overflow-auto rounded-[6px] border border-hair bg-black/30 p-2.5 font-mono text-[12px] leading-[18px] whitespace-pre-wrap break-all text-ink", className)}>
       {children}
