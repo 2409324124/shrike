@@ -12,7 +12,8 @@ import { reducedMotion } from "./motion.ts";
 import { TripView, type Play } from "./TripView.tsx";
 import { CLEAR, DIVE_AT, LABEL_UP } from "./DiveCard.tsx";
 import { useInspector } from "../inspector/store.ts";
-import { useUi } from "../stores/ui.ts";
+import { toast as showToast, useUi } from "../stores/ui.ts";
+import { call } from "../lib/api.ts";
 import { useWorktrees } from "../stores/worktrees.ts";
 import { FilesView } from "../files/FilesView.tsx";
 import { Compare } from "./Compare.tsx";
@@ -88,6 +89,20 @@ export function Thread() {
 
   const feed = useRef<HTMLDivElement>(null);
   const miniOn = useRef<HTMLButtonElement>(null);
+  // #66: main picks the HAR through a dialog and turns it into trips.
+  const importHarFile = async () => {
+    const res = await call((a) => a.importHar(), "Couldn't import that HAR file");
+    if (!res) return;
+    const actions = await call((a) => a.getActions(), "Couldn't load recordings");
+    if (actions) useActions.getState().upsert(actions);
+    showToast(
+      `Imported ${res.trips} trip${res.trips === 1 ? "" : "s"}, ${res.events} request${res.events === 1 ? "" : "s"}` +
+        (res.skipped ? `, ${res.skipped} skipped` : "") +
+        (res.truncated ? `, ${res.truncated} cut at the cap` : "") +
+        ".",
+      "ok",
+    );
+  };
   const [width, setWidth] = useState(0);
   const [range, setRange] = useState<[number, number]>([0, WINDOW_AFTER]);
   const [play, setPlay] = useState<Play | null>(null);
@@ -237,6 +252,9 @@ export function Thread() {
         <span className="th-barhint" aria-hidden>
           <kbd>V</kbd> switches
         </span>
+        <button type="button" className="th-harbtn" title="Import a HAR file as trips (Chrome DevTools → Network → Export HAR)" onClick={() => void importHarFile()}>
+          Import HAR…
+        </button>
       </div>
       {filesTrip && byId[filesTrip.actionId] && <FilesView view={byId[filesTrip.actionId]!} trip={filesTrip} />}
       {viewMode === "files" && !filesTrip && (
